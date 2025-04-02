@@ -26,7 +26,7 @@ public sealed class ImmediateModeTest : Component
 				Log.Info( $"Checkbox changed to: {checkboxValue}" );
 			}
 
-			ImXGUI.Slider( "Adjust Value", ref sliderValue, 0, 10 );
+			ImXGUI.Slider( "Adjust Value", ref sliderValue, 0, 100 );
 
 			if ( ImXGUI.InputText( "Enter Text", ref inputText ) )
 			{
