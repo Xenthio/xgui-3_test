@@ -1,0 +1,29 @@
+﻿@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@attribute [StyleSheet( "/XGUI/DefaultStyles/OliveGreen.scss" )]
+@inherits Window
+
+<root title="SidebarTest">
+	<sidebar>
+		 
+			<tab tabName="video" slot="tab" tabtext="Video">
+				<div style="width:300px;height:200px;">
+					hi
+				</div>
+			</tab>
+
+			<tab tabName="video" slot="tab" tabtext="Audio">
+				<div style="width:300px;height:200px;">
+					hello
+				</div>
+			</tab>
+
+			<tab tabName="video" slot="tab" tabtext="Controls">
+				<div style="width:300px;height:200px;">
+					hey
+				</div>
+			</tab> 
+	</sidebar>
+</root>
+

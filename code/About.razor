@@ -1,0 +1,123 @@
+﻿@using Sandbox;
+@using Sandbox.UI;
+@using XGUI; 
+@inherits Window
+
+<root title="About XGUI" hasminimise="true" hasmaximise="true" x="540" y="240">
+    <tabcontrol>
+        <tab tabName="about" slot="tab" tabtext="About">
+            <div style="width:320px;height:240px;">
+                <p>XGUI is a library that allows quick implementation of traditional desktop UI (and UI elements) in s&box games.</p>
+
+				<p>It's great for quickly creating simple but functional debugging and development UI and tools.</p>
+                <br/>
+                <p>You can easily customise the look of XGUI, or choose between some pre-made styles (Check them out at the bottom)</p>
+            </div>
+        </tab>
+        <tab tabName="controls" slot="tab" tabtext="Controls">
+			<div style="width:320px;height:240px;">
+                <sliderscaleentry min=1 max=10 mintext="1.00" maxtext="10.0" step=1>
+
+                </sliderscaleentry>
+                <sliderscale min=1 max=10 mintext="1.00" maxtext="10.0" step=1>
+
+                </sliderscale>
+                <slider min=1 max=10 mintext="1.00" maxtext="10.0" step=1>
+
+                </slider>
+                <check>Checkbox</check>
+                <button>Button</button>
+                <textentry>
+
+                </textentry>
+                <radiobuttons>
+                    There's meant to be radio buttons here, but they're not implemented yet
+                </radiobuttons>
+            </div>
+		</tab>
+		<tab tabName="themes" slot="tab" tabtext="Themes">
+			<div style="width:320px;height:240px;">
+				s&box bug prevented me putting the buttons in here, so they're at the bottom instead.
+			</div>
+		</tab>
+	</tabcontrol>
+	<label style="font-size:9px; margin-right:3px;">Select Theme:</label>
+	<div style="align-items:center; align-self:flex-start;">
+		@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/"))
+		{
+			<button style="font-size:9px; width:auto; margin-right:3px;" onclick=@( () => LoadStyle(i) )>@i.Replace(".scss", "")</button>
+		}
+	</div>
+    <resizer>
+
+    </resizer>
+</root>
+
+@code {
+
+	public string StartTab = "";
+	public Vector2 OverrideSize = Vector2.Zero;
+	public TabContainer MainTabs { get; set; }
+	int Loaded = 0;
+	public override void Tick()
+	{
+		base.Tick();
+		if (Loaded == 0)
+		{
+			Loaded++;
+			Style.ZIndex = 100;
+			ApplyStyle(StyleName);
+			if (StartTab != "") SetTab(StartTab);
+			if (OverrideSize != Vector2.Zero)
+			{
+				Style.Width = OverrideSize.x;
+				Style.Height = OverrideSize.y;
+			}
+		}
+	}
+
+	public void SetTab(string tab)
+	{
+		foreach (var tabs in ChildrenOfType<TabContainer>())
+		{
+			tabs.ActiveTab = tab;
+		}
+	}
+	public string GetTab()
+	{
+		foreach (var tabs in ChildrenOfType<TabContainer>())
+		{
+			return tabs.ActiveTab;
+		}
+		return "about";
+	}
+
+	StyleSheet CurrentStyle;
+	public string StyleName = "OliveGreen.scss";
+
+	public void ResetStyle()
+	{
+		StyleSheet.Remove("*");
+		Loaded++;
+	}
+	public void ApplyStyle(string styleName)
+	{
+		StyleSheet.Remove("*");
+		CurrentStyle = Sandbox.UI.StyleSheet.FromFile($"/XGUI/DefaultStyles/{styleName}");
+		StyleSheet.Add(CurrentStyle);
+		Loaded++;
+	}
+	public void LoadStyle(string styleName)
+	{
+		var b = Parent.AddChild<About>();
+		b.StyleName = styleName;
+		b.Position = Position;
+		//b.OverrideSize = new Vector2(Box.Rect.Width, Box.Rect.Height);
+		b.StartTab = GetTab();
+		Delete();
+	}
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine(Loaded);
+	}
+}
