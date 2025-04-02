@@ -1,4 +1,5 @@
 using Sandbox;
+using Sandbox.UI;
 using XGUI;
 
 public sealed class OpenMenu : Component
@@ -14,21 +15,23 @@ public sealed class OpenMenu : Component
 		if ( hi == 3 && XGUIRootPanel.Current != null )
 		{
 			Log.Info( "adding XGUI Panel" );
-			var a = new MenuTest();
+			var a = new panelselector();
 			XGUIRootPanel.Current.AddChild( a );
-			var b = new About();
+			var b = new OptionsThemable();
 			XGUIRootPanel.Current.AddChild( b );
-			var c = new OptionsThemable();
-			XGUIRootPanel.Current.AddChild( c );
-			var d = new GameLauncher();
-			XGUIRootPanel.Current.AddChild( d );
-			var e = new PlayGamesWindow();
-			XGUIRootPanel.Current.AddChild( e );
 			hi = 10;
 		}
 		else if ( hi < 3 )
 		{
 			hi++;
 		}
+	}
+
+	[ConCmd]
+	public static void openpanel( string panel )
+	{
+		var a = TypeLibrary.GetType( panel ).Create<Panel>();
+		XGUIRootPanel.Current.AddChild( a );
+		XGUIRootPanel.Current.SetChildIndex( a, 0 );
 	}
 }

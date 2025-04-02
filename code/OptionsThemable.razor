@@ -24,13 +24,13 @@
 				<div style="margin:32px; width:350px;">
 					<div style="flex-direction:row;">
 						<div style="flex-direction:column;">
-							<check value="false">Reverse mouse</check>
-							<check value="true">Mouse look</check>
-							<check value="false">Mouse filter</check>
-							<check value="true">Joystick</check>
-							<check value="true">Joystick look</check>
-							<check value="false">Auto-Aim</check>
-							<check value="true">Raw mouse input</check>
+							<checkbox value="false">Reverse mouse</checkbox>
+							<checkbox value="true">Mouse look</checkbox>
+							<checkbox value="false">Mouse filter</checkbox>
+							<checkbox value="true">Joystick</checkbox>
+							<checkbox value="true">Joystick look</checkbox>
+							<checkbox value="false">Auto-Aim</checkbox>
+							<checkbox value="true">Raw mouse input</checkbox>
 						</div>
 
 						<div style="flex-direction:column; margin-left:8px;">
@@ -60,10 +60,10 @@
 						</div>
 						<div style="width:380px; flex-direction:column; padding-left:48px;padding-right:48px;">
 							<controllabel label="Sound quality">
-								<selector default="High">
+								<combobox default="High">
 									<option value="high">High</option>
 									<option value="low">Low</option>
-								</selector>
+								</combobox>
 							</controllabel>
 						</div>
 					</div>
@@ -80,30 +80,30 @@
 					<div style="flex-direction:row;">
 						<div style="width:180px; margin:0px; flex-direction:column; gap:5px;">
 							<controllabel label="Renderer">
-								<selector default="OpenGL">
+								<combobox default="OpenGL">
 									<option value="software">Software</option>
 									<option value="opengl">OpenGL</option>
-								</selector>
+								</combobox>
 							</controllabel>
 							<controllabel label="Resolution">
-								<selector default="1280 x 720">
+								<combobox default="1280 x 720">
 									<option value="a">1280 x 720</option>
 									<option value="b">1920 x 1080</option>
-								</selector>
+								</combobox>
 							</controllabel>
 							<controllabel label="Display Mode">
-								<selector default="Widescreen" style="margin-top:2px;">
+								<combobox default="Widescreen" style="margin-top:2px;">
 									<option value="normal">Normal</option>
 									<option value="widescreen">Widescreen</option>
-								</selector>
+								</combobox>
 							</controllabel>
 						</div>
 						<div style="width:250px; margin:26px; margin-left:50px; flex-direction:column; gap:4px;">
-							<check value="true">Run in a window</check>
-							<check value="false">Wait for vertical sync</check>
-							<check value="false">Enable HD models if available</check>
-							<check value="false">Allow custom addon content</check>
-							<check value="false">Low video quality. Helps with slower video cards.</check>
+							<checkbox value="true">Run in a window</checkbox>
+							<checkbox value="false">Wait for vertical sync</checkbox>
+							<checkbox value="false">Enable HD models if available</checkbox>
+							<checkbox value="false">Allow custom addon content</checkbox>
+							<checkbox value="false">Low video quality. Helps with slower video cards.</checkbox>
 						</div>
 					</div>
 					<div style="flex-direction:row;">
@@ -137,7 +137,7 @@
 
 					<textentry style="width:160px; margin-top:7px;"></textentry>
 					<button style="width:160px; margin-top:7px;">Test Microphone</button>
-					<check style="margin-top:16px;" value="false">Boost microphone gain</check>
+					<checkbox style="margin-top:16px;" value="false">Boost microphone gain</checkbox>
 
 					<label class="info" style="margin-top:16px;">
 						* Uses Miles Sound System.
@@ -151,7 +151,7 @@
 				<div style="margin:32px; margin-right:8px;">
 					<div style="flex-direction:row;">
 						<div style="flex-direction:column; width:128px; justify-content:center;">
-							<check value="false">Content lock</check>
+							<checkbox value="false">Content lock</checkbox>
 						</div>
 						<div style="flex-direction:column; margin-left:8px;">
 							<label class="info">Press this button and enter password to disable visuals inappropriate for younger players.</label>
@@ -167,14 +167,14 @@
 						<textentry style="width:140px; margin-bottom:24px;" value="Xenthio"></textentry>
 					</controllabel>
 					<controllabel label="Player model">
-						<selector default="barney" style="width:140px; margin-bottom:24px;">
+						<combobox default="barney" style="width:140px; margin-bottom:24px;">
 							<option>barney</option>
 							<option>gina</option>
 							<option>gman</option>
 							<option>gordon</option>
 							<option>helmet</option>
 							<option>hgrunt</option>
-						</selector>
+						</combobox>
 					</controllabel>
 					<controllabel label="Colours">
 						<sliderscale style="width: 140px;" step=0.1 value="0.5" min=0 max=1 mintext="" maxtext=""></sliderscale>

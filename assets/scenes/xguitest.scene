@@ -2,29 +2,72 @@
   "__guid": "4ba7950b-4fc6-46c4-b8fe-1e4f188391a6",
   "GameObjects": [
     {
+      "__guid": "c919e1e5-e6ae-4749-b5ee-a65c4b206c08",
+      "Flags": 0,
+      "Name": "Scene Information",
+      "Enabled": true,
+      "Components": [
+        {
+          "__type": "Sandbox.SceneInformation",
+          "__guid": "857369cf-e5e5-4566-8b38-53747162cb59",
+          "Author": null,
+          "Changes": null,
+          "Description": "",
+          "Group": null,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "SceneTags": "",
+          "Title": "xguitest",
+          "Version": null
+        }
+      ]
+    },
+    {
       "__guid": "00d3340d-beb5-4ec5-836a-fd51d106f9b1",
       "Flags": 0,
       "Name": "Screen",
       "Position": "-50,-49.99998,70.71066",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.ScreenPanel",
           "__guid": "af9338be-3a9d-453b-8415-ae5633d2037f",
           "AutoScreenScale": false,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
           "Opacity": 1,
           "Scale": 1,
+          "ScaleStrategy": "ConsistentHeight",
+          "TargetCamera": null,
           "ZIndex": 100
         },
         {
           "__type": "XGUI.XGUIRootComponent",
-          "__guid": "93a18210-1a26-40a7-b1b0-9026a62e97e0"
+          "__guid": "93a18210-1a26-40a7-b1b0-9026a62e97e0",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
         },
         {
           "__type": "OpenMenu",
-          "__guid": "5296495e-9c0c-4f69-babd-6b5150be5cf4"
+          "__guid": "5296495e-9c0c-4f69-babd-6b5150be5cf4",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
         }
       ]
     },
@@ -36,8 +79,6 @@
       "Rotation": "0,0,0.3826834,0.9238796",
       "Tags": "maincamera",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.CameraComponent",
@@ -45,7 +86,14 @@
           "BackgroundColor": "0.26109,0.37289,0.37674,1",
           "ClearFlags": "All",
           "FieldOfView": 60,
+          "FovAxis": "Horizontal",
           "IsMainCamera": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
           "Orthographic": false,
           "OrthographicHeight": 1204,
           "Priority": 1,
@@ -65,14 +113,27 @@
       "Position": "291.3564,201.8358,-291.3343",
       "Scale": "10,10,1",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
           "__guid": "c0de8314-3863-4155-bb3e-f5cb70cbcf5d",
           "BodyGroups": 18446744073709551615,
+          "CreateAttachments": false,
+          "MaterialGroup": null,
+          "MaterialOverride": null,
           "Model": "models/dev/box.vmdl",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "RenderOptions": {
+            "GameLayer": true,
+            "OverlayLayer": false,
+            "BloomLayer": false,
+            "AfterUILayer": false
+          },
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
@@ -86,8 +147,6 @@
       "Rotation": "-0.003418453,0.9901099,0.05987829,0.1268271",
       "Tags": "light_directional,light",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.DirectionalLight",
@@ -95,6 +154,12 @@
           "FogMode": "Enabled",
           "FogStrength": 1,
           "LightColor": "4.06,2.67205,1.28409,1",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
           "Shadows": true,
           "SkyColor": "0.05882,0.07451,0.08235,1"
         }
@@ -106,14 +171,27 @@
       "Name": "Cube",
       "Position": "-519.033,105.7715,44.93551",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
           "__guid": "ffe256d7-f52d-411b-8ff9-512ad2b38ef4",
           "BodyGroups": 18446744073709551615,
+          "CreateAttachments": false,
+          "MaterialGroup": null,
+          "MaterialOverride": null,
           "Model": "models/sbox_props/trees/oak/tree_oak_medium_a.vmdl",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "RenderOptions": {
+            "GameLayer": true,
+            "OverlayLayer": false,
+            "BloomLayer": false,
+            "AfterUILayer": false
+          },
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
@@ -125,18 +203,19 @@
       "Name": "Box",
       "Position": "-893.9661,203.3416,47.35991",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.MeshComponent",
           "__guid": "a58c9975-c0f1-4df7-891b-902a3d40b4fa",
           "Collision": "Mesh",
           "Color": "1,1,1,1",
+          "Friction": null,
           "HideInGame": false,
           "IsTrigger": false,
           "Mesh": {
-            "Topology": "H4sIAAAAAAAACl2Qiw6CUAxDh1flgg/wAfr/X2pP0iWLJA25W9t16xHxFc4C30E4\u002Bt2FWbgKd2Ew4NTvIZxcb9ZH4b5db\u002Bb9z/oUzVh8m7lPc9FOzjRYQ8ZXyXxxXvrw4e72wvtWdoEPdzMXj8We9OHDXcvO7EqdN396eKaeLHjkLciePeYxi4z0mMFtMisablFvRXZ2Tj158KQOF78f9WSROMQBAAA=",
+            "Topology": "H4sIAAAAAAAACl2QCQ7CMAwEp4Qj3NBy/f+laMRGsohUVbFn1+t04ANs+Z0VsM69AwfgBFyAKZ9MPXdgk3qLnsI+Um/h/me9i2ZXfFvYOazafTJN0XRgKZmPyWtfXvYVL73PZRd52WdYPa7xtC8veys7u6t17/7t6Tn0ZtFjvIXZR895zjKjPWf4NiOrGt+ivpXZ3XnozaOndVn9vvVkkTjEAQAA",
+            "Position": "-893.9661,203.3416,47.35991",
+            "Rotation": "0,0,0,1",
             "Positions": [
               "-322.4952,-1419.845,-43.95385",
               "1105.524,-1419.845,-43.95385",
@@ -192,18 +271,18 @@
             "TextureScale": [
               "0.25,0.25",
               "0.25,0.25",
-              "0.25,0.25",
-              "0.25,0.25",
-              "0.25,0.25",
-              "0.25,0.25"
+              "0.25,0.2500001",
+              "0.25,0.2500001",
+              "0.25,0.2500001",
+              "0.25,0.2500001"
             ],
             "TextureOffset": [
-              "1527.865,813.3665",
-              "503.8645,301.3665",
-              "301.3674,189.4396",
-              "210.6335,189.4396",
-              "8.135498,189.4396",
-              "503.8645,189.4396"
+              "1527.865,813.3662",
+              "503.8645,301.3662",
+              "301.3672,189.4397",
+              "210.6338,189.4397",
+              "8.135498,189.4397",
+              "503.8645,189.4397"
             ],
             "MaterialIndex": [
               2,
@@ -245,8 +324,21 @@
               "materials/grass/floor_grass_dirt_cliff_blend_a.vmat"
             ]
           },
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "OnObjectTriggerEnter": null,
+          "OnObjectTriggerExit": null,
+          "OnTriggerEnter": null,
+          "OnTriggerExit": null,
+          "RenderType": "On",
           "SmoothingAngle": 40,
-          "Static": true
+          "Static": true,
+          "Surface": null,
+          "SurfaceVelocity": "0,0,0"
         }
       ]
     },
@@ -256,14 +348,27 @@
       "Name": "Cube",
       "Position": "-717.022,-59.56158,15.08252",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
           "__guid": "734f6493-bae5-445b-8286-3cfee97f2b59",
           "BodyGroups": 18446744073709551615,
+          "CreateAttachments": false,
+          "MaterialGroup": null,
+          "MaterialOverride": null,
           "Model": "models/sbox_props/shrubs/beech/beech_bush_small.vmdl",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "RenderOptions": {
+            "GameLayer": true,
+            "OverlayLayer": false,
+            "BloomLayer": false,
+            "AfterUILayer": false
+          },
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
@@ -275,14 +380,27 @@
       "Name": "Cube (1)",
       "Position": "-493.5223,-59.56158,5.216498",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
           "__guid": "ca3e2a08-75f2-4290-98df-98c693ef7e29",
           "BodyGroups": 18446744073709551615,
+          "CreateAttachments": false,
+          "MaterialGroup": null,
+          "MaterialOverride": null,
           "Model": "models/sbox_props/shrubs/beech/beech_bush_regular_small.vmdl",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "RenderOptions": {
+            "GameLayer": true,
+            "OverlayLayer": false,
+            "BloomLayer": false,
+            "AfterUILayer": false
+          },
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
@@ -294,13 +412,10 @@
       "Name": "Envmap Probe",
       "Position": "-486.6051,-141.456,947.6989",
       "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkInterpolation": true,
       "Components": [
         {
           "__type": "Sandbox.EnvmapProbe",
           "__guid": "b07cf485-8b94-482b-b414-eb09138a609c",
-          "Texture": "textures/cubemaps/default2.vtex",
           "Bounds": {
             "Mins": "-813.9994,-1081.099,-1000",
             "Maxs": "659.9999,1044.598,1000"
@@ -309,12 +424,50 @@
           "Feathering": 0.02,
           "FrameInterval": 5,
           "MaxDistance": 512,
+          "MultiBounce": false,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
           "Projection": "Box",
           "RenderDynamically": true,
+          "Resolution": "Small",
+          "Texture": "textures/cubemaps/default2.vtex",
           "TintColor": "1,1,1,1",
           "UpdateStrategy": "OnEnabled",
           "ZFar": 4096,
           "ZNear": 16
+        }
+      ]
+    },
+    {
+      "__guid": "0bdb1a76-32c2-4cab-a223-5f93816eb848",
+      "Flags": 0,
+      "Name": "ImmediateMode",
+      "Position": "-1138.657,-1876.166,890.7762",
+      "Enabled": true,
+      "Components": [
+        {
+          "__type": "ImmediateModeTest",
+          "__guid": "dad863ab-f638-4591-9f24-e4c1b54a829a",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "ImmediateModeTest2",
+          "__guid": "f8b0ef4c-192e-4b3f-b1d1-efef12092821",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
         }
       ]
     }
@@ -324,9 +477,13 @@
     "MaxFixedUpdates": 5,
     "NetworkFrequency": 30,
     "NetworkInterpolation": true,
+    "PhysicsSubSteps": 1,
     "ThreadedAnimation": true,
     "TimeScale": 1,
     "UseFixedUpdate": true,
+    "Metadata": {
+      "Title": "xguitest"
+    },
     "NavMesh": {
       "Enabled": false,
       "IncludeStaticBodies": true,
@@ -340,10 +497,9 @@
       "IncludedBodies": ""
     }
   },
+  "ResourceVersion": 2,
   "Title": "xguitest",
-  "Description": "",
-  "LastSaved": "2024-05-28T09:50:30.300216\u002B10:00",
-  "ResourceVersion": 1,
+  "Description": null,
   "__references": [
     "facepunch.beech_bush_regular_small#60665",
     "facepunch.beech_bush_small#60669",
@@ -351,5 +507,5 @@
     "facepunch.floor_grass_dirt_cliff_blend_a#18754",
     "facepunch.tree_oak_medium_a#33692"
   ],
-  "__version": 1
+  "__version": 2
 }
