@@ -446,7 +446,7 @@
       "__guid": "0bdb1a76-32c2-4cab-a223-5f93816eb848",
       "Flags": 0,
       "Name": "ImmediateMode",
-      "Position": "-1138.657,-1876.166,890.7762",
+      "Position": "-768,-960,256",
       "Enabled": true,
       "Components": [
         {
@@ -462,12 +462,41 @@
         {
           "__type": "ImmediateModeTest2",
           "__guid": "f8b0ef4c-192e-4b3f-b1d1-efef12092821",
+          "Model": {
+            "_type": "component",
+            "component_id": "194aaa8c-aa51-4258-bcf1-b362ed9a1eca",
+            "go": "0bdb1a76-32c2-4cab-a223-5f93816eb848",
+            "component_type": "ModelRenderer"
+          },
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null
+        },
+        {
+          "__type": "Sandbox.ModelRenderer",
+          "__guid": "194aaa8c-aa51-4258-bcf1-b362ed9a1eca",
+          "BodyGroups": 18446744073709551615,
+          "CreateAttachments": false,
+          "MaterialGroup": null,
+          "MaterialOverride": null,
+          "Model": "models/dev/box.vmdl",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "RenderOptions": {
+            "GameLayer": true,
+            "OverlayLayer": false,
+            "BloomLayer": false,
+            "AfterUILayer": false
+          },
+          "RenderType": "On",
+          "Tint": "1,1,1,1"
         }
       ]
     }
