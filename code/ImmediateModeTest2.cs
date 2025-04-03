@@ -6,7 +6,7 @@ public sealed class ImmediateModeTest2 : Component
 	private bool showWindow = true;
 	private Color colour = Color.White;
 	[Property] public ModelRenderer Model { get; set; }
-	protected override void OnUpdate()
+	protected override void OnFixedUpdate()
 	{
 		// Create a window
 		if ( ImXGUI.Begin( "My EVIL Window", ref showWindow ) )

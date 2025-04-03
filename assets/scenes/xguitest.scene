@@ -34,22 +34,6 @@
       "Enabled": true,
       "Components": [
         {
-          "__type": "Sandbox.ScreenPanel",
-          "__guid": "af9338be-3a9d-453b-8415-ae5633d2037f",
-          "AutoScreenScale": false,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Opacity": 1,
-          "Scale": 1,
-          "ScaleStrategy": "ConsistentHeight",
-          "TargetCamera": null,
-          "ZIndex": 100
-        },
-        {
           "__type": "XGUI.XGUIRootComponent",
           "__guid": "93a18210-1a26-40a7-b1b0-9026a62e97e0",
           "OnComponentDestroy": null,

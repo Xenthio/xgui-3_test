@@ -5,13 +5,14 @@ public sealed class ImmediateModeTest : Component
 {
 	private bool showWindow = true;
 	private bool checkboxValue = false;
-	private float sliderValue = 0.5f;
+	private int intValue = 0;
+	private float floatValue = 0.5f;
 	private string inputText = "Hello";
 	private int clickCount = 0;
 	protected override void OnUpdate()
 	{
 		// Create a window
-		if ( ImXGUI.Begin( "My Window", ref showWindow ) )
+		if ( ImXGUI.Begin( "ImXGUI Window", ref showWindow ) )
 		{
 			ImXGUI.Text( "Welcome to ImXGUI!" );
 
@@ -26,7 +27,11 @@ public sealed class ImmediateModeTest : Component
 				Log.Info( $"Checkbox changed to: {checkboxValue}" );
 			}
 
-			ImXGUI.Slider( "Adjust Value", ref sliderValue, 0, 100 );
+			ImXGUI.InputInt( "Int Input", ref intValue );
+			ImXGUI.InputFloat( "Float Input", ref floatValue );
+
+			ImXGUI.SliderInt( "Int Slider", ref intValue, -1, 3 );
+			ImXGUI.SliderFloat( "Float Slider", ref floatValue, 0.0f, 1.0f, 0.025f );
 
 			if ( ImXGUI.InputText( "Enter Text", ref inputText ) )
 			{

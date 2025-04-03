@@ -12,13 +12,15 @@ public sealed class OpenMenu : Component
 	protected override void OnFixedUpdate()
 	{
 		base.OnFixedUpdate();
-		if ( hi == 3 && XGUIRootPanel.Current != null )
+		if ( hi == 3 && Scene.GetSystem<XGUISystem>().Panel != null )
 		{
 			Log.Info( "adding XGUI Panel" );
 			var a = new panelselector();
-			XGUIRootPanel.Current.AddChild( a );
+			Scene.GetSystem<XGUISystem>().Panel.AddChild( a );
 			var b = new OptionsThemable();
-			XGUIRootPanel.Current.AddChild( b );
+			Scene.GetSystem<XGUISystem>().Panel.AddChild( b );
+			var c = new ImmediateTheme();
+			Scene.GetSystem<XGUISystem>().Panel.AddChild( c );
 			hi = 10;
 		}
 		else if ( hi < 3 )
@@ -31,7 +33,7 @@ public sealed class OpenMenu : Component
 	public static void openpanel( string panel )
 	{
 		var a = TypeLibrary.GetType( panel ).Create<Panel>();
-		XGUIRootPanel.Current.AddChild( a );
-		XGUIRootPanel.Current.SetChildIndex( a, 0 );
+		Game.ActiveScene.GetSystem<XGUISystem>().Panel.AddChild( a );
+		Game.ActiveScene.GetSystem<XGUISystem>().Panel.SetChildIndex( a, 0 );
 	}
 }
