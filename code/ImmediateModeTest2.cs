@@ -16,6 +16,7 @@ public sealed class ImmediateModeTest2 : Component
 		if ( ImXGUI.Begin( "My EVIL Window", ref showWindow ) )
 		{
 			ImXGUI.Text( "Model Colour." );
+			ImXGUI.Text( "computer" );
 
 			if ( ImXGUI.Button( $"Click Me! ({clickCount} Clicks)" ) )
 			{

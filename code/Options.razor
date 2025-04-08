@@ -1,6 +1,7 @@
 ﻿@using Sandbox;
 @using Sandbox.UI;
 @using XGUI; 
+@attribute [StyleSheet( "/XGUI/DefaultStyles/OliveGreen.scss" )]
 @inherits Window
 
 <root title="Options" width="512px" height="406px" minwidth="512px" minheight="406px">
@@ -8,14 +9,14 @@
 		<tab tabName="keyboard" slot="tab" tabtext="Keyboard">
 			<div style="width:100%;height:100%;">
 				<layoutboxinset style="margin:4px; margin-top:6px; flex-grow:1;">
-					
+
 				</layoutboxinset>
 				
 				<div style="flex-direction:row; margin:4px; margin-top:5px; align-items: flex-end;">
-					<button>Use Defaults</button>
+					<button style="height:24px;">Use Defaults</button>
 					<div style="flex-grow:1;"></div>
-					<button style="margin-left:8px; width:84px;">Edit key</button>
-					<button style="margin-left:8px; width:84px;">Clear Key</button>
+					<button style="margin-left:8px; width:84px; height:24px;">Edit key</button>
+					<button style="margin-left:8px; width:84px; height:24px;">Clear Key</button>
 				</div>
 			</div>
 		</tab>
@@ -180,92 +181,17 @@
 						<sliderscale style="width: 140px;" step=0.1 value="0.5" min=0 max=1 mintext="" maxtext=""></sliderscale>
 						<sliderscale style="width: 140px;" step=0.1 value="0.2" min=0 max=1 mintext="" maxtext=""></sliderscale>
 					</controllabel>
-
-					
 				</div>
 			</div>
 		</tab>
 	</tabcontrol>
-
-	<div style="flex-direction:column; margin:8px;">
-		<div style=" margin-top:5px; justify-content:flex-end;">
-			<button style="margin-left:8px; width:64px;" autofocus=1 focus=1>OK</button>
-		</div>
-		<div style="flex-direction:column;">
-			<label style="font-size:9px; bottom:5px;">Select Theme:</label>
-			<div style="flex-direction:row;">
-				@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
-				{
-					<button style="font-size:9px; width:auto; margin-right:3px;" onclick=@( () => LoadStyle(i) )>@i.Replace(".scss", "")</button>
-				}
-			</div>
-		</div>
+	<div style="flex-direction:row; margin:8px; margin-top:5px; justify-content:flex-end;">
+		<button style="margin-left:8px; width:64px; height:24px;" autofocus=1 focus=1>OK</button>
+		<button style="margin-left:8px; width:64px; height:24px;" focus=1>Cancel</button>
+		<button style="margin-left:8px; width:64px; height:24px;" focus=1>Apply</button>
 	</div>
 	<resizer>
 
 	</resizer>
 </root>
-@code {
-	public string StartTab = "video";
-	public Vector2 OverrideSize = Vector2.Zero;
-	public TabContainer MainTabs { get; set; }
-	int Loaded = 0;
-	public override void Tick() {
-		base.Tick();
-		if (Loaded == 0) {
-			Loaded++; 
-			Style.ZIndex = 100; 
-			ApplyStyle(StyleName);
-			SetTab(StartTab);
-			if (OverrideSize != Vector2.Zero) {
-				Style.Width = OverrideSize.x;
-				Style.Height = OverrideSize.y;
-			}
-		}
-	}
 
-	public void SetTab(string tab)
-	{
-		foreach (var tabs in ChildrenOfType<TabContainer>())
-		{
-			tabs.ActiveTab = tab;
-		}
-	}
-	public string GetTab()
-	{
-		foreach (var tabs in ChildrenOfType<TabContainer>())
-		{
-			return tabs.ActiveTab;
-		}
-		return "Keyboard";
-	}
-
-	StyleSheet CurrentStyle; 
-	public string StyleName = "IMGUI.scss";
-
-	public void ResetStyle() 
-	{ 
-		StyleSheet.Remove("*");
-		Loaded++;
-	}
-	public void ApplyStyle(string styleName)
-	{
-		StyleSheet.Remove("*");
-		CurrentStyle = Sandbox.UI.StyleSheet.FromFile($"/XGUI/DefaultStyles/{styleName}");
-		StyleSheet.Add(CurrentStyle);
-		Loaded++;
-	}
-	public void LoadStyle(string styleName) 
-	{ 
-		var b = Parent.AddChild<OptionsThemable>();
-		b.StyleName = styleName;
-		b.Position = Position;
-		b.OverrideSize = new Vector2(Box.Rect.Width, Box.Rect.Height);
-		b.StartTab = GetTab();
-		Delete();
-	}   
-	protected override int BuildHash()
-	{
-		return System.HashCode.Combine(Loaded);
-	}
-}
