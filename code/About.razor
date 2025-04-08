@@ -43,7 +43,7 @@
 	</tabcontrol>
 	<label style="font-size:9px; margin-right:3px;">Select Theme:</label>
 	<div style="align-items:center; align-self:flex-start;">
-		@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/"))
+		@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
 		{
 			<button style="font-size:9px; width:auto; margin-right:3px;" onclick=@( () => LoadStyle(i) )>@i.Replace(".scss", "")</button>
 		}

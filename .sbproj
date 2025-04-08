@@ -1,8 +1,8 @@
 {
-  "Title": "XGUI-3-Test",
+  "Title": "XGUI-3 Test",
   "Type": "game",
   "Org": "xenthio",
-  "Ident": "xgui_test",
+  "Ident": "xgui-3_test",
   "Schema": 1,
   "IncludeSourceFiles": false,
   "Resources": "ui/*",

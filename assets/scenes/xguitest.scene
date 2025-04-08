@@ -59,7 +59,7 @@
       "__guid": "863c4597-af03-4759-8dfa-0f7f4e4e0c7b",
       "Flags": 0,
       "Name": "Camera",
-      "Position": "-1194.101,-1347.279,388.6633",
+      "Position": "-1439.448,-1592.626,192",
       "Rotation": "0,0,0.3826834,0.9238796",
       "Tags": "maincamera",
       "Enabled": true,
@@ -85,7 +85,7 @@
           "RenderTags": "",
           "TargetEye": "None",
           "Viewport": "0,0,1,1",
-          "ZFar": 10000,
+          "ZFar": 100000,
           "ZNear": 10
         }
       ]
@@ -96,7 +96,6 @@
       "Name": "Cube",
       "Position": "291.3564,201.8358,-291.3343",
       "Scale": "10,10,1",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -130,7 +129,6 @@
       "Position": "232.9969,196.2164,-137.047",
       "Rotation": "-0.003418453,0.9901099,0.05987829,0.1268271",
       "Tags": "light_directional,light",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.DirectionalLight",
@@ -154,7 +152,6 @@
       "Flags": 0,
       "Name": "Cube",
       "Position": "-519.033,105.7715,44.93551",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -186,7 +183,6 @@
       "Flags": 0,
       "Name": "Box",
       "Position": "-893.9661,203.3416,47.35991",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.MeshComponent",
@@ -331,7 +327,6 @@
       "Flags": 0,
       "Name": "Cube",
       "Position": "-717.022,-59.56158,15.08252",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -363,7 +358,6 @@
       "Flags": 0,
       "Name": "Cube (1)",
       "Position": "-493.5223,-59.56158,5.216498",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -395,7 +389,6 @@
       "Flags": 0,
       "Name": "Envmap Probe",
       "Position": "-486.6051,-141.456,947.6989",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.EnvmapProbe",
@@ -483,6 +476,32 @@
           "Tint": "1,1,1,1"
         }
       ]
+    },
+    {
+      "__guid": "f721d90c-71c8-489d-b4a2-3b3e86ef8164",
+      "Flags": 0,
+      "Name": "Object",
+      "Enabled": true,
+      "Components": [
+        {
+          "__type": "Sandbox.MapInstance",
+          "__guid": "a13f9304-0326-42b1-84b8-1e06dafe7a99",
+          "__version": 1,
+          "EnableCollision": true,
+          "MapName": "facepunch.flatgrass",
+          "NoOrigin": false,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "OnMapLoaded": null,
+          "OnMapUnloaded": null,
+          "UseMapFromLaunch": false
+        }
+      ],
+      "Children": []
     }
   ],
   "SceneProperties": {

@@ -19,6 +19,7 @@ public sealed class OpenMenu : Component
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<OptionsThemable>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<ImmediateTheme>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<MenuTest>();
+			Scene.GetSystem<XGUISystem>().Panel.AddChild<About>();
 			hi = 10;
 		}
 		else if ( hi < 3 )
