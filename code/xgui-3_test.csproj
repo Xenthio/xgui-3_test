@@ -59,6 +59,7 @@
   <ItemGroup>
 		<ProjectReference Include="E:\SteamLibrary\steamapps\common\sbox\addons\base\Code\Base Library.csproj" />
 		<ProjectReference Include="E:\S&amp;box Addons\xgui-3_test\Libraries\XGUI-3\Code\xgui-3.csproj" />
+		<ProjectReference Include="E:\S&amp;box Addons\xgui-3_test\Libraries\xenthio.xmovement\Code\xmovement.csproj" />
 
   </ItemGroup>
 

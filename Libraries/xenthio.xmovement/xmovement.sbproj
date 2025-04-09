@@ -1,0 +1,13 @@
+{
+  "Title": "XMovement",
+  "Type": "library",
+  "Org": "xenthio",
+  "Ident": "xmovement",
+  "Schema": 1,
+  "IncludeSourceFiles": false,
+  "Resources": null,
+  "PackageReferences": [],
+  "EditorReferences": null,
+  "IsWhitelistDisabled": false,
+  "Metadata": {}
+}

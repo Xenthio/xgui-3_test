@@ -401,3 +401,6 @@ FodyWeavers.xsd
 /.sbox
 /Libraries/xenthio.xgui
 /Libraries/XGUI
+/Libraries/xenthio.xmovement/.bin
+*.surface_c
+*.vmat_c
