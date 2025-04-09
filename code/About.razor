@@ -5,35 +5,47 @@
 
 <root title="About XGUI" hasminimise="true" hasmaximise="true" x="540" y="240">
     <tabcontrol>
-        <tab tabName="about" slot="tab" tabtext="About">
-            <div style="width:320px;height:240px;">
-                <p>XGUI is a library that allows quick implementation of traditional desktop UI (and UI elements) in s&box games.</p>
-
-				<p>It's great for quickly creating simple but functional debugging and development UI and tools.</p>
-                <br/>
-                <p>You can easily customise the look of XGUI, or choose between some pre-made styles (Check them out at the bottom)</p>
-            </div>
-        </tab>
         <tab tabName="controls" slot="tab" tabtext="Controls">
 			<div style="width:320px;height:240px;">
-                <sliderscaleentry min=1 max=10 mintext="1.00" maxtext="10.0" step=1>
-
-                </sliderscaleentry>
-                <sliderscale min=1 max=10 mintext="1.00" maxtext="10.0" step=1>
-
-                </sliderscale>
-                <slider min=1 max=10 mintext="1.00" maxtext="10.0" step=1>
-
-                </slider>
-                <check>Checkbox</check>
-                <button>Button</button>
-                <textentry>
-
-                </textentry>
-                <radiobuttons>
-                    There's meant to be radio buttons here, but they're not implemented yet
-                </radiobuttons>
+				<div class="self-layout self-layout-row">
+					<check>CheckBox</check>
+				</div>
+				<div class="self-layout self-layout-row">
+					<button>Button</button>
+				</div>
+				<div class="self-layout self-layout-row">
+					<textentry></textentry>
+				</div>
+				<div class="self-layout self-layout-row">
+					<combobox default="ComboBox" style="margin-bottom:8px;">
+						<option value="combo">ComboBox</option>
+						<option value="high">Option 1</option>
+						<option value="low">Option 2</option>
+					</combobox>
+				</div>
+				<div class="self-layout self-layout-row">
+					<radiobuttons>
+						<radiobutton>Option 1</radiobutton>
+						<radiobutton>Option 2</radiobutton>
+						<radiobutton>Option 3</radiobutton>
+					</radiobuttons>
+				</div>
+				<div class="self-layout self-layout-row">
+					<sliderscaleentry style="margin-bottom:8px;" min=1 max=10 mintext="1.00" maxtext="10.0" step=1></sliderscaleentry>
+				</div>
+				<div class="self-layout self-layout-row">
+					<sliderscale min=1 max=10 mintext="1.00" maxtext="10.0" step=1></sliderscale>
+				</div>
             </div>
+		</tab>
+		<tab tabName="about" slot="tab" tabtext="About">
+			<div style="width:320px;height:240px;">
+				<p>XGUI is a library that allows quick implementation of traditional desktop UI (and UI elements) in s&box games.</p>
+
+				<p>It's great for quickly creating simple but functional debugging and development UI and tools.</p>
+				<br />
+				<p>You can easily customise the look of XGUI, or choose between some pre-made styles (Check them out at the bottom)</p>
+			</div>
 		</tab>
 		<tab tabName="themes" slot="tab" tabtext="Themes">
 			<div style="width:320px;height:240px;">
@@ -41,12 +53,15 @@
 			</div>
 		</tab>
 	</tabcontrol>
-	<label style="font-size:9px; margin-right:3px;">Select Theme:</label>
-	<div style="align-items:center; align-self:flex-start;">
-		@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
-		{
-			<button style="font-size:9px; width:auto; margin-right:3px;" onclick=@( () => LoadStyle(i) )>@i.Replace(".scss", "")</button>
-		}
+	
+	<div class="margin column">
+		<label>Select Theme:</label>
+		<combobox default=@(StyleName) @ref="ThemeComboBox">
+			@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
+			{
+				<option value="combo">@i.Replace(".scss", "")</option>
+			}
+		</combobox>
 	</div>
     <resizer>
 
@@ -55,6 +70,7 @@
 
 @code {
 
+	private ComboBox ThemeComboBox;
 	public string StartTab = "";
 	public Vector2 OverrideSize = Vector2.Zero;
 	public TabContainer MainTabs { get; set; }
@@ -73,6 +89,14 @@
 				Style.Width = OverrideSize.x;
 				Style.Height = OverrideSize.y;
 			}
+			if (ThemeComboBox != null)
+			{
+				ThemeComboBox.ValueChanged = LoadStyle;
+			}
+		}
+		if (ThemeComboBox.ValueChanged  == null)
+		{
+			ThemeComboBox.ValueChanged = LoadStyle;
 		}
 	}
 
@@ -93,7 +117,7 @@
 	}
 
 	StyleSheet CurrentStyle;
-	public string StyleName = "OliveGreen.scss";
+	public string StyleName = "OliveGreen";
 
 	public void ResetStyle()
 	{
@@ -103,12 +127,13 @@
 	public void ApplyStyle(string styleName)
 	{
 		StyleSheet.Remove("*");
-		CurrentStyle = Sandbox.UI.StyleSheet.FromFile($"/XGUI/DefaultStyles/{styleName}");
+		CurrentStyle = Sandbox.UI.StyleSheet.FromFile($"/XGUI/DefaultStyles/{styleName}.scss");
 		StyleSheet.Add(CurrentStyle);
 		Loaded++;
 	}
 	public void LoadStyle(string styleName)
 	{
+		Log.Info(styleName);
 		var b = Parent.AddChild<About>();
 		b.StyleName = styleName;
 		b.Position = Position;

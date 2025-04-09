@@ -386,7 +386,7 @@
     },
     {
       "__guid": "16e13157-9183-4eac-882a-d0adb9a4bf85",
-      "Flags": 0,
+      "Flags": 32,
       "Name": "Envmap Probe",
       "Position": "-486.6051,-141.456,947.6989",
       "Components": [
@@ -429,6 +429,7 @@
         {
           "__type": "ImmediateModeTest",
           "__guid": "dad863ab-f638-4591-9f24-e4c1b54a829a",
+          "__enabled": false,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -439,6 +440,7 @@
         {
           "__type": "ImmediateModeTest2",
           "__guid": "f8b0ef4c-192e-4b3f-b1d1-efef12092821",
+          "__enabled": false,
           "Model": {
             "_type": "component",
             "component_id": "194aaa8c-aa51-4258-bcf1-b362ed9a1eca",

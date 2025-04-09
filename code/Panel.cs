@@ -16,9 +16,9 @@ public sealed class OpenMenu : Component
 		{
 			Log.Info( "adding XGUI Panel" );
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<panelselector>();
-			Scene.GetSystem<XGUISystem>().Panel.AddChild<OptionsThemable>();
+			//Scene.GetSystem<XGUISystem>().Panel.AddChild<OptionsThemable>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<ImmediateTheme>();
-			Scene.GetSystem<XGUISystem>().Panel.AddChild<MenuTest>();
+			//Scene.GetSystem<XGUISystem>().Panel.AddChild<MenuTest>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<About>();
 			hi = 10;
 		}
