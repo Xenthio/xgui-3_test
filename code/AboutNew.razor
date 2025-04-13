@@ -1,0 +1,130 @@
+﻿@using Sandbox;
+@using Sandbox.UI;
+@using XGUI; 
+@inherits WindowNew
+
+<root title="About XGUI" hasminimise="true" hasmaximise="true" x="540" y="240"> 
+	@* <ChildContent> *@
+
+		<div class="self-layout self-layout-row">
+			<check>CheckBox</check>
+		</div>
+		<div class="self-layout self-layout-row">
+			<button>Button</button>
+		</div>
+		<div class="self-layout self-layout-row">
+			<textentry></textentry>
+		</div>
+		<div class="self-layout self-layout-row">
+			<combobox default="ComboBox" style="margin-bottom:8px;">
+				<option value="combo">ComboBox</option>
+				<option value="high">Option 1</option>
+				<option value="low">Option 2</option>
+			</combobox>
+		</div>
+		<div class="self-layout self-layout-row">
+			<radiobuttons>
+				<radiobutton>Option 1</radiobutton>
+				<radiobutton>Option 2</radiobutton>
+				<radiobutton>Option 3</radiobutton>
+			</radiobuttons>
+		</div>
+		<div class="self-layout self-layout-row">
+			<sliderscaleentry style="margin-bottom:8px;" min=1 max=10 mintext="1.00" maxtext="10.0" step=1></sliderscaleentry>
+		</div>
+		<div class="self-layout self-layout-row">
+			<sliderscale min=1 max=10 mintext="1.00" maxtext="10.0" step=1></sliderscale>
+		</div>
+
+		<div class="margin column">
+			<label>Select Theme:</label>
+			<combobox default=@(StyleName) @ref="ThemeComboBox">
+				@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
+				{
+					<option value="combo">@i.Replace(".scss", "")</option>
+				}
+			</combobox>
+		</div>
+		<resizer>
+
+		</resizer>
+	@* </ChildContent> *@
+</root>
+
+@code {
+
+	private ComboBox ThemeComboBox;
+	public string StartTab = "";
+	public Vector2 OverrideSize = Vector2.Zero;
+	public TabContainer MainTabs { get; set; }
+	int Loaded = 0;
+	public override void Tick()
+	{
+		base.Tick();
+		if (Loaded == 0)
+		{
+			Loaded++;
+			Style.ZIndex = 100;
+			ApplyStyle(StyleName);
+			if (StartTab != "") SetTab(StartTab);
+			if (OverrideSize != Vector2.Zero)
+			{
+				Style.Width = OverrideSize.x;
+				Style.Height = OverrideSize.y;
+			}
+			if (ThemeComboBox != null)
+			{
+				ThemeComboBox.ValueChanged = LoadStyle;
+			}
+		}
+		if (ThemeComboBox != null && ThemeComboBox.ValueChanged == null)
+		{
+			ThemeComboBox.ValueChanged = LoadStyle;
+		}
+	}
+
+	public void SetTab(string tab)
+	{
+		foreach (var tabs in ChildrenOfType<TabContainer>())
+		{
+			tabs.ActiveTab = tab;
+		}
+	}
+	public string GetTab()
+	{
+		foreach (var tabs in ChildrenOfType<TabContainer>())
+		{
+			return tabs.ActiveTab;
+		}
+		return "about";
+	}
+
+	StyleSheet CurrentStyle;
+	public string StyleName = "OliveGreen";
+
+	public void ResetStyle()
+	{
+		StyleSheet.Remove("*");
+		Loaded++;
+	}
+	public void ApplyStyle(string styleName)
+	{
+		StyleSheet.Remove("*");
+		CurrentStyle = Sandbox.UI.StyleSheet.FromFile($"/XGUI/DefaultStyles/{styleName}.scss");
+		StyleSheet.Add(CurrentStyle);
+		Loaded++;
+	}
+	public void LoadStyle(string styleName)
+	{
+		Log.Info(styleName);
+		var b = Parent.AddChild<About>();
+		b.StyleName = styleName; 
+		//b.OverrideSize = new Vector2(Box.Rect.Width, Box.Rect.Height);
+		b.StartTab = GetTab();
+		Delete();
+	}
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine(Loaded);
+	}
+}
