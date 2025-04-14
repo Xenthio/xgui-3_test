@@ -27,6 +27,13 @@ public sealed class OpenMenu : Component
 		{
 			hi++;
 		}
+		if ( Scene.GetSystem<XGUISystem>() is XGUISystem xgui )
+		{
+			if ( Input.Pressed( "Score" ) )
+			{
+				xgui.Component.MouseUnlocked = !xgui.Component.MouseUnlocked;
+			}
+		}
 	}
 
 	[ConCmd]
