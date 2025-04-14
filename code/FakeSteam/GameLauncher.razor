@@ -6,7 +6,7 @@
 
 
 <root title="Steam" hasminimise="true" hasmaximise="true" x="200" y="200" width="456" height="300">
-	
+	<div class="window-content">
 	<div class="mainarea" style="flex-direction:column; padding:15px; padding-top:8px; padding-right:34px;">
 		<div class="menubuttonlist" style="flex-direction:column; gap:10px; padding-bottom:13px">
 			<div>
@@ -43,10 +43,15 @@
 	</div>
 	<resizer>
 
-	</resizer>
+		</resizer>
+	</div>
 </root>
 
 @code {
+	public GameLauncher()
+	{
+		StyleSheet.Load("/XGUI/DefaultStyles/OliveGreen.scss"); 
+	}
 	void OpenPlayGames()
 	{
 		Parent.AddChild<PlayGamesWindow>();

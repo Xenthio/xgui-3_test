@@ -1,0 +1,146 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using System.Linq;
+@using XGUI;
+@inherits Window
+
+<root title="Global Style Picker" hasminimise="true" hasmaximise="true" x="540" y="140" width="350px" height="140px">
+	<div class="window-content">
+		<div class="margin column">
+			<label>Select Global Theme:</label>
+			<combobox default=@(StyleName) @ref="ThemeComboBox">
+				@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
+				{
+					<option value="combo">@i.Replace(".scss", "")</option>
+				}
+			</combobox>
+			<div class="button-row" style="margin-top:6px;">
+				<button @onclick=@ApplyToAllWindows style="margin-right:6px;">Apply to All Windows</button>
+				<button @onclick=@SaveAsDefault style="margin-right:6px;">Save as Default</button>
+			</div>
+		</div>
+		<resizer></resizer>
+	</div>
+</root>
+
+@code {
+
+	private ComboBox ThemeComboBox;
+	private StyleSheet CurrentStyle;
+	public string StyleName = "OliveGreen";
+	private int Loaded = 0;
+
+	public override void Tick()
+	{
+		base.Tick();
+		if (Loaded == 0)
+		{
+			Loaded++;
+			Style.ZIndex = 100;
+			ApplyStyle(StyleName); // Apply style to this window
+
+			if (ThemeComboBox != null)
+			{
+				ThemeComboBox.ValueChanged = ThemeChanged;
+			}
+		}
+		if (ThemeComboBox != null && ThemeComboBox.ValueChanged == null)
+		{
+			ThemeComboBox.ValueChanged = ThemeChanged;
+		}
+	}
+
+	public void ThemeChanged(string styleName)
+	{
+		StyleName = styleName;
+		ApplyStyle(styleName); // Apply to self first for preview
+	}
+
+	private void ApplyStyle(string styleName)
+	{
+		StyleSheet.Remove("*");
+		CurrentStyle = Sandbox.UI.StyleSheet.FromFile($"/XGUI/DefaultStyles/{styleName}.scss");
+		StyleSheet.Add(CurrentStyle);
+		Loaded++;
+	}
+
+	private void ApplyToAllWindows()
+	{
+		var guiSystem = Scene.GetSystem<XGUISystem>();
+		if (guiSystem == null || guiSystem.Panel == null)
+		{
+			Log.Warning("XGUI System not found");
+			return;
+		}
+
+		// Get the styleSheet to apply
+		var styleToApply = Sandbox.UI.StyleSheet.FromFile($"/XGUI/DefaultStyles/{StyleName}.scss");
+
+		// Find all Window type panels in the hierarchy
+		foreach (var window in guiSystem.Panel.ChildrenOfType<Window>())
+		{
+			if (window == this) continue; // Skip applying to self again
+			var parent = window.Parent;
+
+			// Remove existing style sheets (except .razor.scss ones) 
+			foreach (var style in window.AllStyleSheets.ToList())
+			{
+				if (!style.FileName.EndsWith(".razor.scss") && !style.FileName.EndsWith(".cs.scss"))
+				{
+
+					Log.Info(style.FileName);
+					window.StyleSheet.Remove(style.FileName);
+				}
+			}
+
+			// Apply the new style
+			window.StyleSheet.Add(styleToApply);
+
+			// Force immediate style update
+			window.Style.Dirty();
+
+			// Force a complete rebuild by temporarily removing from parent and re-adding
+			// This is more aggressive but guarantees a full refresh
+			window.Parent = null;
+			window.Parent = parent;
+
+			// Force layout recalculation - traverse child hierarchy
+			ForceStyleUpdateRecursive(window);
+		}
+
+		Log.Info($"Applied style '{StyleName}' to all windows");
+	}
+
+	private void ForceStyleUpdateRecursive(Panel panel)
+	{
+		// Mark this panel's style as dirty to force recalculation
+		panel.Style.Dirty();
+
+		// Update all immediate children
+		foreach (var child in panel.Children)
+		{
+			if (child == null || !child.IsValid()) continue;
+
+			// Mark the child's style as dirty
+			child.Style.Dirty();
+
+			// Recursively update this child's children
+			ForceStyleUpdateRecursive(child);
+		}
+	}
+
+	private void SaveAsDefault()
+	{
+		// In a real application, you would save this setting to a configuration file
+		// For now, we'll just log it
+		Log.Info($"Set '{StyleName}' as default style (not persisted between sessions)");
+
+		// This is where you would save to a configuration or cookie
+		// Example: Cookie.Set("default_xgui_style", StyleName);
+	}
+
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine(Loaded);
+	}
+}

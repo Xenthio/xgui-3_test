@@ -10,6 +10,8 @@
 
 
 <root title="Play games" hasminimise="true" hasmaximise="false" x="756" y="20" width="512" height="626">
+	
+	<div class="window-content">
 	@{
 		var localSteamProfile = new Friend(Connection.Local.SteamId);
 	}
@@ -32,11 +34,16 @@
 	<resizer>
 
 	</resizer>
+	</div>
 </root>
 
 @code {
 	List<Package> MyGamesList = new();
 	List<Package> GamesList = new();
+	public PlayGamesWindow()
+	{
+		StyleSheet.Load("/XGUI/DefaultStyles/OliveGreen.scss");
+	}
 	protected override void OnAfterTreeRender(bool firstTime)
 	{
 		base.OnAfterTreeRender(firstTime);

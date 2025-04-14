@@ -20,6 +20,7 @@ public sealed class OpenMenu : Component
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<ImmediateTheme>();
 			//Scene.GetSystem<XGUISystem>().Panel.AddChild<MenuTest>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<About>();
+			//Scene.GetSystem<XGUISystem>().Panel.AddChild<AboutNew>();
 			hi = 10;
 		}
 		else if ( hi < 3 )

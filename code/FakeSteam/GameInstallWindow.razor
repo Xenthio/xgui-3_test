@@ -6,7 +6,7 @@
 
 
 <root title=@($"Install - {Game.Title}") hasminimise="true" hasmaximise="false" x="400" y="200" width="404" height="396">
-	
+	<div class="window-content">
 	<div class="mainarea">
 		@if (tab == "main")
 		{
@@ -39,9 +39,14 @@
 			</div>
 		}
 	</div> 
+	</div> 
 </root>
 
 @code {
+	public GameInstallWindow()
+	{
+		StyleSheet.Load("/XGUI/DefaultStyles/OliveGreen.scss");
+	}
 	string tab = "main";
 	public Package Game { get; set; }
 	void DownloadGame()

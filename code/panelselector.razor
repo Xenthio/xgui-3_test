@@ -5,10 +5,12 @@
 @inherits Window
 
 <root title="Panel List" style="width:500px; height:500px;">
+	<div class="window-content">
 	Buttons to open all the panels available.
 	@foreach ( var i in TypeLibrary.GetTypes<Window>() )
 	{
 		<button @onclick=@( () => ConsoleSystem.Run("openpanel", i.Name))>@i.Name</button>
 	}
+	</div>
 </root>
 
