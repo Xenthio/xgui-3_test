@@ -735,7 +735,7 @@
                   "__guid": "cea512dc-f504-46c0-8749-a6ca8f4d680f",
                   "BackgroundColor": "0.33333,0.46275,0.52157,1",
                   "ClearFlags": "All",
-                  "FieldOfView": 70,
+                  "FieldOfView": 90,
                   "FovAxis": "Horizontal",
                   "IsMainCamera": true,
                   "OnComponentDestroy": null,

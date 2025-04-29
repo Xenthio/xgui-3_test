@@ -1,0 +1,25 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@attribute [StyleSheet( "/XGUI/DefaultStyles/OliveGreen.scss" )]
+@inherits Window
+
+<root title="Prompt" width="360" height="110" theme="OliveGreen" minwidth="192" minheight="100">
+	<div class="window-content">
+		<button style="position: absolute;  left: 6px;  bottom: 6px;  width: 78px">
+			Cancel
+		</button>
+		<button style="position: absolute;  width: 84px;  right: 6px;  bottom: 6px">
+			OK
+		</button>
+		<textentry style="position: absolute;  top: 6px;  left: 109px;  right: 6px" />
+		<label style="position: absolute;  left: 6px;  top: 10px">
+			Enter Text Here:
+		</label>
+	</div>
+
+</root>
+
+@code {
+    // Add your code here
+}

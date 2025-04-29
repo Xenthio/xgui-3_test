@@ -1,91 +1,112 @@
-﻿@using Sandbox;
+@using Sandbox;
 @using Sandbox.UI;
 @using XGUI; 
 @inherits Window
 
-<root title="About XGUI" hasminimise="true" hasmaximise="true" x="540" y="240">
+<root title="About WOWWOWOWOW" hasminimise="true" hasmaximise="true" x="540" y="240">
 	<div class="window-content">
-
 		<tabcontrol>
 			<tab tabName="controls" slot="tab" tabtext="Controls">
 				<div style="width:320px;height:300px;">
 					<div class="self-layout self-layout-row">
-						<check>CheckBox</check>
+						<check>
+							CheckBox
+						</check>
 					</div>
 					<div class="self-layout self-layout-row">
-						<button>Button</button>
+						<button style="width: 283px">
+							Button wowwow
+						</button>
 					</div>
 					<div class="self-layout self-layout-row">
-						<textentry></textentry>
+						<textentry />
 					</div>
 					<div class="self-layout self-layout-row">
 						<combobox default="ComboBox">
-							<option value="combo">ComboBox</option>
-							<option value="high">Option 1</option>
-							<option value="low">Option 2</option>
+							<option value="combo">
+								ComboBox
+							</option>
+							<option value="high">
+								Option 1
+							</option>
+							<option value="low">
+								Option 2
+							</option>
 						</combobox>
 					</div>
 					<div class="self-layout self-layout-row">
 						<radiobuttons>
-							<radiobutton>Option 1</radiobutton>
-							<radiobutton>Option 2</radiobutton>
-							<radiobutton>Option 3</radiobutton>
+							<radiobutton>
+								Option 1
+							</radiobutton>
+							<radiobutton>
+								Option 2
+							</radiobutton>
+							<radiobutton>
+								Option 3
+							</radiobutton>
 						</radiobuttons>
 					</div>
 					<div class="self-layout self-layout-row">
 						<groupbox title="Group">
 							<div class="self-layout">
-								<button>Button</button>
+								<button>
+									Button
+								</button>
 							</div>
 						</groupbox>
 					</div>
 					<div class="self-layout self-layout-row">
-						<sliderscaleentry style="margin-bottom:8px;" min=1 max=10 mintext="1.00" maxtext="10.0" step=1></sliderscaleentry>
+						<sliderscaleentry style="margin-bottom:8px;" min="1" max="10" mintext="1.00" maxtext="10.0" step="1" />
 					</div>
 					<div class="self-layout self-layout-row">
-						<sliderscale min=1 max=10 mintext="1.00" maxtext="10.0" step=1></sliderscale>
+						<sliderscale min="1" max="10" mintext="1.00" maxtext="10.0" step="1" />
 					</div>
 				</div>
 			</tab>
 			<tab tabName="about" slot="tab" tabtext="About">
-				<div style="width:320px;height:300px;">
-					<p>XGUI is a library that allows quick implementation of traditional desktop UI (and UI elements) in s&box games.</p>
-
-					<p>It's great for quickly creating simple but functional debugging and development UI and tools.</p>
+				<div style="width:320px;height:240px;">
+					<p>
+						XGUI is a library that allows quick implementation of traditional desktop UI (and UI elements) in s&box games.
+					</p>
+					<p>
+						It's great for quickly creating simple but functional debugging and development UI and tools.
+					</p>
 					<br />
-					<p>You can easily customise the look of XGUI, or choose between some pre-made styles (Check them out at the bottom)</p>
+					<p>
+						You can easily customise the look of XGUI, or choose between some pre-made styles (Check them out at the bottom)
+					</p>
 				</div>
 			</tab>
 			<tab tabName="themes" slot="tab" tabtext="Themes">
-				<div style="width:320px;height:300px;">
+				<div style="width:320px;height:240px;">
 					s&box bug prevented me putting the buttons in here, so they're at the bottom instead.
 				</div>
 			</tab>
-		<tab tabName="mdi" slot="tab" tabtext="MDI">
-			<div style="width:320px;height:100vh;">
-				s&box bug prevented me putting the buttons in here, so they're at the bottom instead.
-				<steamreplica></steamreplica>
-			</div>
-		</tab>
+			<tab tabName="mdi" slot="tab" tabtext="MDI">
+				<div style="width:320px;height:240px;">
+					s&box bug prevented me putting the buttons in here, so they're at the bottom instead.
+					<steamreplica />
+				</div>
+			</tab>
 		</tabcontrol>
-
 		<div class="margin column">
-			<label>Select Theme:</label>
-			<combobox default=@(StyleName) @ref="ThemeComboBox">
+			<label>
+				Select Theme:
+			</label>
+			<combobox default="@(StyleName)" @ref="ThemeComboBox">
 				@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
-				{
-					<option value="combo">@i.Replace(".scss", "")</option>
-				}
+					{
+						<option value="combo">@i.Replace(".scss", "")</option>
+					}
 			</combobox>
 		</div>
-		<resizer>
-
-		</resizer>
+		<resizer />
 	</div>
+
 </root>
 
 @code {
-
 	private ComboBox ThemeComboBox;
 	public string StartTab = "";
 	public Vector2 OverrideSize = Vector2.Zero;

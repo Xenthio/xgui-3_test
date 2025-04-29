@@ -6,20 +6,23 @@
 @inherits Window
 
 <root title="Themes" width="720px" height="80px" minwidth="512px" minheight="80px" x="700" y="600">
-	<div style="flex-direction:column; margin:8px;"> 
-		<div style="flex-direction:column;">
-			<label style="font-size:9px; bottom:5px;">Select the theme for immediate mode windows (requires closing the immediate mode window):</label>
-			<div style="flex-direction:row;">
-				@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
-				{
-					<button style="font-size:9px; width:auto; margin-right:3px;" onclick=@( () => ApplyStyle(i) )>@i.Replace(".scss", "")</button>
-				}
+	
+	<div class="window-content">
+		<div style="flex-direction:column; margin:8px;"> 
+			<div style="flex-direction:column;">
+				<label style="font-size:9px; bottom:5px;">Select the theme for immediate mode windows (requires closing the immediate mode window):</label>
+				<div style="flex-direction:row;">
+					@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
+					{
+						<button style="font-size:9px; width:auto; margin-right:3px;" onclick=@( () => ApplyStyle(i) )>@i.Replace(".scss", "")</button>
+					}
+				</div>
 			</div>
 		</div>
-	</div>
-	<resizer>
+		<resizer>
 
-	</resizer>
+		</resizer>
+	</div>
 </root>
 @code {
 

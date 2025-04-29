@@ -1,0 +1,30 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@attribute [StyleSheet( "/XGUI/DefaultStyles/OliveGreen.scss" )]
+@inherits Window
+
+<root title="XGUI Designer Tab Test" width="320" height="240" style="width: 292px;  height: 229px">
+	<div class="window-content">
+		<button style="position: absolute;  right: 6px;  bottom: 6px;  height: 24px;  width: 78px">
+			OK
+		</button>
+		<button style="position: absolute;  left: 6px;  width: 78px;  bottom: 6px;  height: 24px">
+			Cancel
+		</button>
+		<tabcontainer style="position: absolute;  right: 6px;  left: 6px;  top: 6px;  bottom: 40px">
+			<tab tabName="tab1" slot="tab" tabtext="Tab 1">
+				<label style="position: absolute;  left: 6px;  top: 10px">
+					Enter Text:
+				</label>
+				<textentry style="position: absolute;  left: 87px;  top: 6px;  right: 6px" />
+			</tab>
+			<tab tabName="tab2" slot="tab" tabtext="Tab 2" />
+		</tabcontainer>
+	</div>
+
+</root>
+
+@code {
+    // Add your code here
+}

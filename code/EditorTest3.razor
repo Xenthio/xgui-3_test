@@ -1,0 +1,33 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@attribute [StyleSheet( "/XGUI/DefaultStyles/ComputerXP.scss" )]
+@inherits Window
+
+<root title="My New XGUI Window" width="321" height="241" theme="ComputerXP">
+	<div class="window-content">
+		<button style="position: absolute; width: 99px; left: 6px; top: 6px;">
+			Button
+		</button>
+		<check style="position: absolute; left: 6px; top: 35px; width: 123px; height: 16px;">
+			CheckBox
+		</check>
+		<textentry style="position: absolute; left: 6px; top: 58px; width: 152px;" />
+		<button style="position: absolute; right: 6px; width: 80px; bottom: 6px; ">
+			OK
+		</button>
+		<groupbox title="Group" style="position: absolute; left: 6px; top: 87px; width: 295px; height: 60px;">
+			<button style="position: absolute; left: 14px; top: 22px;">
+				Button
+			</button>
+		</groupbox>
+		<button style="position: absolute; left: 6px; width: 78px; bottom: 6px;">
+			Quit
+		</button>
+	</div>
+
+</root>
+
+@code {
+    // Add your code here
+}

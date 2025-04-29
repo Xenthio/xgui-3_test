@@ -1,0 +1,28 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@attribute [StyleSheet("/XGUI/DefaultStyles/OliveGreen.scss")]
+@inherits Window
+
+<root title="My New XGUI Window" width="320" height="240">
+	<div class="window-content">
+		<button style="position: absolute;  right: 10px;  bottom: 10px;  height: 24px;  width: 83px">
+			OK
+		</button>
+		<button style="position: absolute;  left: 10px;  width: 83px;  bottom: 10px;  height: 24px">
+			Cancel
+		</button>
+		<textentry style="position: absolute;  left: 111px;  top: 6px;  right: 11px" />
+		<label style="position: absolute;  left: 10px;  top: 10px">
+			Enter Text:
+		</label>
+		<check style="position: absolute;  left: 10px;  top: 36px" checked="True">
+			My Cool CheckBox
+		</check>
+	</div>
+
+</root>
+
+@code {
+	// Add your code here
+}
