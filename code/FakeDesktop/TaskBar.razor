@@ -1,0 +1,66 @@
+@using System.Linq;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@attribute [StyleSheet()]
+@inherits Window
+
+<root class="taskbar-root" hastitlebar="false" isresizable="false" isdraggable="false">
+    <div class="window-content" style="padding:2px">
+        <button class="start-button" onclick=@OpenStartMenu> 
+			<img class="iconpanel" src="XGUI/Resources/16px_placeholder.png" />
+			Start
+		</button>
+    </div> 
+</root>
+
+@code {
+
+	public TaskBar()
+	{
+		SetClass("taskbar-root",true);
+	}
+	public override void Tick()
+	{
+		base.Tick();
+
+		Style.Top = null;
+		Style.Left = null;
+		Style.Bottom = 0;
+		if ( PositionStartMenuNextTick != 0 )
+		{
+			if ( PositionStartMenuNextTick == 1 )
+			{
+				PositionStartMenuNextTick = 0;
+				StartMenuWindow.Position = new Vector2(3, this.Box.Rect.Top - StartMenuWindow.Box.Rect.Height);
+			}
+			else
+			{
+				PositionStartMenuNextTick--;
+			} 
+		}
+	}
+
+	Window StartMenuWindow;
+
+	int PositionStartMenuNextTick = 0;
+	public void OpenStartMenu()
+	{
+
+
+		// close if already open
+		if (StartMenuWindow != null && StartMenuWindow.IsValid)
+		{
+			StartMenuWindow.Delete();
+			StartMenuWindow = null;
+			return;
+		}
+		StartMenuWindow = Scene.GetSystem<XGUISystem>().Panel.AddChild<StartMenu>();
+
+		// position the start menu 
+		// set startmenu.Postion so the bottom of the window is aligned with the top of the taskbar
+		// this.Box.Rect.Bottom is the bottom of the taskbar
+		StartMenuWindow.Position = new Vector2(3, this.Box.Rect.Top - StartMenuWindow.Box.Rect.Height);
+		PositionStartMenuNextTick = 3;
+	}
+}

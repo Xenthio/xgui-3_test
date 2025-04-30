@@ -1,0 +1,282 @@
+﻿@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@attribute [StyleSheet("StartMenu.razor.scss")]
+@inherits Window
+
+<root title="Start" style="width:360px; height:auto; min-height:300px;"
+	  isdraggable="false" isresizable="false" hastitlebar="false"
+	  class="startmenu">
+	<div class="window-content">
+		<!-- Left Pane -->
+		<div class="startmenu-left-pane">
+			<label class="sideways-label">XGUI</label>
+		</div>
+
+		<!-- Main Pane -->
+		<div class="startmenu-right-pane">
+			<div class="ContextMenu column">
+				<button class="MenuItem" @ref=ProgramsButton onmouseover=@OpenProgramsMenu>
+					<img class="ItemIcon" src="XGUI/Resources/95/prog_folder_icon_24.png"/>
+					Programs
+					<iconpanel class="ItemArrow">arrow_right</iconpanel>
+				</button>
+				<button class="MenuItem" @ref=DocumentsButton onmouseover=@OpenDocumentsMenu>
+					<img class="ItemIcon" src="XGUI/Resources/95/doc_folder_icon_24.png" />
+					Documents
+					<iconpanel class="ItemArrow">arrow_right</iconpanel>
+				</button>
+				<button class="MenuItem" @ref=SettingsButton onmouseover=@OpenSettingsMenu>
+					<img class="ItemIcon" src="XGUI/Resources/95/settings_icon_24.png" />
+					Settings
+					<iconpanel class="ItemArrow">arrow_right</iconpanel>
+				</button>
+				<button class="MenuItem" @ref=FindButton onmouseover=@OpenFindMenu>
+					<img class="ItemIcon" src="XGUI/Resources/95/find_icon_24.png" />
+					Find
+					<iconpanel class="ItemArrow">arrow_right</iconpanel>
+				</button>
+				<button class="MenuItem" @ref=HelpButton onmouseover=@CloseActiveMenu>
+					<img class="ItemIcon" src="XGUI/Resources/95/help_icon_24.png" />
+					Help
+				</button>
+				<button class="MenuItem" @ref=RunButton onmouseover=@CloseActiveMenu>
+					<img class="ItemIcon" src="XGUI/Resources/95/run_icon_24.png" />
+					Run...
+				</button>
+				<hr />
+				<button class="MenuItem" @ref=ShutdownButton onmouseover=@CloseActiveMenu onclick=@OpenShutdownMenu>
+					<img class="ItemIcon" src="XGUI/Resources/95/shutdown_icon_24.png" />
+					Shut down...
+				</button>
+			</div>
+		</div>
+	</div>
+</root>
+
+@code {
+	// References to menu buttons
+	public Button ProgramsButton;
+	public Button DocumentsButton;
+	public Button SettingsButton;
+	public Button FindButton;
+	public Button HelpButton;
+	public Button RunButton;
+	public Button ShutdownButton;
+
+	// Currently active menu
+	private ContextMenu activeMenu;
+
+	// Timer for delayed menu closing
+	private RealTimeSince timeSinceMenuLeave;
+	private bool pendingMenuClose = false;
+	private float menuCloseDelay = 0.4f; // Delay before closing menu when mouse leaves
+
+	// Track if mouse is over the active menu
+	private bool isMouseOverMenu = false;
+
+	public StartMenu()
+	{ 
+		SetClass("startmenu", true);
+	}
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		// Handle delayed menu closing
+		if (pendingMenuClose && timeSinceMenuLeave > menuCloseDelay)
+		{
+			if (!isMouseOverMenu)
+			{
+				CloseActiveMenu();
+				pendingMenuClose = false;
+			}
+		}
+	}
+
+	private void StartCloseMenuTimer()
+	{
+		timeSinceMenuLeave = 0;
+		pendingMenuClose = true;
+	}
+
+	private void CloseActiveMenu()
+	{
+		if (activeMenu != null)
+		{
+			activeMenu.Delete(true);
+			activeMenu = null;
+		}
+	}
+
+	// Event handler called when mouse enters a menu button
+	private void OpenProgramsMenu()
+	{
+		CloseActiveMenu();
+
+		// Create the Programs menu
+		activeMenu = new ContextMenu(ProgramsButton, Pane.PositionMode.Right, 0);
+
+		// Setup menu mouse tracking
+		SetupMenuMouseEvents(activeMenu); 
+
+		// Accessories
+		activeMenu.AddSubmenuItem("Accessories", (submenu) =>
+		{
+			// Games submenu
+			submenu.AddSubmenuItem("Games", (submenu2) =>
+			{
+				submenu2.AddMenuItem("Minesweeper", () => Log.Info("Opening Minesweeper"));
+				submenu2.AddMenuItem("Solitaire", () => Log.Info("Opening Solitaire"));
+
+				// Nested submenu
+				submenu2.AddSubmenuItem("More Games", (submenu3) =>
+				{
+					submenu3.AddMenuItem("Pinball", () => Log.Info("Opening Pinball"));
+					submenu3.AddMenuItem("Hearts", () => Log.Info("Opening Hearts"));
+				}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+			}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+			submenu.AddMenuItem("Calculator", () => Log.Info("Opening Calculator"), iconurl: "XGUI/Resources/95/calculator_icon_16.png");
+			submenu.AddMenuItem("Notepad", () => Log.Info("Opening Notepad"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
+			submenu.AddMenuItem("Paint", () => Log.Info("Opening Paint"), iconurl: "XGUI/Resources/95/paint_icon_16.png");
+		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+
+		// XGUI
+		activeMenu.AddSubmenuItem("XGUI", (submenu) =>
+		{ 
+			submenu.AddMenuItem("About XGUI", () => OpenPanelAndClose("About"), iconurl: "XGUI/Resources/95/about_xgui_icon_16.png");
+			submenu.AddMenuItem("Panel List", () => OpenPanelAndClose("panelselector"), iconurl: "XGUI/Resources/95/panel_list_icon_16.png");
+		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+
+		// Startup
+		activeMenu.AddSubmenuItem("Startup", (submenu) =>
+		{ 
+		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+
+		activeMenu.AddMenuItem("Windows Explorer", () => Log.Info("Opening Explorer"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
+	}
+
+	private void OpenDocumentsMenu()
+	{
+		CloseActiveMenu();
+
+		// Create the Documents menu
+		activeMenu = new ContextMenu(DocumentsButton, Pane.PositionMode.Right, 0);
+		SetupMenuMouseEvents(activeMenu);
+
+		// Add recently used documents
+		activeMenu.AddMenuItem("My Computer", () => Log.Info("Opening My Computer"));
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Recent Document 1", () => Log.Info("Opening Recent Document 1"));
+		activeMenu.AddMenuItem("Recent Document 2", () => Log.Info("Opening Recent Document 2"));
+		activeMenu.AddMenuItem("Recent Document 3", () => Log.Info("Opening Recent Document 3"));
+	}
+
+	private void OpenSettingsMenu()
+	{
+		CloseActiveMenu();
+
+		// Create the Settings menu
+		activeMenu = new ContextMenu(SettingsButton, Pane.PositionMode.Right, 0);
+		SetupMenuMouseEvents(activeMenu);
+
+		// Control Panel submenu
+		activeMenu.AddSubmenuItem("Control Panel", (submenu) =>
+		{
+			submenu.AddMenuItem("Display", () => Log.Info("Opening Display Settings"));
+			submenu.AddMenuItem("Mouse", () => Log.Info("Opening Mouse Settings"));
+			submenu.AddMenuItem("Keyboard", () => Log.Info("Opening Keyboard Settings"));
+			submenu.AddMenuItem("Printers", () => Log.Info("Opening Printer Settings"));
+		});
+
+		// Taskbar submenu
+		activeMenu.AddMenuItem("Taskbar...", () => Log.Info("Opening Taskbar Settings"));
+		activeMenu.AddMenuItem("Folder Options...", () => Log.Info("Opening Folder Options"));
+		activeMenu.AddMenuItem("XGUI Theme...", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/16px_placeholder.png");
+	}
+
+	private void OpenFindMenu()
+	{
+		CloseActiveMenu();
+
+		// Create the Search menu
+		activeMenu = new ContextMenu(FindButton, Pane.PositionMode.Right, 0);
+		SetupMenuMouseEvents(activeMenu);
+
+		activeMenu.AddMenuItem("Files or Folders...", () => Log.Info("Search Files"));
+		activeMenu.AddMenuItem("Computer...", () => Log.Info("Search Computer"));
+		activeMenu.AddMenuItem("On the Internet...", () => Log.Info("Search Internet"));
+		activeMenu.AddMenuItem("People...", () => Log.Info("Search People"));
+	}
+
+	private void OpenHelpMenu()
+	{
+		CloseActiveMenu();
+
+		// Create the Help menu
+		activeMenu = new ContextMenu(HelpButton, Pane.PositionMode.Right, 0);
+		SetupMenuMouseEvents(activeMenu);
+
+		activeMenu.AddMenuItem("Help Topics", () => Log.Info("Opening Help Topics"));
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("About Windows...", () => Log.Info("Opening About Windows"));
+	}
+
+	private void OpenRunMenu()
+	{
+		CloseActiveMenu();
+
+		// Create a simple Run menu (typically opens a dialog in Windows 95)
+		activeMenu = new ContextMenu(RunButton, Pane.PositionMode.Right, 0);
+		SetupMenuMouseEvents(activeMenu);
+
+		activeMenu.AddMenuItem("Command Prompt", () => Log.Info("Opening Command Prompt"));
+		activeMenu.AddMenuItem("Browse...", () => Log.Info("Opening Run Browser"));
+	}
+
+	private void OpenShutdownMenu()
+	{
+		CloseActiveMenu();
+
+		// Create the shutdown menu
+		activeMenu = new ContextMenu(ShutdownButton, Pane.PositionMode.AboveLeft, 0);
+
+		activeMenu.AddMenuItem("Restart...", () => Log.Info("Restarting..."));
+		activeMenu.AddMenuItem("Shut Down...", () => Log.Info("Shutting down..."));
+		activeMenu.AddMenuItem("Log Off...", () => Log.Info("Logging off..."));
+	}
+
+	// Add mouse tracking to menus to prevent premature closing
+	private void SetupMenuMouseEvents(ContextMenu menu)
+	{
+		menu.AddEventListener("onmouseenter", () =>
+		{
+			isMouseOverMenu = true;
+			pendingMenuClose = false;
+		});
+
+		menu.AddEventListener("onmouseleave", () =>
+		{
+			isMouseOverMenu = false;
+			StartCloseMenuTimer();
+		});
+	}
+
+
+	public void OpenPanel(string panel)
+	{
+		var a = TypeLibrary.GetType(panel).Create<Window>();
+		Game.ActiveScene.GetSystem<XGUISystem>().Panel.AddChild(a);
+		Game.ActiveScene.GetSystem<XGUISystem>().Panel.SetChildIndex(a, 0);
+		a.FocusWindow();
+	}
+
+	public void OpenPanelAndClose(string panel)
+	{
+		OpenPanel(panel);
+		Delete();
+	}
+
+}

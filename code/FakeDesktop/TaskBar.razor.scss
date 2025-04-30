@@ -1,0 +1,19 @@
+TaskBar {
+	&.taskbar-root {
+		border-left: 0px;
+		border-right: 0px;
+		border-bottom: 0px;
+		position: absolute;
+		width: 100%;
+		align-self: flex-end;
+
+		.window-content {
+			flex-direction: row;
+
+			.start-button {
+				min-width: 52px;
+				font-weight: bold;
+			}
+		}
+	}
+}
