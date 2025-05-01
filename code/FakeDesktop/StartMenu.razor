@@ -56,6 +56,8 @@
 </root>
 
 @code {
+	public Button OwnerStartButton;
+
 	// References to menu buttons
 	public Button ProgramsButton;
 	public Button DocumentsButton;
@@ -105,7 +107,13 @@
 	private void CloseActiveMenu()
 	{
 		if (activeMenu != null)
-		{
+		{ 
+			// Remove "open" class from all menu buttons
+			if (ProgramsButton != null) ProgramsButton.RemoveClass("open");
+			if (DocumentsButton != null) DocumentsButton.RemoveClass("open");
+			if (SettingsButton != null) SettingsButton.RemoveClass("open");
+			if (FindButton != null) FindButton.RemoveClass("open");
+			
 			activeMenu.Delete(true);
 			activeMenu = null;
 		}
@@ -115,6 +123,9 @@
 	private void OpenProgramsMenu()
 	{
 		CloseActiveMenu();
+
+		 // Add "open" class to the Programs button
+		ProgramsButton.AddClass("open");
 
 		// Create the Programs menu
 		activeMenu = new ContextMenu(ProgramsButton, Pane.PositionMode.Right, 0);
@@ -142,7 +153,7 @@
 			submenu.AddMenuItem("Notepad", () => Log.Info("Opening Notepad"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
 			submenu.AddMenuItem("Paint", () => Log.Info("Opening Paint"), iconurl: "XGUI/Resources/95/paint_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
-		 
+
 		activeMenu.AddSubmenuItem("Ultimate Doom for S&box95", (submenu) =>
 		{
 			submenu.AddMenuItem("Doom95", () => OpenPanelAndClose("Wad"), iconurl: "XGUI/Resources/95/doom95_icon_16.png");
@@ -174,6 +185,9 @@
 	{
 		CloseActiveMenu();
 
+		 // Add "open" class to the Documents button
+		DocumentsButton.AddClass("open");
+
 		// Create the Documents menu
 		activeMenu = new ContextMenu(DocumentsButton, Pane.PositionMode.Right, 0);
 		SetupMenuMouseEvents(activeMenu);
@@ -186,6 +200,9 @@
 	{
 		CloseActiveMenu();
 
+		 // Add "open" class to the Settings button
+		SettingsButton.AddClass("open");
+
 		// Create the Settings menu
 		activeMenu = new ContextMenu(SettingsButton, Pane.PositionMode.Right, 0);
 		SetupMenuMouseEvents(activeMenu); 
@@ -197,9 +214,25 @@
 		activeMenu.AddMenuItem("XGUI Theme...", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/95/global_theme_icon_16.png");
 	}
 
+	protected override void OnBlur(PanelEvent e)
+	{
+		base.OnBlur(e); 
+		if (OwnerStartButton.HasHovered || OwnerStartButton.HasFocus)
+		{
+			Log.Info("Start button is active or focused, not closing menu.");
+			// If the blur event is triggered by the Start button, do not close the menu
+			Focus();
+			return;
+		}
+		Delete();
+	}
+
 	private void OpenFindMenu()
 	{
 		CloseActiveMenu();
+
+		 // Add "open" class to the Find button
+		FindButton.AddClass("open");
 
 		// Create the Search menu
 		activeMenu = new ContextMenu(FindButton, Pane.PositionMode.Right, 0);
@@ -215,6 +248,9 @@
 	{
 		CloseActiveMenu();
 
+		 // Add "open" class to the Help button
+		HelpButton.AddClass("open");
+
 		// Create the Help menu
 		activeMenu = new ContextMenu(HelpButton, Pane.PositionMode.Right, 0);
 		SetupMenuMouseEvents(activeMenu);
@@ -228,6 +264,9 @@
 	{
 		CloseActiveMenu();
 
+		 // Add "open" class to the Run button
+		RunButton.AddClass("open");
+
 		// Create a simple Run menu (typically opens a dialog in Windows 95)
 		activeMenu = new ContextMenu(RunButton, Pane.PositionMode.Right, 0);
 		SetupMenuMouseEvents(activeMenu);
@@ -239,6 +278,9 @@
 	private void OpenShutdownMenu()
 	{
 		CloseActiveMenu();
+
+		 // Add "open" class to the Shutdown button
+		ShutdownButton.AddClass("open");
 
 		// Create the shutdown menu
 		activeMenu = new ContextMenu(ShutdownButton, Pane.PositionMode.AboveLeft, 0);

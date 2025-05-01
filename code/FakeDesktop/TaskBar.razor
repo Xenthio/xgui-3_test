@@ -7,7 +7,7 @@
 
 <root class="taskbar-root" hastitlebar="false" isresizable="false" isdraggable="false">
     <div class="window-content" style="padding:2px">
-        <button class="start-button" onclick=@OpenStartMenu> 
+        <button class="start-button" @ref=StartButton onclick=@OpenStartMenu> 
 			<img class="iconpanel icon" src="XGUI/Resources/95/start_icon_shaded_16.png" />
 			Start
 		</button>
@@ -16,8 +16,12 @@
 
 @code {
 
+	Button StartButton;
+
+	bool StartMenuOpen => StartMenuWindow != null && StartMenuWindow.IsValid;
+
 	public TaskBar()
-	{
+	{ 
 		SetClass("taskbar-root",true);
 	}
 	public override void Tick()
@@ -33,15 +37,19 @@
 			{
 				PositionStartMenuNextTick = 0;
 				StartMenuWindow.Position = new Vector2(3, this.Box.Rect.Top - StartMenuWindow.Box.Rect.Height);
+				StartMenuWindow.FocusWindow();
 			}
 			else
 			{
 				PositionStartMenuNextTick--;
 			} 
 		}
+
+		// force StartButton to be active if the start menu is open
+		StartButton.PseudoClass = StartButton.PseudoClass.WithFlag(PseudoClass.Active, StartMenuOpen || (StartButton.HasActive && HasActive));
 	}
 
-	Window StartMenuWindow;
+	StartMenu StartMenuWindow;
 
 	int PositionStartMenuNextTick = 0;
 	public void OpenStartMenu()
@@ -56,11 +64,15 @@
 			return;
 		}
 		StartMenuWindow = Scene.GetSystem<XGUISystem>().Panel.AddChild<StartMenu>();
-
+		StartMenuWindow.OwnerStartButton = StartButton;
 		// position the start menu 
 		// set startmenu.Postion so the bottom of the window is aligned with the top of the taskbar
 		// this.Box.Rect.Bottom is the bottom of the taskbar
 		StartMenuWindow.Position = new Vector2(3, this.Box.Rect.Top - StartMenuWindow.Box.Rect.Height);
 		PositionStartMenuNextTick = 3;
+
+
+
+		StartMenuWindow.FocusWindow();
 	}
 }
