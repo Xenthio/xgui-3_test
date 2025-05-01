@@ -24,7 +24,8 @@
           "Title": "xguitest",
           "Version": null
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "00d3340d-beb5-4ec5-836a-fd51d106f9b1",
@@ -55,13 +56,14 @@
           "OnComponentStart": null,
           "OnComponentUpdate": null
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "863c4597-af03-4759-8dfa-0f7f4e4e0c7b",
       "Flags": 0,
       "Name": "Camera",
-      "Position": "-1439.448,-1592.626,192",
+      "Position": "113.1367,-3145.211,192",
       "Rotation": "0,0,0.3826834,0.9238796",
       "Tags": "maincamera",
       "Enabled": true,
@@ -69,7 +71,7 @@
         {
           "__type": "Sandbox.CameraComponent",
           "__guid": "c52b19d7-3921-4b74-91a1-c197e1cf6bc0",
-          "BackgroundColor": "0.26109,0.37289,0.37674,1",
+          "BackgroundColor": "0,0.50196,0.50196,1",
           "ClearFlags": "All",
           "FieldOfView": 60,
           "FovAxis": "Horizontal",
@@ -90,7 +92,8 @@
           "ZFar": 100000,
           "ZNear": 10
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "f4b12d3f-572c-450a-babe-4a336a00342e",
@@ -123,7 +126,8 @@
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "351d1245-c8a8-4c72-b406-5d61a61b8f99",
@@ -149,7 +153,8 @@
           "Shadows": true,
           "SkyColor": "0.05882,0.07451,0.08235,1"
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "3a9e4ba8-b754-425b-97b0-7ea9cd8964f9",
@@ -181,7 +186,8 @@
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "3781a43b-0f27-4c9d-bee5-27d4362adfaa",
@@ -326,7 +332,8 @@
           "Surface": null,
           "SurfaceVelocity": "0,0,0"
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "4bc63b96-a213-4063-aa45-434d4af306a7",
@@ -358,7 +365,8 @@
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "3cc8f755-937a-46d9-8b41-5f4d7d8dd4b3",
@@ -390,7 +398,8 @@
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "16e13157-9183-4eac-882a-d0adb9a4bf85",
@@ -425,7 +434,8 @@
           "ZFar": 4096,
           "ZNear": 16
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "0bdb1a76-32c2-4cab-a223-5f93816eb848",
@@ -496,7 +506,8 @@
           "RenderType": "On",
           "Tint": "1,1,1,1"
         }
-      ]
+      ],
+      "Children": []
     },
     {
       "__guid": "ad4d28b5-a2b1-4445-9bb0-76f29c0780d5",
@@ -689,12 +700,14 @@
               },
               "RenderType": "On",
               "Sequence": {
-                "Name": null
+                "Name": null,
+                "Looping": true
               },
               "Tint": "1,1,1,1",
               "UseAnimGraph": true
             }
-          ]
+          ],
+          "Children": []
         },
         {
           "__guid": "47a50af9-9922-42fe-af60-ab380894863f",
@@ -702,6 +715,7 @@
           "Name": "Head",
           "Position": "1454.672,2301.427,-203.546",
           "Enabled": true,
+          "Components": [],
           "Children": [
             {
               "__guid": "71d1a2af-d0b4-4447-8762-f9034f4bee79",
@@ -752,7 +766,8 @@
                   "OnComponentUpdate": null,
                   "Rate": 1
                 }
-              ]
+              ],
+              "Children": []
             }
           ]
         }
@@ -760,14 +775,9 @@
     }
   ],
   "SceneProperties": {
-    "FixedUpdateFrequency": 50,
-    "MaxFixedUpdates": 5,
-    "NetworkFrequency": 30,
     "NetworkInterpolation": true,
-    "PhysicsSubSteps": 1,
-    "ThreadedAnimation": true,
     "TimeScale": 1,
-    "UseFixedUpdate": true,
+    "WantsSystemScene": true,
     "Metadata": {
       "Title": "xguitest"
     },

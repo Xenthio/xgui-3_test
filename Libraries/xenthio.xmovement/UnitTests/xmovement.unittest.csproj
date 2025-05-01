@@ -61,6 +61,7 @@
 		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Tools.dll" />
 		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Compiling.dll" />
 		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Microsoft.CodeAnalysis.dll" />
+		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Microsoft.CodeAnalysis.CSharp.dll" />
 		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Bind.dll" />
 	</ItemGroup>
 

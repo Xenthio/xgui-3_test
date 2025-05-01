@@ -39,15 +39,15 @@
 				<check>Play in Deathmatch II Mode (altdeath)</check>
 			</groupbox>
 			<groupbox title="Monster Options">
-				<checkbox class="margin-bottom">No Monsters</checkbox>
-				<checkbox class="margin-bottom">Fast Monsters</checkbox>
-				<checkbox>Respawn Monsters</checkbox>
+				<check class="margin-bottom">No Monsters</check>
+				<check class="margin-bottom">Fast Monsters</check>
+				<check>Respawn Monsters</check>
 			</groupbox>
 		</groupbox>
 		<div class="row margin" style="justify-content:space-between">
 
 			<button>Cancel</button>
-			<button>New Game</button>
+			<button onclick=@LaunchGame>New Game</button>
 		</div>
 	</div>
 
@@ -55,4 +55,12 @@
 
 @code {
 	// Add your code here
+	void LaunchGame()
+	{
+		var gameident = "ataco.sdoomresurrection";
+		Sandbox.Game.Overlay.ShowGameModal(gameident);
+
+		//ConsoleSystem.Run("game", gameident);
+		//MenuUtility.OpenGame(gameident, true);
+	}
 }

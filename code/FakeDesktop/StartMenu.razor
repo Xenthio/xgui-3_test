@@ -142,12 +142,18 @@
 			submenu.AddMenuItem("Notepad", () => Log.Info("Opening Notepad"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
 			submenu.AddMenuItem("Paint", () => Log.Info("Opening Paint"), iconurl: "XGUI/Resources/95/paint_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+		 
+		activeMenu.AddSubmenuItem("Ultimate Doom for S&box95", (submenu) =>
+		{
+			submenu.AddMenuItem("Doom95", () => OpenPanelAndClose("Wad"), iconurl: "XGUI/Resources/95/doom95_icon_16.png");
+		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
 		// XGUI
 		activeMenu.AddSubmenuItem("XGUI", (submenu) =>
 		{ 
 			submenu.AddMenuItem("About XGUI", () => OpenPanelAndClose("About"), iconurl: "XGUI/Resources/95/about_xgui_icon_16.png");
 			submenu.AddMenuItem("Panel List", () => OpenPanelAndClose("panelselector"), iconurl: "XGUI/Resources/95/panel_list_icon_16.png");
+			submenu.AddMenuItem("Global Theme", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/95/global_theme_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
 		// Startup
@@ -156,6 +162,12 @@
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
 		activeMenu.AddMenuItem("Windows Explorer", () => Log.Info("Opening Explorer"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
+
+
+		activeMenu.AddSubmenuItem("Steam", (submenu) =>
+		{
+			submenu.AddMenuItem("Steam", () => OpenPanelAndClose("GameLauncher"), iconurl: "XGUI/Resources/95/steam_icon_16.png");
+		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 	}
 
 	private void OpenDocumentsMenu()
@@ -167,11 +179,7 @@
 		SetupMenuMouseEvents(activeMenu);
 
 		// Add recently used documents
-		activeMenu.AddMenuItem("My Computer", () => Log.Info("Opening My Computer"));
-		activeMenu.AddSeparator();
-		activeMenu.AddMenuItem("Recent Document 1", () => Log.Info("Opening Recent Document 1"));
-		activeMenu.AddMenuItem("Recent Document 2", () => Log.Info("Opening Recent Document 2"));
-		activeMenu.AddMenuItem("Recent Document 3", () => Log.Info("Opening Recent Document 3"));
+		activeMenu.AddMenuItem("Readme", () => Log.Info("Opening Readme"), iconurl: "XGUI/Resources/95/text_doc_icon_16.png");
 	}
 
 	private void OpenSettingsMenu()
@@ -180,21 +188,13 @@
 
 		// Create the Settings menu
 		activeMenu = new ContextMenu(SettingsButton, Pane.PositionMode.Right, 0);
-		SetupMenuMouseEvents(activeMenu);
-
-		// Control Panel submenu
-		activeMenu.AddSubmenuItem("Control Panel", (submenu) =>
-		{
-			submenu.AddMenuItem("Display", () => Log.Info("Opening Display Settings"));
-			submenu.AddMenuItem("Mouse", () => Log.Info("Opening Mouse Settings"));
-			submenu.AddMenuItem("Keyboard", () => Log.Info("Opening Keyboard Settings"));
-			submenu.AddMenuItem("Printers", () => Log.Info("Opening Printer Settings"));
-		});
+		SetupMenuMouseEvents(activeMenu); 
 
 		// Taskbar submenu
-		activeMenu.AddMenuItem("Taskbar...", () => Log.Info("Opening Taskbar Settings"));
-		activeMenu.AddMenuItem("Folder Options...", () => Log.Info("Opening Folder Options"));
-		activeMenu.AddMenuItem("XGUI Theme...", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/16px_placeholder.png");
+		activeMenu.AddMenuItem("Control Panel", () => Log.Info("Opening Control Panel"), iconurl: "XGUI/Resources/95/control_panel_icon_16.png");
+		activeMenu.AddMenuItem("Printers", () => Log.Info("Opening Printers Settings"), iconurl: "XGUI/Resources/95/printers_icon_16.png");
+		activeMenu.AddMenuItem("Taskbar...", () => Log.Info("Opening Taskbar Settings"), iconurl: "XGUI/Resources/95/taskbar_icon_16.png");
+		activeMenu.AddMenuItem("XGUI Theme...", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/95/global_theme_icon_16.png");
 	}
 
 	private void OpenFindMenu()
