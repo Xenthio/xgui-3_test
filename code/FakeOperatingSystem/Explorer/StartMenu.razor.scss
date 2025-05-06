@@ -44,11 +44,13 @@ StartMenu {
 					height: 32px;
 					cursor: default;
 					border: 0px;
-					box-shadow: none; 
+					box-shadow: none;
 
 					.ItemIcon {
 						margin-left: 8px;
 						margin-right: 10px;
+						width: 24px;
+						height: 24px; 
 					}
 				}
 

@@ -1,0 +1,82 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using FakeDesktop;
+@attribute [StyleSheet("Desktop.razor.scss")]
+@inherits XGUIPanel
+
+<root>
+    <virtualfilebrowserview @ref=BrowserView class="browser-view" style="width:70%"></virtualfilebrowserview>
+</root>
+
+@code {
+    private VirtualFileBrowserView BrowserView;
+    private VirtualFileSystem _virtualFileSystem;
+
+    protected override void OnAfterTreeRender(bool firstTime)
+    {
+        base.OnAfterTreeRender(firstTime);
+
+        if (firstTime)
+        {
+            // Create virtual file system
+            FakeSystemRoot.TryCreateSystemRoot();
+            _virtualFileSystem = new VirtualFileSystem(FileSystem.Data, "FakeSystemRoot");
+
+            // Initialize browser view with virtual file system
+            BrowserView.Initialize(_virtualFileSystem, FileSystem.Data);
+
+            // Intercept directory opening to launch Explorer instead of navigating 
+			BrowserView.OpenDirectoryEnabled = false;
+            BrowserView.OnDirectoryOpened += HandleDirectoryOpened; 
+
+            // Set default view mode
+            BrowserView.ViewMode = FileBrowserViewMode.Icons;
+
+            // Navigate to Desktop - this will stay fixed
+            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP);
+        }
+    }
+
+    private void HandleDirectoryOpened(string path)
+    {
+        // Prevent navigation for the desktop view itself
+        var entry = _virtualFileSystem.GetEntry(path);
+
+        if (entry != null && path != VirtualFileSystem.DESKTOP)
+        {
+            Log.Info($"Desktop: Opening directory in Explorer: {path}");
+
+            // Launch Explorer with this path
+            LaunchExplorerWithPath(path);
+
+            // Prevent the desktop from navigating away
+            // by navigating back to the desktop
+            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP);
+        }
+    } 
+
+    private void LaunchExplorerWithPath(string virtualPath)
+    {
+        // Create a new Explorer window
+        var explorer = new Explorer() 
+		{
+			InitialPath = virtualPath,
+            AutoFocus = true,
+        };
+
+        // Add the Explorer window to the UI
+        Game.ActiveScene.GetSystem<XGUISystem>().Panel.AddChild(explorer);
+
+        // Focus the new Explorer window
+        explorer.FocusWindow();
+    }
+
+
+    // Helper method to get VirtualFileSystem for other components
+    public VirtualFileSystem GetVirtualFileSystem()
+    {
+        return _virtualFileSystem;
+    }
+}

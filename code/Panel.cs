@@ -15,12 +15,14 @@ public sealed class OpenMenu : Component
 		if ( hi == 3 && Scene.GetSystem<XGUISystem>().Panel != null )
 		{
 			Log.Info( "adding XGUI Panel" );
+			Scene.GetSystem<XGUISystem>().Panel.AddChild<Explorer>();
 			//Scene.GetSystem<XGUISystem>().Panel.AddChild<OptionsThemable>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<TaskBar>();
 			//Scene.GetSystem<XGUISystem>().Panel.AddChild<MenuTest>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<About>();
 			//Scene.GetSystem<XGUISystem>().Panel.AddChild<AboutNew>();
 			Scene.GetSystem<XGUISystem>().Panel.AddChild<GlobalStyle>();
+			Scene.GetSystem<XGUISystem>().Panel.AddChild<Desktop>();
 			hi = 10;
 		}
 		else if ( hi < 3 )

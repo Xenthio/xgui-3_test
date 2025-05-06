@@ -1,0 +1,350 @@
+@using System.Collections.Generic;
+@using System.Linq;
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using FakeDesktop;
+@inherits Window
+@attribute [StyleSheet("Explorer.razor.scss")]
+
+<root title="Explorer" width="640" height="480" class="window1">
+	<div class="window-content">
+		<toolbarcontainer>
+			<!-- Menu Toolbar -->
+			<toolbar @ref=MenuToolbar class="menu-toolbar" style="flex-shrink:0" draggable="true"></toolbar>
+
+			<!-- Command Toolbar -->
+			<toolbar @ref=CommandToolbar class="command-toolbar" style="flex-shrink:0" draggable="true"></toolbar>
+
+			<!-- Address Toolbar -->
+			<toolbar @ref=AddressToolbar class="address-toolbar" style="flex-shrink:0" draggable="true"></toolbar>
+		</toolbarcontainer>
+
+		<div class="row padding-top padding-bottom" style="overflow:hidden; flex-grow:1">
+			<filebrowsertree @ref=BrowserTree class="browser-tree" style="width:30%"></filebrowsertree>
+			<div class="splitter"></div>
+			<virtualfilebrowserview @ref=BrowserView class="browser-view" style="width:70%"></virtualfilebrowserview>
+		</div>
+		<div class="status-bar" style="flex-shrink:0">
+			<div class="status-text">@StatusText</div>
+		</div>
+	</div>
+</root>
+
+@code {
+	private VirtualFileBrowserView BrowserView;
+	private FileBrowserTree BrowserTree;
+	private TextEntry AddressInput;
+	private ComboBox FilesystemSelector;
+
+	// Toolbars
+	private Toolbar MenuToolbar;
+	private Toolbar CommandToolbar;
+	private Toolbar AddressToolbar;
+
+	private string CurrentPath = "";
+	private string StatusText = "Ready";
+	private VirtualFileSystem _virtualFileSystem;
+
+	// New property for initial path
+	public string InitialPath { get; set; }
+
+	protected override void OnAfterTreeRender(bool firstTime)
+	{
+		base.OnAfterTreeRender(firstTime);
+
+		if (firstTime)
+		{
+			// Setup toolbars
+			SetupMenuToolbar();
+			SetupCommandToolbar();
+			SetupAddressToolbar();
+
+			// Create virtual file system
+			FakeSystemRoot.TryCreateSystemRoot();
+			_virtualFileSystem = new VirtualFileSystem(FileSystem.Data, "FakeSystemRoot");
+
+			// Set up the file browser
+			BrowserView.Initialize(_virtualFileSystem, FileSystem.Data);
+
+			// The tree will still use the regular file system
+			BrowserTree.CurrentFileSystem = FileSystem.Data;
+			BrowserTree.Initialize("FakeSystemRoot/Windows/Desktop");
+
+			// Set up event handlers
+			BrowserView.OnFileSelected += (file) =>
+			{
+				StatusText = $"Selected: {System.IO.Path.GetFileName(file)}";
+			};
+
+			BrowserView.OnViewModeChanged += (mode) =>
+			{
+				// Force UI update for the view buttons
+				StateHasChanged();
+			};
+
+			BrowserView.OnNavigateTo += (path) =>
+			{
+				CurrentPath = path;
+				if (AddressInput != null)
+					AddressInput.Value = FormatAddressBarPath(path);
+				StatusText = FormatAddressBarPath(path);
+			};
+
+			// Initialize with the provided path or default to Desktop
+			if (!string.IsNullOrEmpty(InitialPath))
+			{
+				BrowserView.NavigateToVirtualPath(InitialPath);
+			}
+			else
+			{
+				// Default to Desktop if no path specified
+				BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP);
+			}
+
+			// Set default view mode
+			BrowserView.ViewMode = FileBrowserViewMode.Icons;
+
+			// Hide by default
+			BrowserTree.Style.Display = DisplayMode.None;
+		}
+	}
+
+	/// <summary>
+	/// Formats a virtual path for display in the address bar
+	/// </summary>
+	private string FormatAddressBarPath(string virtualPath)
+	{
+		if (string.IsNullOrEmpty(virtualPath))
+			return "";
+
+		// Get the entry to check its type
+		var entry = _virtualFileSystem.GetEntry(virtualPath);
+		if (entry == null)
+			return virtualPath;
+
+		// Transform the path based on where we are in the virtual filesystem
+		if (virtualPath == VirtualFileSystem.DESKTOP)
+		{
+			return "Desktop";
+		}
+		else if (virtualPath == $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}")
+		{
+			return "My Computer";
+		}
+		else if (virtualPath.StartsWith($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/"))
+		{
+			// Handle paths inside My Computer
+			string relativePath = virtualPath.Substring(($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/").Length);
+
+			// Check if we're in a drive
+			if (relativePath.Contains('/'))
+			{
+				string driveLetter = relativePath.Split('/')[0];
+				string pathAfterDrive = relativePath.Substring(driveLetter.Length);
+
+				// Format like "C:/Documents"
+				return driveLetter + pathAfterDrive;
+			}
+			else
+			{
+				// Just return the folder name inside My Computer
+				return relativePath;
+			}
+		}
+		else if (virtualPath.StartsWith($"{VirtualFileSystem.DESKTOP}/"))
+		{
+			// Handle paths directly under Desktop
+			return virtualPath.Substring(($"{VirtualFileSystem.DESKTOP}/").Length);
+		}
+
+		// Default case - return the original path
+		return virtualPath;
+	}
+
+	private void SetupMenuToolbar()
+	{
+		// Add File menu
+		MenuToolbar.AddMenuItem("File", (menu) =>
+		{
+			menu.AddMenuItem("New", () => Log.Info("New Item"));
+			menu.AddMenuItem("Open", () => Log.Info("Open Item"));
+			menu.AddSeparator();
+			menu.AddMenuItem("Close", () => Close());
+		});
+
+		// Add Edit menu
+		MenuToolbar.AddMenuItem("Edit", (menu) =>
+		{
+			menu.AddMenuItem("Cut", () => Log.Info("Cut"));
+			menu.AddMenuItem("Copy", () => Log.Info("Copy"));
+			menu.AddMenuItem("Paste", () => Log.Info("Paste"));
+			menu.AddSeparator();
+			menu.AddMenuItem("Select All", () => Log.Info("Select All"));
+		});
+
+		// Add View menu
+		MenuToolbar.AddMenuItem("View", (menu) =>
+		{
+			menu.AddMenuItem("Icons", () => SetViewMode(FileBrowserViewMode.Icons));
+			menu.AddMenuItem("List", () => SetViewMode(FileBrowserViewMode.List));
+			menu.AddMenuItem("Details", () => SetViewMode(FileBrowserViewMode.Details));
+			menu.AddSeparator();
+		});
+
+		// Add Go menu
+		MenuToolbar.AddMenuItem("Go", (menu) =>
+		{
+			menu.AddMenuItem("Back", () => BrowserView.GoBack());
+			menu.AddMenuItem("Forward", () => BrowserView.GoForward());
+			menu.AddMenuItem("Up", () => BrowserView.GoUp());
+			menu.AddSeparator();
+			menu.AddMenuItem("Desktop", () => BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP));
+			menu.AddMenuItem("My Computer", () => BrowserView.NavigateToVirtualPath($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}"));
+			menu.AddMenuItem("My Documents", () => BrowserView.NavigateToVirtualPath($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_DOCUMENTS}"));
+		});
+
+		// Add Help menu
+		MenuToolbar.AddMenuItem("Help", (menu) =>
+		{
+			menu.AddMenuItem("About Explorer", () => Log.Info("About Explorer"));
+		});
+	}
+
+	private void SetupCommandToolbar()
+	{
+		// Navigation buttons
+		CommandToolbar.AddButton("Back", "navigate_back", BrowserView.GoBack);
+		CommandToolbar.AddButton("Forward", "navigate_forward", () => Log.Info("Forward"));
+		CommandToolbar.AddButton("Up", "folder_up", BrowserView.GoUp);
+
+		// Separator
+		CommandToolbar.AddSeparator();
+
+		// Edit buttons
+		CommandToolbar.AddButton("Cut", "cut", () => Log.Info("Cut"));
+		CommandToolbar.AddButton("Copy", "copy", () => Log.Info("Copy"));
+		CommandToolbar.AddButton("Paste", "paste", () => Log.Info("Paste"));
+
+		// Separator
+		CommandToolbar.AddSeparator();
+
+		// Undo buttons
+		CommandToolbar.AddButton("Undo", "undo", () => Log.Info("Undo"));
+
+		// Separator
+		CommandToolbar.AddSeparator();
+
+		// Selection buttons
+		CommandToolbar.AddButton("Delete", "delete", () => Log.Info("Copy"));
+		CommandToolbar.AddButton("Properties", "properties", () => Log.Info("Paste"));
+
+		// Separator
+		CommandToolbar.AddSeparator();
+
+		// View dropdown
+		var viewDropdown = CommandToolbar.AddButton("Views", "view");
+	}
+
+	private void SetupAddressToolbar()
+	{
+		// Add address label
+		var addressLabel = new Label();
+		addressLabel.Text = "Address:";
+		addressLabel.AddClass("address-label");
+		AddressToolbar.AddItem(addressLabel);
+
+		// Add address input
+		AddressInput = new TextEntry();
+		AddressInput.AddClass("address-input");
+		AddressInput.Style.FlexGrow = 1;
+		AddressInput.Value = "Desktop";
+		AddressInput.AddEventListener("onchange", OnAddressChanged);
+		AddressToolbar.AddItem(AddressInput);
+
+		// Add Go button
+		var goButton = AddressToolbar.AddButton("Go", null, () => OnAddressChanged());
+		goButton.AddClass("go-button");
+	}
+
+	private void SetViewMode(FileBrowserViewMode mode)
+	{
+		if (BrowserView != null)
+		{
+			BrowserView.ViewMode = mode;
+
+			// Update button active states
+			foreach (var button in CommandToolbar.Children.OfType<Button>()
+				.Where(b => b.HasClass("view-button")))
+			{
+				bool isActive = (button.Text == mode.ToString());
+				button.SetClass("active", isActive);
+			}
+		}
+	}
+
+	private void OnAddressChanged()
+	{
+		string displayPath = AddressInput.Value;
+		if (string.IsNullOrEmpty(displayPath))
+			return;
+
+		// Try to convert the display path back to a virtual path
+		string virtualPath = ParseAddressInput(displayPath);
+		if (!string.IsNullOrEmpty(virtualPath))
+		{
+			BrowserView.NavigateToVirtualPath(virtualPath);
+		}
+	}
+
+	/// <summary>
+	/// Attempts to convert a user-entered address to a valid virtual path
+	/// </summary>
+	private string ParseAddressInput(string input)
+	{
+		// Check for simple cases first
+		if (input.Equals("Desktop", StringComparison.OrdinalIgnoreCase))
+			return VirtualFileSystem.DESKTOP;
+
+		if (input.Equals("My Computer", StringComparison.OrdinalIgnoreCase))
+			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}";
+
+		if (input.Equals("My Documents", StringComparison.OrdinalIgnoreCase))
+			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_DOCUMENTS}";
+
+		if (input.Equals("Recycle Bin", StringComparison.OrdinalIgnoreCase))
+			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.RECYCLE_BIN}";
+
+		// Check if input starts with a drive letter
+		if (input.Length >= 2 && input[1] == ':')
+		{
+			string driveLetter = input.Substring(0, 2);
+			string pathAfterDrive = input.Length > 2 ? input.Substring(2) : "";
+
+			// Drive path in My Computer
+			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{driveLetter}{pathAfterDrive}";
+		}
+
+		// Check if it's a special folder in My Computer
+		if (_virtualFileSystem.GetEntry($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{input}") != null)
+		{
+			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{input}";
+		}
+
+		// Check if it's a direct child of Desktop
+		if (_virtualFileSystem.GetEntry($"{VirtualFileSystem.DESKTOP}/{input}") != null)
+		{
+			return $"{VirtualFileSystem.DESKTOP}/{input}";
+		}
+
+		// If it's a full virtual path already, use it directly
+		if (_virtualFileSystem.GetEntry(input) != null)
+		{
+			return input;
+		}
+
+		// If we can't figure it out, just return the input for the virtual system to handle
+		return input;
+	}
+}

@@ -1,4 +1,5 @@
 @using Sandbox;
+@using System.Collections.Generic;
 @using Sandbox.UI;
 @using System.Linq;
 @using XGUI;
@@ -9,7 +10,7 @@
 		<div class="margin column">
 			<label>Select Global Theme:</label>
 			<combobox default=@(StyleName) @ref="ThemeComboBox">
-				@foreach (string i in FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss"))
+				@foreach (string i in GetAllThemes())
 				{
 					<option value="combo">@i.Replace(".scss", "")</option>
 				}
@@ -29,6 +30,45 @@
 	private StyleSheet CurrentStyle;
 	public string StyleName = "OliveGreen";
 	private int Loaded = 0;
+
+	List<string> GetAllThemes()
+	{
+		var themes = new List<string>();
+		var defaultThemes = new List<string>()
+		{
+			"Computer11.scss",
+			"Computer7.scss",
+			"Computer95.scss",
+			"ComputerXP.scss",
+			"Derma.scss",
+			"DermaBkup.scss",
+			"IMGUI.scss",
+			"OliveGreen.scss",
+			"SboxDark.scss",
+			"Simple.scss",
+			"ThinGrey.scss",
+			"Vapour.scss",
+			"XGUI.scss"
+		};
+		var themeFiles = FileSystem.Mounted.FindFile("/XGUI/DefaultStyles/", "*.scss");
+
+		var themelistasstring = "";
+
+		// Add default themes, then add any custom themes (dont add duplicates)
+		themes.AddRange(defaultThemes);
+		foreach (var file in themeFiles)
+		{
+			if (!themes.Contains(file))
+			{
+				themes.Add(file);
+			}
+			themelistasstring += $"\"{file}\",\n";
+		}
+
+		//Log.Info($"{themelistasstring}");
+
+		return themes;
+	}
 
 	public override void Tick()
 	{

@@ -5,7 +5,7 @@
 @attribute [StyleSheet("StartMenu.razor.scss")]
 @inherits Window
 
-<root title="Start" style="width:360px; height:auto; min-height:300px;"
+<root title="Start"
 	  isdraggable="false" isresizable="false" hastitlebar="false"
 	  class="startmenu">
 	<div class="window-content">
@@ -113,7 +113,7 @@
 			if (DocumentsButton != null) DocumentsButton.RemoveClass("open");
 			if (SettingsButton != null) SettingsButton.RemoveClass("open");
 			if (FindButton != null) FindButton.RemoveClass("open");
-			
+
 			activeMenu.Delete(true);
 			activeMenu = null;
 		}
@@ -124,11 +124,12 @@
 	{
 		CloseActiveMenu();
 
-		 // Add "open" class to the Programs button
+		// Add "open" class to the Programs button
 		ProgramsButton.AddClass("open");
 
 		// Create the Programs menu
-		activeMenu = new ContextMenu(ProgramsButton, Pane.PositionMode.Right, 0);
+		activeMenu = new ContextMenu(ProgramsButton, XGUIPopup.PositionMode.Right, 0);
+		activeMenu.AddClass("Large");
 
 		// Setup menu mouse tracking
 		SetupMenuMouseEvents(activeMenu); 
@@ -136,32 +137,37 @@
 		// Accessories
 		activeMenu.AddSubmenuItem("Accessories", (submenu) =>
 		{
+			submenu.AddClass("Large");
 			// Games submenu
 			submenu.AddSubmenuItem("Games", (submenu2) =>
 			{
+				submenu2.AddClass("Large");
 				submenu2.AddMenuItem("Minesweeper", () => Log.Info("Opening Minesweeper"));
 				submenu2.AddMenuItem("Solitaire", () => Log.Info("Opening Solitaire"));
 
 				// Nested submenu
 				submenu2.AddSubmenuItem("More Games", (submenu3) =>
 				{
+					submenu3.AddClass("Large");
 					submenu3.AddMenuItem("Pinball", () => Log.Info("Opening Pinball"));
 					submenu3.AddMenuItem("Hearts", () => Log.Info("Opening Hearts"));
 				}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 			}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 			submenu.AddMenuItem("Calculator", () => Log.Info("Opening Calculator"), iconurl: "XGUI/Resources/95/calculator_icon_16.png");
-			submenu.AddMenuItem("Notepad", () => Log.Info("Opening Notepad"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
+			submenu.AddMenuItem("Notepad", () => OpenPanelAndClose("notepad"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
 			submenu.AddMenuItem("Paint", () => Log.Info("Opening Paint"), iconurl: "XGUI/Resources/95/paint_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
 		activeMenu.AddSubmenuItem("Ultimate Doom for S&box95", (submenu) =>
 		{
+			submenu.AddClass("Large");
 			submenu.AddMenuItem("Doom95", () => OpenPanelAndClose("Wad"), iconurl: "XGUI/Resources/95/doom95_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
 		// XGUI
 		activeMenu.AddSubmenuItem("XGUI", (submenu) =>
 		{ 
+			submenu.AddClass("Large");
 			submenu.AddMenuItem("About XGUI", () => OpenPanelAndClose("About"), iconurl: "XGUI/Resources/95/about_xgui_icon_16.png");
 			submenu.AddMenuItem("Panel List", () => OpenPanelAndClose("panelselector"), iconurl: "XGUI/Resources/95/panel_list_icon_16.png");
 			submenu.AddMenuItem("Global Theme", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/95/global_theme_icon_16.png");
@@ -169,14 +175,16 @@
 
 		// Startup
 		activeMenu.AddSubmenuItem("Startup", (submenu) =>
-		{ 
+		{
+			submenu.AddClass("Large");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
-		activeMenu.AddMenuItem("Windows Explorer", () => Log.Info("Opening Explorer"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
+		activeMenu.AddMenuItem("Windows Explorer", () => OpenPanelAndClose("Explorer"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
 
 
 		activeMenu.AddSubmenuItem("Steam", (submenu) =>
 		{
+			submenu.AddClass("Large");
 			submenu.AddMenuItem("Steam", () => OpenPanelAndClose("GameLauncher"), iconurl: "XGUI/Resources/95/steam_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 	}
@@ -189,7 +197,9 @@
 		DocumentsButton.AddClass("open");
 
 		// Create the Documents menu
-		activeMenu = new ContextMenu(DocumentsButton, Pane.PositionMode.Right, 0);
+		activeMenu = new ContextMenu(DocumentsButton, XGUIPopup.PositionMode.Right, 0);
+		activeMenu.AddClass("Large");
+
 		SetupMenuMouseEvents(activeMenu);
 
 		// Add recently used documents
@@ -204,7 +214,9 @@
 		SettingsButton.AddClass("open");
 
 		// Create the Settings menu
-		activeMenu = new ContextMenu(SettingsButton, Pane.PositionMode.Right, 0);
+		activeMenu = new ContextMenu(SettingsButton, XGUIPopup.PositionMode.Right, 0);
+		activeMenu.AddClass("Large");
+
 		SetupMenuMouseEvents(activeMenu); 
 
 		// Taskbar submenu
@@ -235,7 +247,9 @@
 		FindButton.AddClass("open");
 
 		// Create the Search menu
-		activeMenu = new ContextMenu(FindButton, Pane.PositionMode.Right, 0);
+		activeMenu = new ContextMenu(FindButton, XGUIPopup.PositionMode.Right, 0);
+		activeMenu.AddClass("Large");
+
 		SetupMenuMouseEvents(activeMenu);
 
 		activeMenu.AddMenuItem("Files or Folders...", () => Log.Info("Search Files"));
@@ -252,7 +266,7 @@
 		HelpButton.AddClass("open");
 
 		// Create the Help menu
-		activeMenu = new ContextMenu(HelpButton, Pane.PositionMode.Right, 0);
+		activeMenu = new ContextMenu(HelpButton, XGUIPopup.PositionMode.Right, 0);
 		SetupMenuMouseEvents(activeMenu);
 
 		activeMenu.AddMenuItem("Help Topics", () => Log.Info("Opening Help Topics"));
@@ -268,7 +282,9 @@
 		RunButton.AddClass("open");
 
 		// Create a simple Run menu (typically opens a dialog in Windows 95)
-		activeMenu = new ContextMenu(RunButton, Pane.PositionMode.Right, 0);
+		activeMenu = new ContextMenu(RunButton, XGUIPopup.PositionMode.Right, 0);
+		activeMenu.AddClass("Large");
+
 		SetupMenuMouseEvents(activeMenu);
 
 		activeMenu.AddMenuItem("Command Prompt", () => Log.Info("Opening Command Prompt"));
@@ -283,7 +299,8 @@
 		ShutdownButton.AddClass("open");
 
 		// Create the shutdown menu
-		activeMenu = new ContextMenu(ShutdownButton, Pane.PositionMode.AboveLeft, 0);
+		activeMenu = new ContextMenu(ShutdownButton, XGUIPopup.PositionMode.AboveLeft, 0);
+		activeMenu.AddClass("Large");
 
 		activeMenu.AddMenuItem("Restart...", () => Log.Info("Restarting..."));
 		activeMenu.AddMenuItem("Shut Down...", () => Log.Info("Shutting down..."));
@@ -310,6 +327,7 @@
 	public void OpenPanel(string panel)
 	{
 		var a = TypeLibrary.GetType(panel).Create<Window>();
+		a.AutoFocus = true;
 		Game.ActiveScene.GetSystem<XGUISystem>().Panel.AddChild(a);
 		Game.ActiveScene.GetSystem<XGUISystem>().Panel.SetChildIndex(a, 0);
 		a.FocusWindow();

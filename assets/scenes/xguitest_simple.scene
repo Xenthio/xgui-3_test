@@ -136,7 +136,6 @@
       "Position": "232.9969,196.2164,-137.047",
       "Rotation": "-0.003418453,0.9901099,0.05987829,0.1268271",
       "Tags": "light_directional,light",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.DirectionalLight",
@@ -161,7 +160,6 @@
       "Flags": 0,
       "Name": "Cube",
       "Position": "-519.033,105.7715,44.93551",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -194,7 +192,6 @@
       "Flags": 0,
       "Name": "Box",
       "Position": "-893.9661,203.3416,47.35991",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.MeshComponent",
@@ -340,7 +337,6 @@
       "Flags": 0,
       "Name": "Cube",
       "Position": "-717.022,-59.56158,15.08252",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -373,7 +369,6 @@
       "Flags": 0,
       "Name": "Cube (1)",
       "Position": "-493.5223,-59.56158,5.216498",
-      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -442,7 +437,6 @@
       "Flags": 0,
       "Name": "ImmediateMode",
       "Position": "-768,-960,256",
-      "Enabled": true,
       "Components": [
         {
           "__type": "ImmediateModeTest",

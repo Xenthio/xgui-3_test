@@ -5,7 +5,7 @@
   "Ident": "xgui-3_test",
   "Schema": 1,
   "IncludeSourceFiles": false,
-  "Resources": "ui/*",
+  "Resources": "ui/*\nXGUI/*",
   "PackageReferences": [],
   "EditorReferences": null,
   "Mounts": null,
@@ -27,7 +27,7 @@
     "Public": true,
     "CsProjName": "",
     "HttpAllowList": null,
-    "StartupScene": "scenes/xguitest.scene",
+    "StartupScene": "scenes/xguitest_simple.scene",
     "LaunchMode": "Normal"
   }
 }
