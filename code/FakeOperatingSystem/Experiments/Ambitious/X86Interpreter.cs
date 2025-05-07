@@ -1916,7 +1916,7 @@ public class X86Interpreter
 			case 0x1: buttons = MessageBoxButtons.OKCancel; break;        // MB_OKCANCEL
 			case 0x2: buttons = MessageBoxButtons.AbortRetryIgnore; break;// MB_ABORTRETRYIGNORE
 			case 0x3: buttons = MessageBoxButtons.YesNoCancel; break;     // MB_YESNOCANCEL
-			case 0x4: buttons = MessageBoxButtons.YesNo; break;           // MB_YESNO
+			case 0x4: buttons = MessageBoxButtons.OK; break;           // MB_YESNO
 			case 0x5: buttons = MessageBoxButtons.RetryCancel; break;     // MB_RETRYCANCEL
 																		  // Add more if your MessageBox implementation supports them
 			default: buttons = MessageBoxButtons.OK; break;
