@@ -6,10 +6,12 @@ namespace FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 
 public class PELoader
 {
-	public bool Load( byte[] fileBytes, X86Core core, out uint entryPoint, out Dictionary<string, uint> imports )
+	public bool Load( byte[] fileBytes, X86Core core, out uint entryPoint,
+					 out Dictionary<string, uint> imports, out Dictionary<string, string> importSourceDlls )
 	{
 		entryPoint = 0;
 		imports = new();
+		importSourceDlls = new();
 
 		// 1. Check MZ header
 		if ( fileBytes.Length < 0x40 || fileBytes[0] != 'M' || fileBytes[1] != 'Z' )
@@ -51,12 +53,13 @@ public class PELoader
 		}
 
 		// 6. Parse imports
-		ParseImports( fileBytes, peOffset, imageBase, core, imports );
+		ParseImports( fileBytes, peOffset, imageBase, core, imports, importSourceDlls );
 
 		return true;
 	}
 
-	private void ParseImports( byte[] fileBytes, uint peOffset, uint imageBase, X86Core core, Dictionary<string, uint> imports )
+	private void ParseImports( byte[] fileBytes, uint peOffset, uint imageBase, X86Core core,
+							  Dictionary<string, uint> imports, Dictionary<string, string> importSourceDlls )
 	{
 		uint optHeaderOffset = peOffset + 24;
 		ushort magic = BitConverter.ToUInt16( fileBytes, (int)optHeaderOffset );
@@ -122,6 +125,7 @@ public class PELoader
 
 					// Assign a unique address for this import
 					imports[funcName] = nextApiId;
+					importSourceDlls[funcName] = dllName.ToUpper(); // Store which DLL each function comes from
 
 					Log.Info( $"Importing {funcName} from {dllName} at {nextApiId:X8}" );
 

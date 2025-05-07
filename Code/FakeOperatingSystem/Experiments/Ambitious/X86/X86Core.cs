@@ -15,7 +15,7 @@ public class X86Core
 	};
 
 	// Flags
-	public bool ZeroFlag, CarryFlag, SignFlag, OverflowFlag;
+	public bool ZeroFlag, CarryFlag, SignFlag, OverflowFlag, DirectionFlag, InterruptFlag, ParityFlag;
 
 	// Memory operations
 	public byte ReadByte( uint address )

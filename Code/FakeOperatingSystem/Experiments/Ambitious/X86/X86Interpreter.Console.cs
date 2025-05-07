@@ -30,7 +30,7 @@ public partial class X86Interpreter
 			};
 
 			// Load and parse the executable
-			if ( interpreter.LoadExecutable( fileBytes ) )
+			if ( interpreter.LoadExecutable( fileBytes, path ) )
 			{
 				// Optionally: register API functions or patch imports here
 

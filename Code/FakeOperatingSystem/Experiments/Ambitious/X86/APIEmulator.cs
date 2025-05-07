@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FakeDesktop;
+using System;
 using System.Collections.Generic;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
@@ -18,5 +19,21 @@ public abstract class APIEmulator
 		}
 		result = 0;
 		return false;
+	}
+
+	public static void ReportMissingExport( X86Interpreter interpreter, string functionName )
+	{
+		// Try to find which DLL the function should be in
+		string dllName = "UNKNOWN.DLL";
+		if ( interpreter.ImportSourceDlls.TryGetValue( functionName, out var sourceDll ) )
+		{
+			dllName = sourceDll;
+		}
+
+		interpreter.HaltWithMessageBox(
+			$"{interpreter.ExecutableName} - Entry Point Not Found",
+			$"The procedure entry point {functionName} could not be located in the dynamic link library {dllName}.",
+			MessageBoxIcon.Error
+		);
 	}
 }

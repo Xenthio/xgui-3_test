@@ -73,7 +73,7 @@ public class OpcodeFFHandler : IInstructionHandler
 				throw new InvalidOperationException( $"Unimplemented CALL [mod={mod}, rm={rm}]" );
 			}
 
-			Log.Info( $"OpcodeFFHandler: _imports = [{string.Join( ", ", _interpreter.Imports.Select( x => $"{x.Key}={x.Value:X8}" ) )}]" );
+			Log.Info( $"OpcodeFFHandler: import count = {_interpreter.Imports.Count},\n _imports = [{string.Join( ", ", _interpreter.Imports.Select( x => $"{x.Key}={x.Value:X8}" ) )}]" );
 			Log.Info( $"OpcodeFFHandler: Looking for target=0x{target:X8}" );
 			var api = _interpreter.Imports.FirstOrDefault( x => x.Value == target );
 			Log.Info( $"OpcodeFFHandler: api.Key = {api.Key}" );
@@ -86,15 +86,40 @@ public class OpcodeFFHandler : IInstructionHandler
 			if ( api.Key != null )
 			{
 				Log.Info( $"OpcodeFFHandler: Detected API call to {api.Key}" );
+				bool handled = false;
+
+				// SAVE the return address BEFORE API call (don't rely on the stack)
+				uint returnAddress = core.Registers["eip"];
+
+				// We still push it for compliance with calling convention
+				core.Push( core.Registers["eip"] );
+
 				foreach ( var emu in _interpreter.APIEmulators )
 				{
 					if ( emu.TryCall( api.Key, core, out var result ) )
 					{
 						core.Registers["eax"] = result;
-						core.Registers["eip"] = core.Pop(); // Return from API call
-						return;
+
+						// Use our saved return address instead of popping from stack
+						core.Registers["eip"] = returnAddress;
+
+						Log.Info( $"OpcodeFFHandler: Set EIP to 0x{returnAddress:X8}" );
+						handled = true;
+						break;
 					}
 				}
+
+				// If no emulator could handle this API call
+				if ( !handled )
+				{
+					APIEmulator.ReportMissingExport( _interpreter, api.Key );
+					core.Registers["eax"] = 0; // Default return value
+
+					// Use our saved return address
+					core.Registers["eip"] = returnAddress;
+				}
+
+				return;
 			}
 
 			// Normal call

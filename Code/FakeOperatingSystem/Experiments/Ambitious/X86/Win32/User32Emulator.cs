@@ -32,23 +32,38 @@ public class User32Emulator : APIEmulator
 	public User32Emulator()
 	{
 		Log.Info( "User32Emulator: Registering MessageBoxA" );
+
+		// Based on the stack dump, this specific executable uses a custom order:
+		// HWND, unknown, lpCaption, lpText, style
 		_apiTable["MessageBoxA"] = core =>
 		{
-			// Example: pop params, show message, return 1
-			uint style = core.Pop();
-			uint hwnd = core.Pop();
-			uint textPtr = core.Pop();
-			uint titlePtr = core.Pop();
-			string text = core.ReadString( textPtr );
-			string title = core.ReadString( titlePtr );
+			// Debug the parameters to help diagnose the issue
+			Log.Info( $"MessageBoxA: ESP = 0x{core.Registers["esp"]:X8}" );
+			for ( uint i = 0; i < 6; i++ )
+			{
+				uint param = core.ReadDword( core.Registers["esp"] + (i * 4) );
+				Log.Info( $"  Stack[{i * 4}] = 0x{param:X8}" );
+			}
 
-			var icon = MessageBoxIcon.None;
-			var buttons = MessageBoxButtons.OK;
-			ParseMessageBoxStyle( style, out icon, out buttons );
+			uint hWnd = core.ReadDword( core.Registers["esp"] + 4 );
+			uint unknown = core.ReadDword( core.Registers["esp"] + 8 );
+			uint textPtr = core.ReadDword( core.Registers["esp"] + 12 );
+			uint captionPtr = core.ReadDword( core.Registers["esp"] + 16 );
+			uint style = core.ReadDword( core.Registers["esp"] + 20 );
 
-			MessageBoxUtility.ShowCustom( text, title, icon, buttons );
-			// TODO: Hook to UI
-			return 1;
+			string text = textPtr != 0 ? core.ReadString( textPtr ) : "";
+			string caption = captionPtr != 0 ? core.ReadString( captionPtr ) : "";
+
+			Log.Info( $"MessageBoxA(hWnd=0x{hWnd:X8}, text=\"{text}\", caption=\"{caption}\", style=0x{style:X8})" );
+
+			// Parse style and show the message box
+			ParseMessageBoxStyle( style, out var icon, out var buttons );
+			MessageBoxUtility.ShowCustom( text, caption, icon, buttons );
+
+			// Clean up stack (stdcall) - there are 5 parameters in this custom call
+			core.Registers["esp"] += 20;
+
+			return 1; // IDOK
 		};
 	}
 }
