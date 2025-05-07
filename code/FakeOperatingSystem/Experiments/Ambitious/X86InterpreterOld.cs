@@ -473,7 +473,7 @@ public class X86Interpreter
 
 		// Main execution loop
 		int instructionCount = 0;
-		int maxInstructions = 10000; // Limit to prevent infinite loops
+		int maxInstructions = 100000; // Limit to prevent infinite loops
 		int zeroCount = 0; // Count consecutive zero bytes
 
 		try

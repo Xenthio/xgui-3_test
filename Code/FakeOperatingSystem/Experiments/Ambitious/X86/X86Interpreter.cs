@@ -1,4 +1,5 @@
-﻿using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
+﻿using FakeDesktop;
+using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 using System.Collections.Generic;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
@@ -10,6 +11,9 @@ public partial class X86Interpreter
 	public readonly List<APIEmulator> APIEmulators = new();
 	public Dictionary<string, uint> Imports = new();
 	private uint _entryPoint;
+
+	public delegate void MessageBoxHandler( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore );
+	public event MessageBoxHandler OnHaltWithMessageBox;
 
 	public X86Interpreter()
 	{
@@ -38,14 +42,20 @@ public partial class X86Interpreter
 		{
 			try
 			{
-				InstructionSet.ExecuteNext( Core );
+				InstructionSet.ExecuteNext( Core, this );
 			}
 			catch ( System.Exception ex )
 			{
 				// Optionally log or handle errors
 				Log.Error( $"Execution error: {ex.Message}" );
-				//break;
+				break; // Exit on errors
 			}
 		}
+	}
+
+	public void HaltWithMessageBox( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error )
+	{
+		OnHaltWithMessageBox?.Invoke( title, message, icon, MessageBoxButtons.AbortRetryIgnore );
+		throw new System.Exception( $"{title}: {message}" );
 	}
 }

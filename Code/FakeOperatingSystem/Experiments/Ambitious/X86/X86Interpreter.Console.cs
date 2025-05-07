@@ -1,4 +1,5 @@
-﻿using Sandbox;
+﻿using FakeDesktop;
+using Sandbox;
 using System;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
@@ -23,6 +24,10 @@ public partial class X86Interpreter
 
 			// Create the interpreter
 			var interpreter = new X86Interpreter();
+			interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
+			{
+				MessageBoxUtility.ShowCustom( message, title, icon, MessageBoxButtons.AbortRetryIgnore );
+			};
 
 			// Load and parse the executable
 			if ( interpreter.LoadExecutable( fileBytes ) )
