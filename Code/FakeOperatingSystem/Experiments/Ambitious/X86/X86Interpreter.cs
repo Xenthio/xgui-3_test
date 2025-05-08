@@ -24,6 +24,8 @@ public partial class X86Interpreter
 		APIEmulators.Add( new Kernel32Emulator() );
 
 		// Register all instruction handlers
+		InstructionSet.RegisterHandler( new Handlers.AddRm32R32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AddR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovRegImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.PushImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.PushImm8Handler() );
@@ -50,8 +52,27 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.ExtendedOpcodeHandler() );
 		InstructionSet.RegisterHandler( new Handlers.ShiftRotateHandler() );
 		InstructionSet.RegisterHandler( new Handlers.OperandSizePrefixHandler() );
-		InstructionSet.RegisterHandler( new Handlers.TestHandler() );
+		InstructionSet.RegisterHandler( new Handlers.TestRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.HltHandler() );
+		InstructionSet.RegisterHandler( new Handlers.MovRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovR8Rm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.SubRm32R32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.SubR32Rm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AdcRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.CdqHandler() );
+		InstructionSet.RegisterHandler( new Handlers.PortIOHandler() );
+		InstructionSet.RegisterHandler( new Handlers.LesHandler() );
+		InstructionSet.RegisterHandler( new Handlers.BCDArithmeticHandler() );
+		InstructionSet.RegisterHandler( new Handlers.AndAlImm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.XchgHandler() );
+		InstructionSet.RegisterHandler( new Handlers.LoopHandler() );
+		InstructionSet.RegisterHandler( new Handlers.TestEaxImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.StringOperationsHandler() );
+		InstructionSet.RegisterHandler( new Handlers.TestRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.XorRm8R8Handler() );
+
+
+
 
 		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode81Handler() );
@@ -79,6 +100,13 @@ public partial class X86Interpreter
 
 		for ( int i = 0; i < maxInstructions; i++ )
 		{
+			// Check for program exit
+			if ( Core.Registers["eip"] == 0xFFFFFFFF )
+			{
+				Log.Info( "Program execution completed via RET" );
+				break;
+			}
+
 			try
 			{
 				InstructionSet.ExecuteNext( Core, this );
@@ -91,6 +119,62 @@ public partial class X86Interpreter
 			}
 		}
 	}
+
+	public void DumpMemory( uint start, uint length )
+	{
+		var memdump = "";
+		for ( uint i = 0; i < length; i++ )
+		{
+			byte b = Core.ReadByte( start + i );
+			memdump += $"{b:X2} ";
+			if ( (i + 1) % 16 == 0 )
+			{
+				memdump += "\n";
+			}
+		}
+		Log.Info( memdump );
+	}
+
+	public void DumpMemoryAsString( uint start, uint length )
+	{
+		var memdump = "";
+		for ( uint i = 0; i < length; i++ )
+		{
+			byte b = Core.ReadByte( start + i );
+			if ( b >= 32 && b <= 126 ) // Printable ASCII range
+			{
+				memdump += (char)b;
+			}
+			else
+			{
+				memdump += ".";
+			}
+			if ( (i + 1) % 16 == 0 )
+			{
+				memdump += "\n";
+			}
+		}
+		Log.Info( memdump );
+	}
+
+	public string DumpRegisters()
+	{
+		var dump = new System.Text.StringBuilder();
+		dump.AppendLine( "=== Register Values ===" );
+		dump.AppendLine( $"EAX: 0x{Core.Registers["eax"]:X8}" );
+		dump.AppendLine( $"EBX: 0x{Core.Registers["ebx"]:X8}" );
+		dump.AppendLine( $"ECX: 0x{Core.Registers["ecx"]:X8}" );
+		dump.AppendLine( $"EDX: 0x{Core.Registers["edx"]:X8}" );
+		dump.AppendLine( $"ESI: 0x{Core.Registers["esi"]:X8}" );
+		dump.AppendLine( $"EDI: 0x{Core.Registers["edi"]:X8}" );
+		dump.AppendLine( $"EBP: 0x{Core.Registers["ebp"]:X8}" );
+		dump.AppendLine( $"ESP: 0x{Core.Registers["esp"]:X8}" );
+		dump.AppendLine( $"EIP: 0x{Core.Registers["eip"]:X8}" );
+		dump.AppendLine( "=== Flags ===" );
+		dump.AppendLine( $"ZF: {Core.ZeroFlag}, SF: {Core.SignFlag}, CF: {Core.CarryFlag}, OF: {Core.OverflowFlag}" );
+		return dump.ToString();
+	}
+
 
 	public void HaltWithMessageBox( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore )
 	{

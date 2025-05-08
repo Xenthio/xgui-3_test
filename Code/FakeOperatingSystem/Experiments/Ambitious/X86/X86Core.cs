@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
 
@@ -7,6 +7,11 @@ public class X86Core
 {
 	public const int PageSize = 4096;
 	private readonly Dictionary<uint, byte[]> _memoryPages = new();
+	private readonly Dictionary<uint, MemoryProtection> _pageProtection = new();
+
+	// Stack frame information tracking - still useful for debugging
+	private readonly Dictionary<uint, uint> _stackFrameInfo = new();
+
 	public readonly Dictionary<string, uint> Registers = new()
 	{
 		{ "eax", 0 }, { "ebx", 0 }, { "ecx", 0 }, { "edx", 0 },
@@ -17,9 +22,27 @@ public class X86Core
 	// Flags
 	public bool ZeroFlag, CarryFlag, SignFlag, OverflowFlag, DirectionFlag, InterruptFlag, ParityFlag;
 
-	// Memory operations
+	// Memory protection flags
+	public enum MemoryProtection
+	{
+		ReadWrite,  // Normal data pages
+		ReadOnly,   // Code pages
+		ReadExecute // Code that can be executed
+	}
+
+	// Stack layout tracking
+	private uint _stackBase = 0x00080000; // Initial ESP
+
+	// Check if address is on the stack - useful for debugging
+	public bool IsStackAddress( uint address )
+	{
+		return address >= 0x00070000 && address < 0x00090000;
+	}
+
+	// Memory operations - no correction, just like a real CPU
 	public byte ReadByte( uint address )
 	{
+		// Direct memory access with no translation
 		uint page = address & ~(uint)(PageSize - 1);
 		int offset = (int)(address & (PageSize - 1));
 		if ( !_memoryPages.TryGetValue( page, out var data ) )
@@ -33,6 +56,16 @@ public class X86Core
 	public void WriteByte( uint address, byte value )
 	{
 		uint page = address & ~(uint)(PageSize - 1);
+
+		// Check if this is a protected page
+		if ( _pageProtection.TryGetValue( page, out var protection ) &&
+			protection == MemoryProtection.ReadExecute )
+		{
+			Log.Warning( $"MEMORY PROTECTION ERROR: Attempt to write to code page at 0x{address:X8}" );
+			return; // Prevent the write
+		}
+
+		// Direct memory access with no translation
 		int offset = (int)(address & (PageSize - 1));
 		if ( !_memoryPages.TryGetValue( page, out var data ) )
 		{
@@ -73,12 +106,64 @@ public class X86Core
 		return value;
 	}
 
+	// Track function entry (CALL instruction)
+	public void EnterFunction( uint returnAddress )
+	{
+		uint currentESP = Registers["esp"];
+		_stackFrameInfo[currentESP] = returnAddress;
+		Log.Info( $"Function entered: ESP=0x{currentESP:X8}, EBP=0x{Registers["ebp"]:X8}, Return=0x{returnAddress:X8}" );
+	}
+
+	// Track stack frame setup (PUSH EBP, MOV EBP,ESP)
+	public void SetupStackFrame()
+	{
+		uint oldEBP = Registers["ebp"];
+		Registers["ebp"] = Registers["esp"];
+		Log.Info( $"Stack frame setup: New EBP=0x{Registers["ebp"]:X8}, Old EBP=0x{oldEBP:X8}" );
+	}
+
+	// Track function exit (RET instruction)
+	public void ExitFunction()
+	{
+		Log.Info( $"Function exited: ESP=0x{Registers["esp"]:X8}, EBP=0x{Registers["ebp"]:X8}" );
+	}
+
 	public string ReadString( uint address )
 	{
-		var bytes = new List<byte>();
-		byte b;
-		while ( (b = ReadByte( address++ )) != 0 )
-			bytes.Add( b );
-		return Encoding.ASCII.GetString( bytes.ToArray() );
+		// Direct memory access with no translation
+		if ( address == 0 )
+			return "";
+
+		var result = new System.Text.StringBuilder();
+		int maxLength = 1000; // Safety limit
+
+		try
+		{
+			for ( int i = 0; i < maxLength; i++ )
+			{
+				byte b = ReadByte( address + (uint)i );
+				if ( b == 0 )
+					break;
+
+				result.Append( (char)b );
+			}
+
+			return result.ToString();
+		}
+		catch ( Exception ex )
+		{
+			Log.Error( $"ReadString failed at 0x{address:X8}: {ex.Message}" );
+			return "";
+		}
+	}
+
+	// Mark pages as code during PE loading
+	public void MarkMemoryAsCode( uint address, uint size )
+	{
+		for ( uint i = 0; i < size; i += PageSize )
+		{
+			uint page = (address + i) & ~(uint)(PageSize - 1);
+			_pageProtection[page] = MemoryProtection.ReadExecute;
+		}
 	}
 }

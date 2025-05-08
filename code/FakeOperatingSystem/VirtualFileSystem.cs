@@ -1,4 +1,5 @@
-﻿using Sandbox;
+﻿using FakeOperatingSystem.Experiments.Ambitious.X86;
+using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -741,6 +742,22 @@ public class VirtualFileSystem
 			{
 				string content = _realFileSystem.ReadAllText( path );
 				program = ProgramDescriptor.FromFileContent( content );
+			}
+
+			// If that fails, use x86 interpreter to execute the file
+			if ( program == null )
+			{
+				var interpreter = new X86Interpreter();
+
+				interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
+				{
+					MessageBoxUtility.ShowCustom( message, title, icon, MessageBoxButtons.AbortRetryIgnore );
+				};
+				byte[] fileBytes = _realFileSystem.ReadAllBytes( path ).ToArray();
+				if ( interpreter.LoadExecutable( fileBytes, path ) )
+				{
+					interpreter.Execute();
+				}
 			}
 
 			return program;

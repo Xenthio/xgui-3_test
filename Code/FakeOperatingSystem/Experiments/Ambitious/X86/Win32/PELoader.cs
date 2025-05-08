@@ -42,12 +42,36 @@ public class PELoader
 			uint virtualSize = BitConverter.ToUInt32( fileBytes, (int)s + 8 );
 			uint rawDataPtr = BitConverter.ToUInt32( fileBytes, (int)s + 20 );
 			uint rawDataSize = BitConverter.ToUInt32( fileBytes, (int)s + 16 );
+			string sectionName = Encoding.ASCII.GetString( fileBytes, (int)s, 8 ).TrimEnd( '\0' );
+			uint sectionFlags = BitConverter.ToUInt32( fileBytes, (int)s + 36 );
 
-			for ( uint j = 0; j < Math.Min( virtualSize, rawDataSize ); j++ )
+			// Copy raw data from file
+			for ( uint j = 0; j < rawDataSize; j++ )
 			{
 				if ( rawDataPtr + j < fileBytes.Length )
-				{
 					core.WriteByte( imageBase + virtualAddress + j, fileBytes[rawDataPtr + j] );
+			}
+			// Zero-fill the rest of the virtual size
+			for ( uint j = rawDataSize; j < virtualSize; j++ )
+			{
+				core.WriteByte( imageBase + virtualAddress + j, 0 );
+			}
+
+			// Mark memory with appropriate protection
+			if ( (sectionFlags & 0x20) != 0 ) // Contains code (IMAGE_SCN_CNT_CODE)
+			{
+				bool isWriteable = (sectionFlags & 0x80000000) != 0; // IMAGE_SCN_MEM_WRITE
+
+				if ( isWriteable )
+				{
+					// Section contains both code AND is writeable
+					Log.Info( $"Section {sectionName} at 0x{imageBase + virtualAddress:X8} is both code and writeable" );
+					// Don't mark as code-only if it's meant to be written to
+				}
+				else
+				{
+					// Code-only section, mark as read-execute only
+					core.MarkMemoryAsCode( imageBase + virtualAddress, virtualSize );
 				}
 			}
 		}

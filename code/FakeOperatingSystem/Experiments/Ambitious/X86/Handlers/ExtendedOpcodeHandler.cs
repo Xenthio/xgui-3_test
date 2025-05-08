@@ -33,6 +33,10 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 				Log.Info( "16-bit CMOVNE (0x66 0x0F 0x45) instruction (stub implementation)" );
 				break;
 
+			case 0x4E: // CMOVLE r32, r/m32 - Conditional Move if Less or Equal
+				HandleConditionalMove( core, secondByte, (core.ZeroFlag || (core.SignFlag != core.OverflowFlag)) );
+				break;
+
 			case 0x57: // XORPS xmm1, xmm2/m128
 					   // This is an SSE instruction that XORs packed single-precision values
 					   // For most applications, we can just skip it as it's often used for initialization
@@ -194,6 +198,42 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 			// Handle memory operands if needed
 			Log.Warning( "IMUL with memory operand not implemented" );
 			core.Registers["eip"] += 3;
+		}
+	}
+
+	private void HandleConditionalMove( X86Core core, byte opcode, bool condition )
+	{
+		uint eip = core.Registers["eip"];
+		byte modrm = core.ReadByte( eip + 2 );
+		byte mod = (byte)(modrm >> 6);
+		byte reg = (byte)((modrm >> 3) & 0x7);
+		byte rm = (byte)(modrm & 0x7);
+
+		string destReg = X86AddressingHelper.GetRegisterName( reg );
+
+		if ( condition )
+		{
+			if ( mod == 3 ) // Register source
+			{
+				string sourceReg = X86AddressingHelper.GetRegisterName( rm );
+				core.Registers[destReg] = core.Registers[sourceReg];
+			}
+			else // Memory source
+			{
+				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+				core.Registers[destReg] = core.ReadDword( effectiveAddress );
+			}
+		}
+
+		// Advance EIP regardless of whether the condition was true
+		if ( mod == 3 )
+		{
+			core.Registers["eip"] += 3;
+		}
+		else
+		{
+			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			core.Registers["eip"] += 2 + length;
 		}
 	}
 

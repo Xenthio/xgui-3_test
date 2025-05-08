@@ -62,7 +62,7 @@ public class XorHandler : IInstructionHandler
 		if ( rm != 4 ) // Not SIB
 			ea = core.Registers[GetRegisterName( rm )];
 		else
-			throw new NotImplementedException( "SIB addressing not implemented" );
+			throw new NotImplementedException( "XorHandler: SIB addressing not implemented" );
 
 		// Displacement
 		if ( mod == 1 ) // 8-bit displacement

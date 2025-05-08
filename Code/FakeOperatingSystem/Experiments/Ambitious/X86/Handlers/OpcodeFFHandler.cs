@@ -23,10 +23,88 @@ public class OpcodeFFHandler : IInstructionHandler
 		byte mod = (byte)(modrm >> 6);
 		byte rm = (byte)(modrm & 0x7);
 
-		if ( reg == 2 ) // CALL r/m32
+		Log.Info( $"OpcodeFFHandler: opcode=0xFF, modrm=0x{modrm:X2}, reg={reg}, mod={mod}, rm={rm}" );
+
+		if ( reg == 0 ) // INC r/m32
+		{
+			if ( mod == 3 ) // Register operand
+			{
+				string destReg = GetRegisterName( rm );
+				uint value = core.Registers[destReg];
+
+				// Perform increment
+				uint result = value + 1;
+				core.Registers[destReg] = result;
+
+				// Set flags (CF not affected by INC)
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80000000) != 0;
+				core.OverflowFlag = value == 0x7FFFFFFF; // Overflow if went from max positive to negative
+
+				core.Registers["eip"] += 2;
+			}
+			else // Memory operand
+			{
+				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+				uint value = core.ReadDword( effectiveAddress );
+
+				// Perform increment
+				uint result = value + 1;
+				core.WriteDword( effectiveAddress, result );
+
+				// Set flags (CF not affected by INC)
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80000000) != 0;
+				core.OverflowFlag = value == 0x7FFFFFFF; // Overflow if went from max positive to negative
+
+				// Advance EIP
+				uint length = X86AddressingHelper.GetInstructionLength( modrm );
+				core.Registers["eip"] += length;
+			}
+		}
+		else if ( reg == 1 ) // DEC r/m32
+		{
+			if ( mod == 3 ) // Register operand
+			{
+				string destReg = GetRegisterName( rm );
+				uint value = core.Registers[destReg];
+
+				// Perform decrement
+				uint result = value - 1;
+				core.Registers[destReg] = result;
+
+				// Set flags (CF not affected by DEC)
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80000000) != 0;
+				core.OverflowFlag = value == 0x80000000; // Overflow if went from min negative to positive
+
+				core.Registers["eip"] += 2;
+			}
+			else // Memory operand
+			{
+				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+				uint value = core.ReadDword( effectiveAddress );
+
+				// Perform decrement
+				uint result = value - 1;
+				core.WriteDword( effectiveAddress, result );
+
+				// Set flags (CF not affected by DEC)
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80000000) != 0;
+				core.OverflowFlag = value == 0x80000000; // Overflow if went from min negative to positive
+
+				// Advance EIP
+				uint length = X86AddressingHelper.GetInstructionLength( modrm );
+				core.Registers["eip"] += length;
+			}
+		}
+		else if ( reg == 2 ) // CALL r/m32
 		{
 			uint target;
-			if ( mod == 3 )
+
+			// Calculate target address based on ModRM
+			if ( mod == 3 ) // Register operand
 			{
 				string regName = GetRegisterName( rm );
 				target = core.Registers[regName];
@@ -70,29 +148,26 @@ public class OpcodeFFHandler : IInstructionHandler
 			}
 			else
 			{
+				// Handle other addressing modes
 				throw new InvalidOperationException( $"Unimplemented CALL [mod={mod}, rm={rm}]" );
 			}
 
-			Log.Info( $"OpcodeFFHandler: import count = {_interpreter.Imports.Count},\n _imports = [{string.Join( ", ", _interpreter.Imports.Select( x => $"{x.Key}={x.Value:X8}" ) )}]" );
-			Log.Info( $"OpcodeFFHandler: Looking for target=0x{target:X8}" );
-			var api = _interpreter.Imports.FirstOrDefault( x => x.Value == target );
-			Log.Info( $"OpcodeFFHandler: api.Key = {api.Key}" );
-
-			Log.Info( $"OpcodeFFHandler: CALL target=0x{target:X8}" );
-
-			// Push return address
+			// CALL instruction behavior: push return address, jump to target
 			core.Push( core.Registers["eip"] );
 
+			// Track function entry for debugging purposes - not real CPU behavior
+			core.EnterFunction( core.Registers["eip"] );
+
+			// API emulation can still work at the emulator level
+			var api = _interpreter.Imports.FirstOrDefault( x => x.Value == target );
 			if ( api.Key != null )
 			{
+				// API emulation - emulator specific
 				Log.Info( $"OpcodeFFHandler: Detected API call to {api.Key}" );
 				bool handled = false;
 
-				// SAVE the return address BEFORE API call (don't rely on the stack)
+				// SAVE the return address BEFORE API call
 				uint returnAddress = core.Registers["eip"];
-
-				// We still push it for compliance with calling convention
-				core.Push( core.Registers["eip"] );
 
 				foreach ( var emu in _interpreter.APIEmulators )
 				{
@@ -100,7 +175,7 @@ public class OpcodeFFHandler : IInstructionHandler
 					{
 						core.Registers["eax"] = result;
 
-						// Use our saved return address instead of popping from stack
+						// Use our saved return address
 						core.Registers["eip"] = returnAddress;
 
 						Log.Info( $"OpcodeFFHandler: Set EIP to 0x{returnAddress:X8}" );
@@ -121,13 +196,61 @@ public class OpcodeFFHandler : IInstructionHandler
 
 				return;
 			}
+			else
+			{
+				// Normal CALL - just jump to target
+				core.Registers["eip"] = target;
+			}
+		}
+		else if ( reg == 6 ) // PUSH r/m32
+		{
+			uint value;
 
-			// Normal call
-			core.Registers["eip"] = target;
+			if ( mod == 3 ) // Register operand
+			{
+				string regName = GetRegisterName( rm );
+				value = core.Registers[regName];
+				core.Registers["eip"] += 2;
+			}
+			else // Memory operand
+			{
+				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+				value = core.ReadDword( effectiveAddress );
+				uint length = X86AddressingHelper.GetInstructionLength( modrm );
+				core.Registers["eip"] += length;
+			}
+
+			// Push the value onto the stack
+			core.Push( value );
+		}
+		else if ( reg == 7 ) // Technically undefined in standard x86
+		{
+			if ( mod == 3 && rm == 7 && modrm == 0xFF ) // FF FF pattern
+			{
+				// This specific pattern (0xFF 0xFF) appears to be used in Windows executables
+				// and is executed without error on real CPUs. Treat as NOP.
+				Log.Info( "Handling undefined instruction 0xFF 0xFF (FF /7 EDI) as NOP" );
+				core.Registers["eip"] += 2;
+			}
+			else
+			{
+				// Other FF /7 variants - also treat as NOP but log differently
+				Log.Warning( $"Encountered unusual instruction: 0xFF /7 (modrm=0x{modrm:X2}). Treating as NOP." );
+
+				if ( mod == 3 ) // Register operand
+				{
+					core.Registers["eip"] += 2;
+				}
+				else // Memory operand
+				{
+					uint length = X86AddressingHelper.GetInstructionLength( modrm );
+					core.Registers["eip"] += length;
+				}
+			}
 		}
 		else
 		{
-			throw new InvalidOperationException( $"Unimplemented 0xFF /{reg}" );
+			throw new InvalidOperationException( $"Unimplemented 0xFF /{reg} (modrm=0x{modrm:X2}, mod={mod}, rm={rm})" );
 		}
 	}
 

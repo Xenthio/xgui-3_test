@@ -5,6 +5,8 @@ public class FlagInstructionHandler : IInstructionHandler
 	public bool CanHandle( byte opcode ) =>
 		opcode == 0xF8 ||  // CLC - Clear Carry Flag
 		opcode == 0xF9 ||  // STC - Set Carry Flag
+		opcode == 0xFA ||  // CLI - Clear Interrupt Flag
+		opcode == 0xFB ||  // STI - Set Interrupt Flag
 		opcode == 0xFC ||  // CLD - Clear Direction Flag
 		opcode == 0xFD;    // STD - Set Direction Flag
 
@@ -23,12 +25,20 @@ public class FlagInstructionHandler : IInstructionHandler
 				core.CarryFlag = true;
 				break;
 
+			case 0xFA: // CLI
+				core.InterruptFlag = false;
+				break;
+
+			case 0xFB: // STI
+				core.InterruptFlag = true;
+				break;
+
 			case 0xFC: // CLD
-					   // Direction flag not modeled in this emulator
+				core.DirectionFlag = false;
 				break;
 
 			case 0xFD: // STD
-					   // Direction flag not modeled in this emulator
+				core.DirectionFlag = true;
 				break;
 		}
 

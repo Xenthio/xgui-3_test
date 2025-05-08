@@ -38,6 +38,13 @@ public partial class X86Interpreter
 				interpreter.Execute();
 				//Log.Info( interpreter.DumpRegisters() );
 				Log.Info( "Execution completed successfully!" );
+				interpreter.DumpMemory( 0x00401000, 0x0300 ); // Example memory dump
+				interpreter.DumpMemoryAsString( 0x00401000, 0x0300 ); // Example memory dump
+				interpreter.DumpMemory( 0x00402000, 0x0300 ); // Example memory dump
+				interpreter.DumpMemoryAsString( 0x00402000, 0x0300 ); // Example memory dump
+				interpreter.DumpMemory( 0x00602000, 0x0300 ); // Example memory dump
+				interpreter.DumpMemoryAsString( 0x00602000, 0x0300 ); // Example memory dump
+				Log.Info( interpreter.DumpRegisters() );
 			}
 			else
 			{
