@@ -1,3 +1,4 @@
+using Sandbox;
 using System;
 using System.Collections.Generic;
 
@@ -53,18 +54,25 @@ public class X86Core
 		return data[offset];
 	}
 
-	public void WriteByte( uint address, byte value )
+	/// <summary>
+	/// Write a byte to memory at the specified address.
+	/// </summary>
+	/// <param name="address"></param>
+	/// <param name="value"></param>
+	/// <param name="protect">Overrides protection, used for loading executables</param>
+	public void WriteByte( uint address, byte value, bool protect = true )
 	{
 		uint page = address & ~(uint)(PageSize - 1);
 
 		// Check page protection
 		if ( _pageProtection.TryGetValue( page, out var protection ) )
 		{
-			if ( protection == MemoryProtection.ReadOnly ||
-				 protection == MemoryProtection.ReadExecute )
+			if ( (protection == MemoryProtection.ReadOnly ||
+				 protection == MemoryProtection.ReadExecute) && protect )
 			{
 				throw new AccessViolationException(
-					$"Write access violation at 0x{address:X8}" );
+					$"Write access violation at 0x{address:X8} (EIP: {Registers["eip"]:X8}" );
+				//Log.Warning( $"Write access violation at 0x{address:X8} (EIP: {Registers["eip"]:X8})" );
 			}
 		}
 
@@ -87,22 +95,24 @@ public class X86Core
 		);
 	}
 
-	public void WriteDword( uint address, uint value )
+	public void WriteDword( uint address, uint value, bool protect = true )
 	{
-		WriteByte( address, (byte)(value & 0xFF) );
-		WriteByte( address + 1, (byte)((value >> 8) & 0xFF) );
-		WriteByte( address + 2, (byte)((value >> 16) & 0xFF) );
-		WriteByte( address + 3, (byte)((value >> 24) & 0xFF) );
+		WriteByte( address, (byte)(value & 0xFF), protect: false );
+		WriteByte( address + 1, (byte)((value >> 8) & 0xFF), protect: false );
+		WriteByte( address + 2, (byte)((value >> 16) & 0xFF), protect: false );
+		WriteByte( address + 3, (byte)((value >> 24) & 0xFF), protect: false );
 	}
 
 	public void Push( uint value )
 	{
+		LogVerbose( $"Pushing value: 0x{value:X8} to stack at ESP=0x{Registers["esp"]:X8}" );
 		Registers["esp"] -= 4;
 		WriteDword( Registers["esp"], value );
 	}
 
 	public uint Pop()
 	{
+		LogVerbose( $"Popping value from stack at ESP=0x{Registers["esp"]:X8}" );
 		uint value = ReadDword( Registers["esp"] );
 		Registers["esp"] += 4;
 		return value;
@@ -113,7 +123,7 @@ public class X86Core
 	{
 		uint currentESP = Registers["esp"];
 		_stackFrameInfo[currentESP] = returnAddress;
-		Log.Info( $"Function entered: ESP=0x{currentESP:X8}, EBP=0x{Registers["ebp"]:X8}, EIP=0x{Registers["eip"]:X8}, Return=0x{returnAddress:X8}" );
+		LogVerbose( $"Function entered: ESP=0x{currentESP:X8}, EBP=0x{Registers["ebp"]:X8}, EIP=0x{Registers["eip"]:X8}, Return=0x{returnAddress:X8}" );
 	}
 
 	// Track stack frame setup (PUSH EBP, MOV EBP,ESP)
@@ -121,13 +131,13 @@ public class X86Core
 	{
 		uint oldEBP = Registers["ebp"];
 		Registers["ebp"] = Registers["esp"];
-		Log.Info( $"Stack frame setup: New EBP=0x{Registers["ebp"]:X8}, Old EBP=0x{oldEBP:X8}" );
+		LogVerbose( $"Stack frame setup: New EBP=0x{Registers["ebp"]:X8}, Old EBP=0x{oldEBP:X8}" );
 	}
 
 	// Track function exit (RET instruction)
 	public void ExitFunction()
 	{
-		Log.Info( $"Function exited: ESP=0x{Registers["esp"]:X8}, EBP=0x{Registers["ebp"]:X8}, EIP=0x{Registers["eip"]:X8}" );
+		LogVerbose( $"Function exited: ESP=0x{Registers["esp"]:X8}, EBP=0x{Registers["ebp"]:X8}, EIP=0x{Registers["eip"]:X8}" );
 	}
 
 	public string ReadString( uint address )
@@ -167,5 +177,14 @@ public class X86Core
 			uint page = (address + i) & ~(uint)(PageSize - 1);
 			_pageProtection[page] = MemoryProtection.ReadExecute;
 		}
+	}
+
+	[ConVar( "xguitest_x86_verbose" )]
+	public static bool VerboseLogging { get; set; } = false;
+	public void LogVerbose( string message )
+	{
+		if ( !VerboseLogging )
+			return;
+		Log.Info( message );
 	}
 }

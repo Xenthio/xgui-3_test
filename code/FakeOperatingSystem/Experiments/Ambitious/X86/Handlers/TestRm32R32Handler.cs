@@ -30,7 +30,7 @@ public class TestRm32R32Handler : IInstructionHandler
 			destValue = core.ReadDword( effectiveAddress );
 
 			// Calculate instruction length based on addressing mode
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 		}
 

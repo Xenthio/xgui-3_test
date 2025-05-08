@@ -6,6 +6,7 @@ public class CallRel32Handler : IInstructionHandler
 
 	public void Execute( X86Core core )
 	{
+		core.LogVerbose( "CallRel32Handler: Executing CALL instruction" );
 		uint eip = core.Registers["eip"];
 		int relOffset = (int)core.ReadDword( eip + 1 );
 

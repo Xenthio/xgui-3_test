@@ -29,7 +29,7 @@ public class SubR32Rm32Handler : IInstructionHandler
 			sourceValue = core.ReadDword( effectiveAddress );
 
 			// Advance EIP
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 		}
 

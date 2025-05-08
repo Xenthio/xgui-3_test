@@ -22,7 +22,7 @@ public class OpcodeFFHandler : IInstructionHandler
 		byte mod = (byte)(modrm >> 6);
 		byte rm = (byte)(modrm & 0x7);
 
-		Log.Info( $"OpcodeFFHandler: opcode=0xFF, modrm=0x{modrm:X2}, reg={reg}, mod={mod}, rm={rm}" );
+		core.LogVerbose( $"OpcodeFFHandler: opcode=0xFF, modrm=0x{modrm:X2}, reg={reg}, mod={mod}, rm={rm}" );
 
 		if ( reg == 0 ) // INC r/m32
 		{
@@ -57,7 +57,7 @@ public class OpcodeFFHandler : IInstructionHandler
 				core.OverflowFlag = value == 0x7FFFFFFF; // Overflow if went from max positive to negative
 
 				// Advance EIP
-				uint length = X86AddressingHelper.GetInstructionLength( modrm );
+				uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 				core.Registers["eip"] += length;
 			}
 		}
@@ -94,7 +94,7 @@ public class OpcodeFFHandler : IInstructionHandler
 				core.OverflowFlag = value == 0x80000000; // Overflow if went from min negative to positive
 
 				// Advance EIP
-				uint length = X86AddressingHelper.GetInstructionLength( modrm );
+				uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 				core.Registers["eip"] += length;
 			}
 		}
@@ -139,7 +139,7 @@ public class OpcodeFFHandler : IInstructionHandler
 			}
 
 			// Calculate instruction length
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 
 			// CALL instruction behavior: push return address, jump to target
@@ -153,7 +153,7 @@ public class OpcodeFFHandler : IInstructionHandler
 			if ( api.Key != null )
 			{
 				// API emulation - emulator specific
-				Log.Info( $"OpcodeFFHandler: Detected API call to {api.Key}" );
+				core.LogVerbose( $"OpcodeFFHandler: Detected API call to {api.Key}" );
 				bool handled = false;
 
 				// SAVE the return address BEFORE API call
@@ -209,7 +209,7 @@ public class OpcodeFFHandler : IInstructionHandler
 			{
 				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
 				value = core.ReadDword( effectiveAddress );
-				uint length = X86AddressingHelper.GetInstructionLength( modrm );
+				uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 				core.Registers["eip"] += length;
 			}
 
@@ -222,7 +222,7 @@ public class OpcodeFFHandler : IInstructionHandler
 			{
 				// This specific pattern (0xFF 0xFF) appears to be used in Windows executables
 				// and is executed without error on real CPUs. Treat as NOP.
-				Log.Info( "Handling undefined instruction 0xFF 0xFF (FF /7 EDI) as NOP" );
+				Log.Warning( $"Handling undefined instruction 0xFF 0xFF (FF /7 EDI) as NOP at {eip:X8}" );
 				core.Registers["eip"] += 2;
 			}
 			else
@@ -236,7 +236,7 @@ public class OpcodeFFHandler : IInstructionHandler
 				}
 				else // Memory operand
 				{
-					uint length = X86AddressingHelper.GetInstructionLength( modrm );
+					uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 					core.Registers["eip"] += length;
 				}
 			}

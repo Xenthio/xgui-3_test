@@ -44,7 +44,7 @@ public class AddRm32R32Handler : IInstructionHandler
 			SetFlags( core, destValue, sourceValue, result );
 
 			// Advance EIP
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 		}
 	}

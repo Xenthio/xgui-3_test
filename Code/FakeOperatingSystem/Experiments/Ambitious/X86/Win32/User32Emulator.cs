@@ -111,6 +111,35 @@ public class User32Emulator : APIEmulator
 								paramIndex++;
 								break;
 							}
+						case '0': // something like 8-digit hex (%08X) or something else, check another char or two ahead
+							{
+								// Check for a digit or 'X' after '0'
+								if ( i + 1 < format.Length && char.IsDigit( format[i + 1] ) )
+								{
+									// Read the number
+									int numDigits = format[i + 1] - '0';
+									i++; // Skip the digit
+									if ( i + 1 < format.Length && format[i + 1] == 'X' )
+									{
+										// Hexadecimal formatting
+										uint value = core.ReadDword( core.Registers["esp"] + (uint)(paramIndex * 4) );
+										result += value.ToString( "X" ).PadLeft( numDigits, '0' );
+										paramIndex++;
+										i++; // Skip 'X'
+									}
+									else
+									{
+										// Just a number, treat it as a string
+										result += "%" + specifier;
+									}
+								}
+								else
+								{
+									result += "%" + specifier; // Unknown format, just append it
+								}
+
+								break;
+							}
 						case '%': // Escaped percent
 							result += '%';
 							break;
@@ -158,7 +187,7 @@ public class User32Emulator : APIEmulator
 			for ( int i = 0; i < 32 && i <= result.Length; i++ )
 			{
 				byte b = i < result.Length ? (byte)result[i] : (byte)0;
-				Log.Info( $"Offset +{i}: 0x{b:X2} '{(b >= 32 && b < 127 ? (char)b : '.')}'" );
+				core.LogVerbose( $"Offset +{i}: 0x{b:X2} '{(b >= 32 && b < 127 ? (char)b : '.')}'" );
 			}
 
 
@@ -170,7 +199,7 @@ public class User32Emulator : APIEmulator
 
 				if ( i % 10 == 0 )
 				{
-					Log.Info( $"Wrote to 0x{bufferPtr + (uint)i:X8}: {(i < result.Length ? result[i] : '\0')}" );
+					core.LogVerbose( $"Wrote to 0x{bufferPtr + (uint)i:X8}: {(i < result.Length ? result[i] : '\0')}" );
 				}
 			}
 
@@ -179,7 +208,7 @@ public class User32Emulator : APIEmulator
 			for ( int i = 0; i < 32; i++ )
 			{
 				byte b = core.ReadByte( bufferPtr + (uint)i );
-				Log.Info( $"Offset +{i}: 0x{b:X2} '{(b >= 32 && b < 127 ? (char)b : '.')}'" );
+				core.LogVerbose( $"Offset +{i}: 0x{b:X2} '{(b >= 32 && b < 127 ? (char)b : '.')}'" );
 			}
 
 			// Set return value in EAX
@@ -189,6 +218,10 @@ public class User32Emulator : APIEmulator
 			// In cdecl, caller cleans up the stack, so we don't adjust ESP
 			// But we do need to set EIP to the return address
 			core.Registers["eip"] = returnAddress;
+
+			// HACK HACK! gets the main test executable to work properly? todo: figure out why esp is offset by -4!!!!!!!!!!!
+			Log.Warning( $"HACK HACK! Adjusting ESP by 4 to get the test executable to work properly. Todo: Figure out why ESP is offset by -4!!!!!!!!!!!" );
+			core.Registers["esp"] += 4;
 
 			Log.Info( $"wsprintfA returning length {returnValue} to 0x{returnAddress:X8}" );
 

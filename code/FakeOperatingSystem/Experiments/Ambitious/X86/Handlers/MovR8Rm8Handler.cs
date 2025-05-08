@@ -34,7 +34,7 @@ public class MovR8Rm8Handler : IInstructionHandler
 			sourceValue = core.ReadByte( effectiveAddress );
 
 			// Advance EIP
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 		}
 

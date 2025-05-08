@@ -54,7 +54,7 @@ public class XorRm8R8Handler : IInstructionHandler
 			core.OverflowFlag = false; // Always cleared
 
 			// Advance EIP
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 		}
 

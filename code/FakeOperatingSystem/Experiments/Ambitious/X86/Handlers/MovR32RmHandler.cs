@@ -30,7 +30,7 @@ public class MovR32RmHandler : IInstructionHandler
 			core.Registers[destReg] = core.ReadDword( effectiveAddress );
 
 			// Use the helper to determine instruction length
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 		}
 	}

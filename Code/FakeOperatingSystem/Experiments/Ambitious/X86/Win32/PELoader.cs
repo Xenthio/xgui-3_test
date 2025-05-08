@@ -49,12 +49,12 @@ public class PELoader
 			for ( uint j = 0; j < rawDataSize; j++ )
 			{
 				if ( rawDataPtr + j < fileBytes.Length )
-					core.WriteByte( imageBase + virtualAddress + j, fileBytes[rawDataPtr + j] );
+					core.WriteByte( imageBase + virtualAddress + j, fileBytes[rawDataPtr + j], protect: false );
 			}
 			// Zero-fill the rest of the virtual size
 			for ( uint j = rawDataSize; j < virtualSize; j++ )
 			{
-				core.WriteByte( imageBase + virtualAddress + j, 0 );
+				core.WriteByte( imageBase + virtualAddress + j, 0, protect: false );
 			}
 
 			// Mark memory with appropriate protection
@@ -154,7 +154,7 @@ public class PELoader
 					Log.Info( $"Importing {funcName} from {dllName} at {nextApiId:X8}" );
 
 					// Patch IAT in emulated memory
-					core.WriteDword( imageBase + iatRVA + (uint)(t * 4), nextApiId );
+					core.WriteDword( imageBase + iatRVA + (uint)(t * 4), nextApiId, false );
 
 					nextApiId++;
 				}

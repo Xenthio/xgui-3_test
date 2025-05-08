@@ -14,8 +14,6 @@ public class Opcode81Handler : IInstructionHandler
 		byte reg = (byte)((modrm >> 3) & 0x7); // This determines the operation
 		byte rm = (byte)(modrm & 0x7);
 
-		// Calculate effective address or get register
-		uint effectiveAddress = 0;
 		uint value = 0;
 
 		if ( mod == 3 ) // Register operand
@@ -40,6 +38,7 @@ public class Opcode81Handler : IInstructionHandler
 				{
 					string regName = GetRegisterName( rm );
 					core.Registers[regName] += imm32;
+					core.LogVerbose( $"ADD {regName}, {imm32:X8} = {core.Registers[regName]:X8}" );
 				}
 				break;
 
@@ -48,6 +47,7 @@ public class Opcode81Handler : IInstructionHandler
 				{
 					string regName = GetRegisterName( rm );
 					core.Registers[regName] |= imm32;
+					core.LogVerbose( $"OR {regName}, {imm32:X8} = {core.Registers[regName]:X8}" );
 				}
 				break;
 
@@ -56,6 +56,7 @@ public class Opcode81Handler : IInstructionHandler
 				{
 					string regName = GetRegisterName( rm );
 					core.Registers[regName] &= imm32;
+					core.LogVerbose( $"AND {regName}, {imm32:X8} = {core.Registers[regName]:X8}" );
 				}
 				break;
 
@@ -64,6 +65,7 @@ public class Opcode81Handler : IInstructionHandler
 				{
 					string regName = GetRegisterName( rm );
 					core.Registers[regName] -= imm32;
+					core.LogVerbose( $"SUB {regName}, {imm32:X8} = {core.Registers[regName]:X8}" );
 				}
 				break;
 
@@ -72,6 +74,7 @@ public class Opcode81Handler : IInstructionHandler
 				{
 					string regName = GetRegisterName( rm );
 					core.Registers[regName] ^= imm32;
+					core.LogVerbose( $"XOR {regName}, {imm32:X8} = {core.Registers[regName]:X8}" );
 				}
 				break;
 

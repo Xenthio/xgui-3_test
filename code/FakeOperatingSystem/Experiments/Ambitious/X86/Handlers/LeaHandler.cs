@@ -14,6 +14,8 @@ public class LeaHandler : IInstructionHandler
 		byte reg = (byte)((modrm >> 3) & 0x7);
 		byte rm = (byte)(modrm & 0x7);
 
+
+
 		// LEA never uses register-to-register (mod=3) mode
 		if ( mod == 3 )
 		{
@@ -27,11 +29,13 @@ public class LeaHandler : IInstructionHandler
 		// Use our helper to properly handle SIB addressing
 		uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
 
+		core.LogVerbose( $"LEA: EIP=0x{eip:X8}, ESP=0x{core.Registers["esp"]:X8}, destReg={destReg}, effectiveAddress=0x{effectiveAddress:X8}" );
+
 		// Store the calculated address directly in the destination register
 		core.Registers[destReg] = effectiveAddress;
 
 		// Advance EIP using our helper
-		uint length = X86AddressingHelper.GetInstructionLength( modrm );
+		uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 		core.Registers["eip"] += length;
 	}
 

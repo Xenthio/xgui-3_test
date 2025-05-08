@@ -232,7 +232,7 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 		}
 		else
 		{
-			uint length = X86AddressingHelper.GetInstructionLength( modrm );
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += 2 + length;
 		}
 	}
