@@ -57,15 +57,17 @@ public class X86Core
 	{
 		uint page = address & ~(uint)(PageSize - 1);
 
-		// Check if this is a protected page
-		if ( _pageProtection.TryGetValue( page, out var protection ) &&
-			protection == MemoryProtection.ReadExecute )
+		// Check page protection
+		if ( _pageProtection.TryGetValue( page, out var protection ) )
 		{
-			Log.Warning( $"MEMORY PROTECTION ERROR: Attempt to write to code page at 0x{address:X8}" );
-			return; // Prevent the write
+			if ( protection == MemoryProtection.ReadOnly ||
+				 protection == MemoryProtection.ReadExecute )
+			{
+				throw new AccessViolationException(
+					$"Write access violation at 0x{address:X8}" );
+			}
 		}
 
-		// Direct memory access with no translation
 		int offset = (int)(address & (PageSize - 1));
 		if ( !_memoryPages.TryGetValue( page, out var data ) )
 		{

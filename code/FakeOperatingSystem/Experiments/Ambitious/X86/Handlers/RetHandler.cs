@@ -9,29 +9,22 @@ public class RetHandler : IInstructionHandler
 		uint eip = core.Registers["eip"];
 		byte opcode = core.ReadByte( eip );
 
-		// Track function exit for debugging - not real CPU behavior but useful
+		// Track function exit for debugging - not real CPU behavior
 		core.ExitFunction();
 
-		if ( opcode == 0xC3 ) // RET
+		// Get return address from stack
+		uint returnAddress = core.Pop();
+
+		if ( opcode == 0xC2 ) // RET imm16
 		{
-			// Simple RET - pop return address and jump
-			core.Registers["eip"] = core.Pop();
-		}
-		else // RET imm16
-		{
+			// Read 16-bit immediate value
 			ushort imm16 = (ushort)(core.ReadByte( eip + 1 ) | (core.ReadByte( eip + 2 ) << 8));
 
-			// RET imm16 - pop return address, add imm16 to ESP, jump
-			core.Registers["eip"] = core.Pop();
+			// Adjust stack pointer after popping return address
 			core.Registers["esp"] += imm16;
 		}
 
-		// Keep program exit detection logic for emulator functionality
-		// but separate it from CPU behavior emulation
-		if ( core.Registers["eip"] < 0x1000 || core.Registers["eip"] > 0xF0000000 )
-		{
-			Log.Warning( $"RET jumped to invalid address 0x{core.Registers["eip"]:X8}, treating as program exit" );
-			core.Registers["eip"] = 0xFFFFFFFF; // Special emulator value
-		}
+		// Set EIP to return address
+		core.Registers["eip"] = returnAddress;
 	}
 }
