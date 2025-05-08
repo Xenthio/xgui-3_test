@@ -33,42 +33,21 @@ public class User32Emulator : APIEmulator
 	{
 		Log.Info( "User32Emulator: Registering MessageBoxA" );
 
-		_apiTable["MessageBoxA"] = core =>
-		{
-			uint returnAddress = core.ReadDword( core.Registers["esp"] );
-			uint hWnd = core.ReadDword( core.Registers["esp"] + 4 );
-			uint textPtr = core.ReadDword( core.Registers["esp"] + 8 );
-			uint captionPtr = core.ReadDword( core.Registers["esp"] + 12 );
-			uint style = core.ReadDword( core.Registers["esp"] + 16 );
+		RegisterStdCallFunction<uint, string, string, uint, uint>(
+			"MessageBoxA",
+			( hWnd, text, caption, style ) =>
+			{
+				Log.Info( $"MessageBoxA(hWnd=0x{hWnd:X8}, lpText=\"{text}\", lpCaption=\"{caption}\", uType=0x{style:X8})" );
 
-			Log.Info( $"MessageBoxA called with hWnd=0x{hWnd:X8}, lpText=0x{textPtr:X8}, lpCaption=0x{captionPtr:X8}, uType=0x{style:X8}" );
+				ParseMessageBoxStyle( style, out var icon, out var buttons );
+				MessageBoxUtility.ShowCustom( text, caption, icon, buttons );
 
-			string text = textPtr != 0 ? core.ReadString( textPtr ) : "(null)";
-			string caption = captionPtr != 0 ? core.ReadString( captionPtr ) : "(null)";
-
-			Log.Info( $"MessageBoxA(hWnd=0x{hWnd:X8}, lpText=\"{text}\", lpCaption=\"{caption}\", uType=0x{style:X8})" );
-
-			ParseMessageBoxStyle( style, out var icon, out var buttons );
-			MessageBoxUtility.ShowCustom( text, caption, icon, buttons );
-
-			// Set return value in EAX (IDOK)
-			core.Registers["eax"] = 1;
-
-			// Adjust stack for stdcall: 4 params + return address
-			core.Registers["esp"] += 20;
-
-			// Set EIP to return address
-			core.Registers["eip"] = returnAddress;
-
-			Log.Info( $"MessageBoxA returning to 0x{returnAddress:X8}" );
-
-			return 1; // Still return value for completeness, but EAX is what matters
-		};
-
-
+				return 1; // IDOK
+			}
+		);
 
 		// wsprintfA - Formats a string using variable arguments
-		_apiTable["wsprintfA"] = core =>
+		RegisterCdeclVariadicFunction( "wsprintfA", core =>
 		{
 			// Get the return address
 			uint returnAddress = core.ReadDword( core.Registers["esp"] );
@@ -172,6 +151,17 @@ public class User32Emulator : APIEmulator
 				Log.Error( $"ERROR: Buffer memory not accessible: {ex.Message}" );
 			}
 
+
+
+			// Dump a bit of memory before writing to verify
+			Log.Info( "Memory beforing writing (first 32 bytes):" );
+			for ( int i = 0; i < 32 && i <= result.Length; i++ )
+			{
+				byte b = i < result.Length ? (byte)result[i] : (byte)0;
+				Log.Info( $"Offset +{i}: 0x{b:X2} '{(b >= 32 && b < 127 ? (char)b : '.')}'" );
+			}
+
+
 			// Write the string and log every 10 bytes for debugging
 			for ( int i = 0; i <= result.Length; i++ )
 			{
@@ -184,9 +174,9 @@ public class User32Emulator : APIEmulator
 				}
 			}
 
-			// Dump a bit of memory after writing to verify
-			Log.Info( "Memory after writing (first 20 bytes):" );
-			for ( int i = 0; i < 20 && i <= result.Length; i++ )
+			// Additional memory dump after writing the string
+			Log.Info( "wsprintfA: Memory at bufferPtr after write:" );
+			for ( int i = 0; i < 32; i++ )
 			{
 				byte b = core.ReadByte( bufferPtr + (uint)i );
 				Log.Info( $"Offset +{i}: 0x{b:X2} '{(b >= 32 && b < 127 ? (char)b : '.')}'" );
@@ -203,6 +193,6 @@ public class User32Emulator : APIEmulator
 			Log.Info( $"wsprintfA returning length {returnValue} to 0x{returnAddress:X8}" );
 
 			return returnValue;
-		};
+		} );
 	}
 }

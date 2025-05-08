@@ -173,12 +173,12 @@ public class OpcodeFFHandler : IInstructionHandler
 				{
 					if ( emu.TryCall( api.Key, core, out var result ) )
 					{
-						core.Registers["eax"] = result;
-
+						// these should be handled by the api's calling convention 
+						//core.Registers["eax"] = result;
 						// Use our saved return address
-						core.Registers["eip"] = returnAddress;
+						//core.Registers["eip"] = returnAddress;
 
-						Log.Info( $"OpcodeFFHandler: Set EIP to 0x{returnAddress:X8}" );
+						//Log.Info( $"OpcodeFFHandler: Set EIP to 0x{returnAddress:X8}" );
 						handled = true;
 						break;
 					}

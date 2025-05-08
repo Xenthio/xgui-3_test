@@ -12,15 +12,21 @@ public class RetHandler : IInstructionHandler
 		// Track function exit for debugging - not real CPU behavior
 		core.ExitFunction();
 
-		// Get return address from stack
-		uint returnAddress = core.Pop();
-
+		// For RET imm16, read the immediate value BEFORE popping the return address
+		ushort imm16 = 0;
 		if ( opcode == 0xC2 ) // RET imm16
 		{
 			// Read 16-bit immediate value
-			ushort imm16 = (ushort)(core.ReadByte( eip + 1 ) | (core.ReadByte( eip + 2 ) << 8));
+			imm16 = (ushort)(core.ReadByte( eip + 1 ) | (core.ReadByte( eip + 2 ) << 8));
+		}
 
-			// Adjust stack pointer after popping return address
+		// Get return address from stack
+		uint returnAddress = core.Pop();
+
+		// For RET imm16, adjust stack after popping
+		if ( opcode == 0xC2 )
+		{
+			// Adjust stack pointer by immediate value
 			core.Registers["esp"] += imm16;
 		}
 
