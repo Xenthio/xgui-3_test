@@ -7,30 +7,35 @@ public class RetHandler : IInstructionHandler
 	public void Execute( X86Core core )
 	{
 		uint eip = core.Registers["eip"];
+		uint espBefore = core.Registers["esp"];
 		byte opcode = core.ReadByte( eip );
 
 		// Track function exit for debugging - not real CPU behavior
 		core.ExitFunction();
 
-		// For RET imm16, read the immediate value BEFORE popping the return address
 		ushort imm16 = 0;
 		if ( opcode == 0xC2 ) // RET imm16
 		{
-			// Read 16-bit immediate value
 			imm16 = (ushort)(core.ReadByte( eip + 1 ) | (core.ReadByte( eip + 2 ) << 8));
+			Log.Info( $"RET imm16: EIP=0x{eip:X8}, ESP(before)=0x{espBefore:X8}, imm16=0x{imm16:X4}" );
+		}
+		else
+		{
+			Log.Info( $"RET: EIP=0x{eip:X8}, ESP(before)=0x{espBefore:X8}" );
 		}
 
 		// Get return address from stack
 		uint returnAddress = core.Pop();
+		uint espAfterPop = core.Registers["esp"];
+		Log.Info( $"RET: Popped return address=0x{returnAddress:X8}, ESP(after pop)=0x{espAfterPop:X8}" );
 
-		// For RET imm16, adjust stack after popping
 		if ( opcode == 0xC2 )
 		{
-			// Adjust stack pointer by immediate value
 			core.Registers["esp"] += imm16;
+			Log.Info( $"RET imm16: ESP(after add)=0x{core.Registers["esp"]:X8}" );
 		}
 
-		// Set EIP to return address
 		core.Registers["eip"] = returnAddress;
+		Log.Info( $"RET: EIP set to 0x{returnAddress:X8}, ESP(final)=0x{core.Registers["esp"]:X8}" );
 	}
 }

@@ -113,7 +113,7 @@ public class X86Core
 	{
 		uint currentESP = Registers["esp"];
 		_stackFrameInfo[currentESP] = returnAddress;
-		Log.Info( $"Function entered: ESP=0x{currentESP:X8}, EBP=0x{Registers["ebp"]:X8}, Return=0x{returnAddress:X8}" );
+		Log.Info( $"Function entered: ESP=0x{currentESP:X8}, EBP=0x{Registers["ebp"]:X8}, EIP=0x{Registers["eip"]:X8}, Return=0x{returnAddress:X8}" );
 	}
 
 	// Track stack frame setup (PUSH EBP, MOV EBP,ESP)
@@ -127,7 +127,7 @@ public class X86Core
 	// Track function exit (RET instruction)
 	public void ExitFunction()
 	{
-		Log.Info( $"Function exited: ESP=0x{Registers["esp"]:X8}, EBP=0x{Registers["ebp"]:X8}" );
+		Log.Info( $"Function exited: ESP=0x{Registers["esp"]:X8}, EBP=0x{Registers["ebp"]:X8}, EIP=0x{Registers["eip"]:X8}" );
 	}
 
 	public string ReadString( uint address )
