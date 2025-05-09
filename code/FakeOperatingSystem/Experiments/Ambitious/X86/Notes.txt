@@ -1,0 +1,7 @@
+NOTEPAD.exe doesn't run due to issue with opcode 83, where its meant to run 83 7C 24 10 24, 
+but instead, something happens where it skips the first half of the next instruction, 7D and then complains about missing opcode 0A
+problematic code is: 83 7C 24 10 24 7D 0A (you can see the 7D 0A is the next instruction)
+
+similarly CALC.exe doesn't run due to issue with opcode 0F, where its meant to run 0F B7 45 EC,
+but instead, something happens where it skips the first two bytes of the next instruction, B9 00, and then complains about missing opcode 04
+problematic code is: 0F B7 45 EC B9 00 04 00 00 (you can see the B9 00 04 00 00 is the next instruction)

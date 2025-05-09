@@ -23,53 +23,13 @@ public class MovRmR32Handler : IInstructionHandler
 			core.Registers[destReg] = value;
 			core.Registers["eip"] += 2;
 		}
-		else // Memory destination
+		else // Memory destination (all addressing modes, including SIB)
 		{
-			uint effectiveAddress = CalculateEffectiveAddress( core, modrm, eip );
+			uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
 			core.WriteDword( effectiveAddress, value );
-			core.Registers["eip"] += GetInstructionLength( mod, rm );
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += len;
 		}
-	}
-
-	private uint CalculateEffectiveAddress( X86Core core, byte modrm, uint eip )
-	{
-		byte mod = (byte)(modrm >> 6);
-		byte rm = (byte)(modrm & 0x7);
-
-		if ( mod == 0 && rm == 5 ) // [disp32]
-			return core.ReadDword( eip + 2 );
-
-		uint ea = 0;
-
-		// Base register
-		if ( rm != 4 ) // Not SIB
-			ea = core.Registers[GetRegisterName( rm )];
-		else
-		{
-
-		}
-
-		// Displacement
-		if ( mod == 1 ) // 8-bit displacement
-			ea += (uint)(sbyte)core.ReadByte( eip + 2 );
-		else if ( mod == 2 ) // 32-bit displacement
-			ea += core.ReadDword( eip + 2 );
-
-		return ea;
-	}
-
-	private uint GetInstructionLength( byte mod, byte rm )
-	{
-		if ( mod == 0 && rm == 5 ) // [disp32]
-			return 6;
-		else if ( mod == 0 ) // [reg]
-			return 2;
-		else if ( mod == 1 ) // [reg+disp8]
-			return 3;
-		else if ( mod == 2 ) // [reg+disp32]
-			return 6;
-		else // mod == 3, register to register
-			return 2;
 	}
 
 	private string GetRegisterName( int code ) => code switch

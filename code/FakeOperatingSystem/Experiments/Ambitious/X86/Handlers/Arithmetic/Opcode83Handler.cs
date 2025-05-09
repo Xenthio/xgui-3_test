@@ -55,14 +55,48 @@ public class Opcode83Handler : IInstructionHandler
 				default:
 					throw new NotImplementedException( $"Opcode 0x83 with reg={reg} not implemented" );
 			}
+			core.Registers["eip"] += 3;
 		}
-		else
+		else // Memory operand
 		{
-			throw new NotImplementedException( "Memory operands not implemented for opcode 0x83" );
-		}
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			uint value = core.ReadDword( addr );
 
-		// Advance EIP (opcode + modrm + imm8)
-		core.Registers["eip"] += 3;
+			switch ( reg )
+			{
+				case 0: // ADD
+					core.WriteDword( addr, value + (uint)signExtImm );
+					core.LogVerbose( $"Add [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					break;
+				case 1: // OR
+					core.WriteDword( addr, value | (uint)signExtImm );
+					core.LogVerbose( $"Or [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					break;
+				case 4: // AND
+					core.WriteDword( addr, value & (uint)signExtImm );
+					core.LogVerbose( $"And [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					break;
+				case 5: // SUB
+					core.WriteDword( addr, value - (uint)signExtImm );
+					core.LogVerbose( $"Sub [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					break;
+				case 6: // XOR
+					core.WriteDword( addr, value ^ (uint)signExtImm );
+					core.LogVerbose( $"Xor [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					break;
+				case 7: // CMP
+					uint result = value - (uint)signExtImm;
+					core.ZeroFlag = result == 0;
+					core.SignFlag = (result & 0x80000000) != 0;
+					core.CarryFlag = value < (uint)signExtImm;
+					break;
+				default:
+					throw new NotImplementedException( $"Opcode 0x83 with reg={reg} not implemented" );
+			}
+			// Advance EIP by the correct instruction length
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += len;
+		}
 	}
 
 	private string GetRegisterName( int code ) => code switch

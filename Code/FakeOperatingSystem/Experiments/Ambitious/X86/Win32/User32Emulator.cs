@@ -156,6 +156,38 @@ public class User32Emulator : APIEmulator
 			}
 		);
 
+		//get system metrics
+		RegisterStdCallFunction<uint, uint>(
+			"GetSystemMetrics",
+			( nIndex ) =>
+			{
+				Log.Info( $"GetSystemMetrics called (stub) nIndex={nIndex}" );
+				// Return a fake value (e.g., 0)
+				return 0;
+			}
+		);
+
+		// RegisterWindowMessageW
+		RegisterStdCallFunction<uint, uint>(
+			"RegisterWindowMessageW",
+			( lpString ) =>
+			{
+				Log.Info( $"RegisterWindowMessageW called (stub) lpString=0x{lpString:X8}" );
+				// Return a fake message ID (nonzero)
+				return 0x5001;
+			}
+		);
+
+		// GetDC
+		RegisterStdCallFunction<uint, uint>(
+			"GetDC",
+			( hWnd ) =>
+			{
+				Log.Info( $"GetDC called (stub) hWnd=0x{hWnd:X8}" );
+				// Return a fake device context handle (nonzero)
+				return 0x6001;
+			}
+		);
 
 		// wsprintfA - Formats a string using variable arguments
 		RegisterCdeclVariadicFunction( "wsprintfA", core =>

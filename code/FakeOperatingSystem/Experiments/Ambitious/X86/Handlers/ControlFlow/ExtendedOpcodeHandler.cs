@@ -133,6 +133,7 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 		byte rm = (byte)(modrm & 0x7);
 
 		string destReg = GetRegisterName( reg );
+		Log.Info( $"MOVZX at EIP=0x{eip:X8}" );
 
 		if ( mod == 3 ) // Register operand
 		{
@@ -149,11 +150,21 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 			}
 			core.Registers["eip"] += 3;
 		}
-		else
+		else // Memory operand
 		{
-			// Handle memory operands if needed
-			Log.Warning( "MOVZX with memory operand not implemented" );
-			core.Registers["eip"] += 3;
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			if ( opcode == 0xB6 ) // MOVZX r32, r/m8
+			{
+				byte value = core.ReadByte( addr );
+				core.Registers[destReg] = value;
+			}
+			else // MOVZX r32, r/m16
+			{
+				ushort value = core.ReadWord( addr );
+				core.Registers[destReg] = value;
+			}
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += 2 + len; // 0x0F + opcode + modrm/SIB/disp
 		}
 	}
 
