@@ -26,7 +26,7 @@ public partial class X86Interpreter
 			var interpreter = new X86Interpreter();
 			interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
 			{
-				MessageBoxUtility.ShowCustom( message, title, icon, MessageBoxButtons.AbortRetryIgnore );
+				MessageBoxUtility.ShowCustom( message, title, icon, buttons );
 			};
 
 			// Load and parse the executable

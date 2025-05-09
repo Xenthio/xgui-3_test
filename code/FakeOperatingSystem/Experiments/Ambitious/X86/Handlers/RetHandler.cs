@@ -1,7 +1,14 @@
+using FakeDesktop;
+
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.Handlers;
 
 public class RetHandler : IInstructionHandler
 {
+	private readonly X86Interpreter _interpreter;
+	public RetHandler( X86Interpreter interpreter )
+	{
+		_interpreter = interpreter;
+	}
 	public bool CanHandle( byte opcode ) => opcode == 0xC3 || opcode == 0xC2;
 
 	public void Execute( X86Core core )
@@ -28,6 +35,36 @@ public class RetHandler : IInstructionHandler
 		uint returnAddress = core.Pop();
 		uint espAfterPop = core.Registers["esp"];
 		Log.Info( $"RET: Popped return address=0x{returnAddress:X8}, ESP(after pop)=0x{espAfterPop:X8}" );
+
+		if ( returnAddress == 0xFFFFFFFF )
+		{
+			core.Registers["eip"] = 0xFFFFFFFF;
+			Log.Info( $"RET: Program exit sentinel reached (0x{returnAddress:X8})." );
+			return;
+		}
+		if ( returnAddress == 0x00030000 )
+		{
+			core.Registers["eip"] = 0xFFFFFFFF;
+			Log.Warning( $"RET: Non-standard sentinel address reached (0x{returnAddress:X8})." );
+			return;
+		}
+		// truly invalid addresses (not code, not sentinel)
+		if ( returnAddress < 0x00400000 )
+		{
+			core.Registers["eip"] = 0xFFFFFFFF;
+
+			_interpreter.HaltWithMessageBox( "Invalid Return Address",
+				$"Invalid return address: 0x{returnAddress:X8}\n" +
+				$"This could indicate a stack corruption or an invalid return address.\n" +
+				$"But could also be just normal program exit.\n" +
+				$"If so, it is safe to ignore this message.",
+				MessageBoxIcon.Information,
+				MessageBoxButtons.OK
+			);
+
+			Log.Warning( $"RET: Return to invalid address 0x{returnAddress:X8}, treating as program exit." );
+			return;
+		}
 
 		if ( opcode == 0xC2 )
 		{

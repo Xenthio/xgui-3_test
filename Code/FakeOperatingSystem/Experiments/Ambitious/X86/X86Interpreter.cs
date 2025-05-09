@@ -32,7 +32,6 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.PushImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.PushImm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.CallRel32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.RetHandler() );
 		InstructionSet.RegisterHandler( new Handlers.JmpHandler() );
 		InstructionSet.RegisterHandler( new Handlers.ConditionalJumpHandler() );
 		InstructionSet.RegisterHandler( new Handlers.LeaveHandler() );
@@ -74,7 +73,8 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.XorRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OrR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpAlImm8Handler() );
-
+		InstructionSet.RegisterHandler( new Handlers.PopEsHandler() );
+		InstructionSet.RegisterHandler( new Handlers.MovReg8SSRm8Handler() );
 
 
 		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
@@ -83,6 +83,9 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.Opcode83Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeF6Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeFFHandler( this ) );
+
+
+		InstructionSet.RegisterHandler( new Handlers.RetHandler( this ) );
 	}
 
 	public bool LoadExecutable( byte[] fileBytes, string path = null )

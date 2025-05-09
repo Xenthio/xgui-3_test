@@ -33,7 +33,7 @@ public class X86EmulatorTests
 	public static void TestRetHandler()
 	{
 		var core = new X86Core();
-		var handler = new RetHandler();
+		var handler = new RetHandler( null );
 
 		core.Registers["esp"] = 0x1000;
 		core.Push( 0x12345678 );

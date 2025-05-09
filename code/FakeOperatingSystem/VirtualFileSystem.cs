@@ -750,7 +750,7 @@ public class VirtualFileSystem
 
 				interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
 				{
-					MessageBoxUtility.ShowCustom( message, title, icon, MessageBoxButtons.AbortRetryIgnore );
+					MessageBoxUtility.ShowCustom( message, title, icon, buttons );
 				};
 				byte[] fileBytes = _realFileSystem.ReadAllBytes( path ).ToArray();
 				if ( interpreter.LoadExecutable( fileBytes, path ) )
