@@ -46,8 +46,8 @@
   </PropertyGroup>
 
 	<ItemGroup>
-		<Analyzer Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.CodeUpgrader.dll"/>
-		<Analyzer Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.Generator.dll" Condition="$(DesignTimeBuild) != 'true'"/>
+		<Analyzer Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.CodeUpgrader.dll" />
+		<Analyzer Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.Generator.dll" Condition="$(DesignTimeBuild) != 'true'" />
 		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.System.dll" />
 		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Engine.dll" />
 		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Filesystem.dll" />
@@ -61,6 +61,10 @@
 		<ProjectReference Include="E:\S&amp;box Addons\xgui-3_test\Libraries\XGUI-3\Code\xgui-3.csproj" />
 		<ProjectReference Include="E:\S&amp;box Addons\xgui-3_test\Libraries\xenthio.xmovement\Code\xmovement.csproj" />
 
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="FakeOperatingSystem\Programs\TaskMgr\" />
   </ItemGroup>
 
 </Project>

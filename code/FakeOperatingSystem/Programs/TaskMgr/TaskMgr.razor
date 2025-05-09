@@ -1,0 +1,37 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using System.IO;
+@using FakeDesktop;
+@using FakeOperatingSystem.Experiments.Ambitious.X86;
+@attribute [StyleSheet("Notepad.razor.scss")]
+@inherits Window
+
+<root title="Task Manager"
+	  minwidth="400" minheight="300"
+	  defaultwidth="600" defaultheight="400"
+	  style="width: 600px; height: 400px;"
+	  class="notepad-window">
+
+	<div class="window-content">
+		@foreach (var process in X86Interpreter.AllProcesses)
+		{
+			<div class="process-item">
+				<div class="process-name">@process.ProcessName</div>
+				<div class="process-id">@process.ProcessId</div>
+				@* <div class="process-memory">@process.MemoryUsage</div>
+				<div class="process-cpu">@process.CpuUsage</div> *@
+			</div>
+		}
+	</div> 
+</root>
+
+@code {
+	
+	// override buildhash
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine(X86Interpreter.AllProcesses.Count);
+	}
+}

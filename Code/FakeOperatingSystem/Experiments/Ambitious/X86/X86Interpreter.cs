@@ -1,6 +1,5 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
-using Sandbox;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,6 +27,11 @@ public partial class X86Interpreter
 		APIEmulators.Add( new MsvcrtEmulator() );
 		APIEmulators.Add( new Kernel32Emulator() );
 		APIEmulators.Add( new Shell32Emulator() );
+
+		// === Miscellaneous ===
+		InstructionSet.RegisterHandler( new Handlers.NopHandler() );
+		InstructionSet.RegisterHandler( new Handlers.HltHandler() );
+		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
 
 		// === Arithmetic ===
 		InstructionSet.RegisterHandler( new Handlers.AddRm32R32Handler() );
@@ -96,11 +100,6 @@ public partial class X86Interpreter
 
 		// === Port/IO ===
 		InstructionSet.RegisterHandler( new Handlers.PortIOHandler() );
-
-		// === Miscellaneous ===
-		InstructionSet.RegisterHandler( new Handlers.NopHandler() );
-		InstructionSet.RegisterHandler( new Handlers.HltHandler() );
-		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
 	}
 
 	public bool LoadExecutable( byte[] fileBytes, string path = null )
@@ -138,7 +137,7 @@ public partial class X86Interpreter
 							value = Encoding.Unicode.GetString( strBytes );
 							// Only add if not empty
 							StringResources[(0x00400000, (res.Name - 1) * 16 + i)] = value;
-							Log.Info( $"Loaded string resource: ID=0x{((res.Name - 1) * 16 + i):X8}, Value=\"{value}\"" );
+							Core.LogVerbose( $"Loaded string resource: ID=0x{((res.Name - 1) * 16 + i):X8}, Value=\"{value}\"" );
 						}
 					}
 				}
@@ -148,60 +147,36 @@ public partial class X86Interpreter
 		return loaded;
 	}
 
-	public void Execute()
+	// List of all processes
+	public static List<X86Interpreter> AllProcesses = new();
+	public Task ProcessTask { get; private set; }
+
+	public string ProcessName => ExecutableName;
+	public uint ProcessId { get; private set; } = 0;
+	private static uint LastProcessId { get; set; } = 0;
+	public void StartProcess()
 	{
-		Core.Push( 0xFFFFFFFF ); // Address of our final return, this will be used if we hit a RET without anything else in the stack, which we can assume is our final RET
-		Core.Registers["eip"] = _entryPoint;
-		uint maxInstructions = 0xFFFFFFFF;
-		var i = 0;
+		ProcessTask = ExecuteAsync();
+		ProcessId = ++LastProcessId;
 
-		for ( i = 0; i < maxInstructions; i++ )
-		{
-			// Check for program exit
-			if ( Core.Registers["eip"] == 0xFFFFFFFF )
-			{
-				Log.Info( "Program execution completed via final RET" );
-				break;
-			}
 
-			try
-			{
-				InstructionSet.ExecuteNext( Core, this );
-			}
-			catch ( System.Exception ex )
-			{
-				// Optionally log or handle errors
-				Log.Error( $"Execution error at 0x{Core.Registers["eip"]:X8}: {ex.Message}" );
-
-				// dont show popup if it starts with ! (Means we've shown a message already)
-				if ( !ex.Message.StartsWith( "!" ) )
-				{
-					MessageBoxUtility.ShowCustom( $"Execution error at 0x{Core.Registers["eip"]:X8}: {ex.Message}", "Execution Error", MessageBoxIcon.Error, MessageBoxButtons.OK );
-				}
-				break; // Exit on errors
-			}
-		}
-
-		if ( i >= maxInstructions )
-		{
-			Log.Warning( "Execution reached maximum instruction limit." );
-		}
-		else
-		{
-			Log.Info( $"Executed {i} instructions." );
-		}
-
-		Log.Info( "Execution completed successfully!" );
-		DumpMemory( 0x00401000, 0x0300 ); // Example memory dump
-		DumpMemoryAsString( 0x00401000, 0x0300 ); // Example memory dump
-		DumpMemory( 0x00402000, 0x0300 ); // Example memory dump
-		DumpMemoryAsString( 0x00402000, 0x0300 ); // Example memory dump
-		DumpMemory( 0x00602000, 0x0300 ); // Example memory dump
-		DumpMemoryAsString( 0x00602000, 0x0300 ); // Example memory dump
-		Log.Info( DumpRegisters() );
+		AllProcesses.Add( this );
 	}
 
-	public async Task ExecuteAsync( uint maxInstructions = 0xFFFFFFFF, int yieldEvery = 10_000 )
+	// Stop the process, terminating the task
+	public void StopProcess()
+	{
+		if ( ProcessTask != null )
+		{
+			_haltASAP = true; // Set the flag to halt execution
+			ProcessTask.Wait();
+			ProcessTask = null;
+		}
+	}
+
+	bool _haltASAP = false;
+
+	public async Task ExecuteAsync( uint maxInstructions = 0xFFFFFFFF, int yieldEvery = 100 )
 	{
 		Core.Push( 0xFFFFFFFF ); // Address of our final return, this will be used if we hit a RET without anything else in the stack, which we can assume is our final RET
 		Core.Registers["eip"] = _entryPoint;
@@ -209,11 +184,18 @@ public partial class X86Interpreter
 
 		for ( i = 0; i < maxInstructions; i++ )
 		{
-			await GameTask.Yield();
+			//await GameTask.Yield();
+			// Yield to UI every N instructions 
 			// Check for program exit
 			if ( Core.Registers["eip"] == 0xFFFFFFFF )
 			{
 				Log.Info( "Program execution completed via final RET" );
+				break;
+			}
+
+			if ( _haltASAP )
+			{
+				Log.Info( "Execution halted by user." );
 				break;
 			}
 
@@ -240,6 +222,12 @@ public partial class X86Interpreter
 			// Yield to UI every N instructions
 			if ( (i % yieldEvery) == 0 )
 				await Task.Yield();
+
+			// Every 100000, log EIP and executable name
+			if ( (i % 100000) == 0 )
+			{
+				Log.Info( $"EIP: 0x{Core.Registers["eip"]:X8} - Still executing {ExecutableName}!" );
+			}
 		}
 
 		if ( i >= maxInstructions )

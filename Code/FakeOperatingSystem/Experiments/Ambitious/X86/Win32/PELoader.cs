@@ -275,7 +275,7 @@ public class PELoader
 					imports[funcName] = nextApiId;
 					importSourceDlls[funcName] = dllName.ToUpper(); // Store which DLL each function comes from
 
-					Log.Info( $"Importing {funcName} from {dllName} at {nextApiId:X8}" );
+					core.LogVerbose( $"Importing {funcName} from {dllName} at {nextApiId:X8}" );
 
 					// Patch IAT in emulated memory
 					core.WriteDword( imageBase + iatRVA + (uint)(t * 4), nextApiId, false );
