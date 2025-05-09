@@ -101,7 +101,7 @@ public class Opcode80Handler : IInstructionHandler
 
 			// Advance EIP by instruction length
 			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
-			core.Registers["eip"] += length;
+			core.Registers["eip"] += length + 1;
 		}
 	}
 

@@ -8,7 +8,7 @@ public class CdeclConvention : CallingConvention
 	private readonly Dictionary<string, Delegate> _registeredFunctions = new();
 	private readonly Dictionary<string, Type[]> _parameterTypes = new();
 
-	public override uint HandleCall( X86Core core, Func<object[], uint> function, Type[] parameterTypes )
+	public override uint HandleCall( X86Core core, Func<object[], uint> function, Type[] parameterTypes, bool isJump = false )
 	{
 		// Get return address
 		uint returnAddress = core.ReadDword( core.Registers["esp"] );
@@ -23,6 +23,18 @@ public class CdeclConvention : CallingConvention
 		core.Registers["eax"] = result;
 
 		// In cdecl, the caller cleans up the stack, so we DON'T adjust ESP
+		if ( isJump )
+		{
+			// If it's a jump, we need to adjust ESP to remove the parameters
+			core.Pop();
+			//core.Registers["esp"] += (uint)(parameterTypes.Length * 4 + 4); // params + return address
+		}
+		else
+		{
+			// If it's a call, we don't adjust ESP here
+			// The caller will handle it after the call
+		}
+
 		// We just set EIP to the return address
 		core.Registers["eip"] = returnAddress;
 
@@ -70,7 +82,7 @@ public class CdeclConvention : CallingConvention
 		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ) };
 	}
 
-	public bool TryCallFunction( string name, X86Core core, out uint result )
+	public bool TryCallFunction( string name, X86Core core, out uint result, bool isJump = false )
 	{
 		result = 0;
 
@@ -99,7 +111,7 @@ public class CdeclConvention : CallingConvention
 				return boolResult ? 1u : 0u;
 
 			return Convert.ToUInt32( returnValue );
-		}, paramTypes );
+		}, paramTypes, isJump );
 
 		return true;
 	}

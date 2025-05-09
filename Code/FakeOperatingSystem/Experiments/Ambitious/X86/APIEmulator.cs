@@ -11,22 +11,24 @@ public abstract class APIEmulator
 	protected StdCallConvention _stdCallConvention = new();
 	protected CdeclConvention _cdeclConvention = new();
 	protected X86Core Core { get; private set; }
+	protected X86Interpreter Interpreter { get; private set; }
 
-	public bool TryCall( string name, X86Core core, out uint result )
+	public bool TryCall( string name, X86Core core, X86Interpreter interpreter, out uint result, bool isJump = false )
 	{
 		// Set the core for this execution context
 		Core = core;
+		Interpreter = interpreter;
 
 		try
 		{
 			// First try the strongly-typed registered functions
-			if ( _stdCallConvention.TryCallFunction( name, core, out result ) )
+			if ( _stdCallConvention.TryCallFunction( name, core, out result, isJump ) )
 			{
 				return true;
 			}
 
 			// Try cdecl functions next
-			if ( _cdeclConvention.TryCallFunction( name, core, out result ) )
+			if ( _cdeclConvention.TryCallFunction( name, core, out result, isJump ) )
 			{
 				return true;
 			}

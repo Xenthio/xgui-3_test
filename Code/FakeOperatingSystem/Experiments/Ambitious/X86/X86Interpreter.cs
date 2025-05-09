@@ -1,6 +1,7 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
@@ -15,6 +16,8 @@ public partial class X86Interpreter
 	public string ExecutableName { get; private set; } = "VIRTUAL.EXE";
 	public Dictionary<string, string> ImportSourceDlls = new();
 
+	public Dictionary<(uint hInstance, uint uID), string> StringResources = new();
+
 	public delegate void MessageBoxHandler( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore );
 	public event MessageBoxHandler OnHaltWithMessageBox;
 
@@ -25,67 +28,77 @@ public partial class X86Interpreter
 		APIEmulators.Add( new Kernel32Emulator() );
 		APIEmulators.Add( new Shell32Emulator() );
 
-		// Register all instruction handlers
+		// === Arithmetic ===
 		InstructionSet.RegisterHandler( new Handlers.AddRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AddR32Rm32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.MovRegImm32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.PushImm32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.PushImm8Handler() );
-		InstructionSet.RegisterHandler( new Handlers.CallRel32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.JmpHandler() );
-		InstructionSet.RegisterHandler( new Handlers.ConditionalJumpHandler() );
-		InstructionSet.RegisterHandler( new Handlers.LeaveHandler() );
-		InstructionSet.RegisterHandler( new Handlers.MovRmR32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.MovR32RmHandler() );
-		InstructionSet.RegisterHandler( new Handlers.MovRm32Imm32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.XorRm32R32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.IncDecRegHandler() );
-		InstructionSet.RegisterHandler( new Handlers.PushRegHandler() );
-		InstructionSet.RegisterHandler( new Handlers.CmpHandler() );
-		InstructionSet.RegisterHandler( new Handlers.LeaHandler() );
-		InstructionSet.RegisterHandler( new Handlers.PopRegHandler() );
-		InstructionSet.RegisterHandler( new Handlers.NopHandler() );
-		InstructionSet.RegisterHandler( new Handlers.XorHandler() );
-		InstructionSet.RegisterHandler( new Handlers.SegmentPrefixHandler() );
-		InstructionSet.RegisterHandler( new Handlers.MovEaxMemHandler() );
-		InstructionSet.RegisterHandler( new Handlers.OrEaxImm32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.FlagInstructionHandler() );
-		InstructionSet.RegisterHandler( new Handlers.ExtendedOpcodeHandler() );
-		InstructionSet.RegisterHandler( new Handlers.ShiftRotateHandler() );
-		InstructionSet.RegisterHandler( new Handlers.OperandSizePrefixHandler() );
-		InstructionSet.RegisterHandler( new Handlers.TestRm32R32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.HltHandler() );
-		InstructionSet.RegisterHandler( new Handlers.MovRm8R8Handler() );
-		InstructionSet.RegisterHandler( new Handlers.MovR8Rm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.SubRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.SubR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AdcRm8R8Handler() );
-		InstructionSet.RegisterHandler( new Handlers.CdqHandler() );
-		InstructionSet.RegisterHandler( new Handlers.PortIOHandler() );
-		InstructionSet.RegisterHandler( new Handlers.LesHandler() );
-		InstructionSet.RegisterHandler( new Handlers.BCDArithmeticHandler() );
-		InstructionSet.RegisterHandler( new Handlers.AndAlImm8Handler() );
-		InstructionSet.RegisterHandler( new Handlers.XchgHandler() );
-		InstructionSet.RegisterHandler( new Handlers.LoopHandler() );
-		InstructionSet.RegisterHandler( new Handlers.TestEaxImm32Handler() );
-		InstructionSet.RegisterHandler( new Handlers.StringOperationsHandler() );
-		InstructionSet.RegisterHandler( new Handlers.TestRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.XorRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.XorRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.XorHandler() );
 		InstructionSet.RegisterHandler( new Handlers.OrR32Rm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.OrEaxImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AndAlImm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.BCDArithmeticHandler() );
+		InstructionSet.RegisterHandler( new Handlers.CmpHandler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpAlImm8Handler() );
-		InstructionSet.RegisterHandler( new Handlers.PopEsHandler() );
-		InstructionSet.RegisterHandler( new Handlers.MovReg8SSRm8Handler() );
-
-
-		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode80Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode81Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode83Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeF6Handler() );
+
+		// === Data Movement ===
+		InstructionSet.RegisterHandler( new Handlers.MovRegImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovRmR32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovR32RmHandler() );
+		InstructionSet.RegisterHandler( new Handlers.MovRm32Imm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovEaxMemHandler() );
+		InstructionSet.RegisterHandler( new Handlers.MovRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovR8Rm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.LesHandler() );
+		InstructionSet.RegisterHandler( new Handlers.PopRegHandler() );
+		InstructionSet.RegisterHandler( new Handlers.PushRegHandler() );
+		InstructionSet.RegisterHandler( new Handlers.PushImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.PushImm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.SegmentPrefixHandler() );
+		InstructionSet.RegisterHandler( new Handlers.PopEsHandler() );
+		InstructionSet.RegisterHandler( new Handlers.MovReg8SSRm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.LeaHandler() );
+		InstructionSet.RegisterHandler( new Handlers.XchgHandler() );
+
+		// === Control Flow ===
+		InstructionSet.RegisterHandler( new Handlers.CallRel32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.JmpHandler() );
+		InstructionSet.RegisterHandler( new Handlers.ConditionalJumpHandler() );
+		InstructionSet.RegisterHandler( new Handlers.RetHandler( this ) );
+		InstructionSet.RegisterHandler( new Handlers.LoopHandler() );
+		InstructionSet.RegisterHandler( new Handlers.ExtendedOpcodeHandler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeFFHandler( this ) );
 
+		// === Logic/Bitwise ===
+		InstructionSet.RegisterHandler( new Handlers.TestRm32R32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.TestRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.TestEaxImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.FlagInstructionHandler() );
+		InstructionSet.RegisterHandler( new Handlers.ShiftRotateHandler() );
+		InstructionSet.RegisterHandler( new Handlers.OperandSizePrefixHandler() );
 
-		InstructionSet.RegisterHandler( new Handlers.RetHandler( this ) );
+		// === Stack/Frame ===
+		InstructionSet.RegisterHandler( new Handlers.LeaveHandler() );
+		InstructionSet.RegisterHandler( new Handlers.IncDecRegHandler() );
+		InstructionSet.RegisterHandler( new Handlers.CdqHandler() );
+
+		// === String/Memory ===
+		InstructionSet.RegisterHandler( new Handlers.StringOperationsHandler() );
+
+		// === Port/IO ===
+		InstructionSet.RegisterHandler( new Handlers.PortIOHandler() );
+
+		// === Miscellaneous ===
+		InstructionSet.RegisterHandler( new Handlers.NopHandler() );
+		InstructionSet.RegisterHandler( new Handlers.HltHandler() );
+		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
 	}
 
 	public bool LoadExecutable( byte[] fileBytes, string path = null )
@@ -93,12 +106,44 @@ public partial class X86Interpreter
 		// Extract exe name from path if available
 		if ( !string.IsNullOrEmpty( path ) )
 		{
-			// Get just the filename from the path
 			ExecutableName = System.IO.Path.GetFileName( path ).ToUpper();
 		}
 
 		var loader = new PELoader();
-		return loader.Load( fileBytes, Core, out _entryPoint, out Imports, out ImportSourceDlls );
+		bool loaded = loader.Load( fileBytes, Core, out _entryPoint, out Imports, out ImportSourceDlls );
+
+		if ( loader.ParseAllResources( fileBytes, out var resources ) )
+		{
+			foreach ( var res in resources )
+			{
+				if ( res.Type == 6 ) // RT_STRING
+				{
+					using var ms = new System.IO.MemoryStream( res.Data );
+					using var br = new System.IO.BinaryReader( ms );
+					for ( uint i = 0; i < 16; i++ )
+					{
+						if ( ms.Position + 2 > ms.Length )
+							break; // Prevents reading past end
+
+						ushort strlen = br.ReadUInt16();
+						string value = "";
+						if ( strlen > 0 )
+						{
+							if ( ms.Position + strlen * 2 > ms.Length )
+								break; // Prevents reading past end
+
+							byte[] strBytes = br.ReadBytes( strlen * 2 );
+							value = Encoding.Unicode.GetString( strBytes );
+							// Only add if not empty
+							StringResources[(0x00400000, (res.Name - 1) * 16 + i)] = value;
+							Log.Info( $"Loaded string resource: ID=0x{((res.Name - 1) * 16 + i):X8}, Value=\"{value}\"" );
+						}
+					}
+				}
+			}
+		}
+
+		return loaded;
 	}
 
 	public void Execute()

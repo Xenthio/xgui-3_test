@@ -50,18 +50,35 @@ public class User32Emulator : APIEmulator
 			"LoadStringA",
 			( hInstance, uID, lpBuffer, cchBufferMax ) =>
 			{
-				// Option 1: Always fail (resource not found)
-				// return 0;
+				// Try to find the string resource
+				if ( !Interpreter.StringResources.TryGetValue( (hInstance, uID), out var value ) )
+				{
+					// Not found: return 0
+					Log.Info( $"LoadStringA: Resource not found (hInstance=0x{hInstance:X8}, uID={uID})" );
+					if ( cchBufferMax > 0 )
+						Core.WriteByte( lpBuffer, 0 ); // Null-terminate
+					return 0;
+				}
 
-				// Option 2: Write a placeholder string
-				string placeholder = $"STRING_{uID}";
-				int len = Math.Min( placeholder.Length, (int)cchBufferMax - 1 );
+				// Copy up to cchBufferMax-1 characters, null-terminate
+				int len = Math.Min( value.Length, (int)cchBufferMax - 1 );
 				for ( int i = 0; i < len; i++ )
-					Core.WriteByte( lpBuffer + (uint)i, (byte)placeholder[i] );
-				Core.WriteByte( lpBuffer + (uint)len, 0 ); // Null-terminate
+					Core.WriteByte( lpBuffer + (uint)i, (byte)value[i] );
+				Core.WriteByte( lpBuffer + (uint)len, 0 );
 
-				Log.Info( $"LoadStringA(hInstance=0x{hInstance:X8}, uID={uID}, lpBuffer=0x{lpBuffer:X8}, cchBufferMax={cchBufferMax}) => \"{placeholder}\"" );
+				Log.Info( $"LoadStringA: Loaded \"{value}\" (hInstance=0x{hInstance:X8}, uID={uID}, len={len})" );
 				return (uint)len;
+			}
+		);
+
+		RegisterStdCallFunction<uint, uint>(
+			"GetProcessDefaultLayout",
+			( pdwDefaultLayout ) =>
+			{
+				Log.Info( "GetProcessDefaultLayout called (stub)" );
+				if ( pdwDefaultLayout != 0 )
+					Core.WriteDword( pdwDefaultLayout, 0 ); // 0 = Left-to-right layout
+				return 1; // TRUE
 			}
 		);
 

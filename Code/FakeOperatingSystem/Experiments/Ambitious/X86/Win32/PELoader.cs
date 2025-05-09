@@ -81,6 +81,130 @@ public class PELoader
 
 		return true;
 	}
+	public class PEResourceEntry
+	{
+		public uint Type;
+		public uint Name;
+		public uint Language;
+		public byte[] Data;
+	}
+
+	public bool ParseAllResources( byte[] fileBytes, out List<PEResourceEntry> resources )
+	{
+		var resourceList = new List<PEResourceEntry>();
+
+		// 1. Find PE header
+		if ( fileBytes.Length < 0x40 || fileBytes[0] != 'M' || fileBytes[1] != 'Z' )
+		{
+			resources = resourceList;
+			Log.Info( "[Resource] Invalid PE file" );
+			return false;
+		}
+
+		uint peOffset = BitConverter.ToUInt32( fileBytes, 0x3C );
+		if ( peOffset + 0x40 > fileBytes.Length )
+		{
+			resources = resourceList;
+			Log.Info( "[Resource] PE header not found" );
+			return false;
+		}
+
+		// 2. Find resource directory RVA
+		uint optHeaderOffset = peOffset + 24;
+		ushort magic = BitConverter.ToUInt16( fileBytes, (int)optHeaderOffset );
+		if ( magic != 0x10B )
+		{
+			resources = resourceList;
+			Log.Info( "[Resource] Only PE32 supported" );
+			return false; // Only PE32 supported
+		}
+
+		uint resourceDirOffset = optHeaderOffset + 96 + 2 * 8; // DataDirectory[2] is .rsrc
+		uint resourceRVA = BitConverter.ToUInt32( fileBytes, (int)resourceDirOffset );
+		uint resourceSize = BitConverter.ToUInt32( fileBytes, (int)resourceDirOffset + 4 );
+		if ( resourceRVA == 0 || resourceSize == 0 )
+		{
+			resources = resourceList;
+			Log.Info( "[Resource] No resources found" );
+			return false;
+		}
+
+		// 3. Map RVA to file offset
+		ushort numSections = BitConverter.ToUInt16( fileBytes, (int)peOffset + 6 );
+		uint sectionHeadersOffset = peOffset + 24 + BitConverter.ToUInt16( fileBytes, (int)peOffset + 20 );
+		uint rsrcRaw = 0, rsrcVA = 0, rsrcSize = 0;
+		for ( int i = 0; i < numSections; i++ )
+		{
+			uint s = sectionHeadersOffset + (uint)(i * 40);
+			string name = Encoding.ASCII.GetString( fileBytes, (int)s, 8 ).TrimEnd( '\0' );
+			if ( name == ".rsrc" )
+			{
+				rsrcVA = BitConverter.ToUInt32( fileBytes, (int)s + 12 );
+				rsrcSize = BitConverter.ToUInt32( fileBytes, (int)s + 8 );
+				rsrcRaw = BitConverter.ToUInt32( fileBytes, (int)s + 20 );
+				break;
+			}
+		}
+		if ( rsrcRaw == 0 )
+		{
+			resources = resourceList;
+			return false;
+		}
+
+		uint RvaToFile( uint rva )
+		{
+			if ( rva >= rsrcVA && rva < rsrcVA + rsrcSize )
+				return rsrcRaw + (rva - rsrcVA);
+			return rva;
+		}
+
+		// 4. Parse resource directory tree (recursive)
+		void ParseDir( uint dirOffset, uint type, uint name, uint lang )
+		{
+			if ( dirOffset + 16 > fileBytes.Length ) return;
+			int entryCount = BitConverter.ToUInt16( fileBytes, (int)dirOffset + 12 ) + BitConverter.ToUInt16( fileBytes, (int)dirOffset + 14 );
+			for ( int i = 0; i < entryCount; i++ )
+			{
+				uint entryOffset = dirOffset + 16 + (uint)(i * 8);
+				if ( entryOffset + 8 > fileBytes.Length ) continue;
+				uint idOrName = BitConverter.ToUInt32( fileBytes, (int)entryOffset );
+				uint dataOrSubdir = BitConverter.ToUInt32( fileBytes, (int)entryOffset + 4 );
+
+				bool isNamed = (idOrName & 0x80000000) != 0;
+				uint id = idOrName & 0x7FFFFFFF;
+
+				bool isSubdir = (dataOrSubdir & 0x80000000) != 0;
+				uint offset = dataOrSubdir & 0x7FFFFFFF;
+
+				if ( isSubdir )
+				{
+					uint subdirOffset = rsrcRaw + offset;
+					if ( type == 0 ) // First level: type
+						ParseDir( subdirOffset, id, name, lang );
+					else if ( name == 0 ) // Second level: name/id
+						ParseDir( subdirOffset, type, id, lang );
+					else // Third level: language
+						ParseDir( subdirOffset, type, name, id );
+				}
+				else
+				{
+					uint dataEntryOffset = rsrcRaw + offset;
+					if ( dataEntryOffset + 16 > fileBytes.Length ) continue;
+					uint dataRVA = BitConverter.ToUInt32( fileBytes, (int)dataEntryOffset );
+					uint dataSize = BitConverter.ToUInt32( fileBytes, (int)dataEntryOffset + 4 );
+					uint dataFileOffset = RvaToFile( dataRVA );
+					if ( dataFileOffset + dataSize > fileBytes.Length ) continue;
+					var data = new byte[dataSize];
+					Array.Copy( fileBytes, dataFileOffset, data, 0, dataSize );
+					resourceList.Add( new PEResourceEntry { Type = type, Name = name, Language = lang, Data = data } );
+				}
+			}
+		}
+
+		ParseDir( rsrcRaw, 0, 0, 0 );
+		resources = resourceList;
+		return resources.Count > 0;
+	}
 
 	private void ParseImports( byte[] fileBytes, uint peOffset, uint imageBase, X86Core core,
 							  Dictionary<string, uint> imports, Dictionary<string, string> importSourceDlls )

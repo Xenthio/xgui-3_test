@@ -8,7 +8,7 @@ public class StdCallConvention : CallingConvention
 	private readonly Dictionary<string, Delegate> _registeredFunctions = new();
 	private readonly Dictionary<string, Type[]> _parameterTypes = new();
 
-	public override uint HandleCall( X86Core core, Func<object[], uint> function, Type[] parameterTypes )
+	public override uint HandleCall( X86Core core, Func<object[], uint> function, Type[] parameterTypes, bool isJump = false )
 	{
 		// Get return address
 		uint returnAddress = core.ReadDword( core.Registers["esp"] );
@@ -62,7 +62,7 @@ public class StdCallConvention : CallingConvention
 		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ) };
 	}
 
-	public bool TryCallFunction( string name, X86Core core, out uint result )
+	public bool TryCallFunction( string name, X86Core core, out uint result, bool isJump = false )
 	{
 		result = 0;
 
@@ -91,7 +91,7 @@ public class StdCallConvention : CallingConvention
 				return boolResult ? 1u : 0u;
 
 			return Convert.ToUInt32( returnValue );
-		}, paramTypes );
+		}, paramTypes, isJump );
 
 		return true;
 	}

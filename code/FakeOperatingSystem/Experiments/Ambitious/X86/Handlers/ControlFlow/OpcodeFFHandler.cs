@@ -161,7 +161,7 @@ public class OpcodeFFHandler : IInstructionHandler
 
 				foreach ( var emu in _interpreter.APIEmulators )
 				{
-					if ( emu.TryCall( api.Key, core, out var result ) )
+					if ( emu.TryCall( api.Key, core, _interpreter, out var result ) )
 					{
 						// these should be handled by the api's calling convention 
 						//core.Registers["eax"] = result;
@@ -223,7 +223,7 @@ public class OpcodeFFHandler : IInstructionHandler
 				bool handled = false;
 				foreach ( var emu in _interpreter.APIEmulators )
 				{
-					if ( emu.TryCall( api.Key, core, out var result ) )
+					if ( emu.TryCall( api.Key, core, _interpreter, out var result, isJump: true ) )
 					{
 						handled = true;
 						break;

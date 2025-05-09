@@ -185,6 +185,6 @@ public class X86Core
 	{
 		if ( !VerboseLogging )
 			return;
-		Log.Info( message );
+		Log.Info( $"EIP=0x{Registers["eip"]:X8}: {message}" );
 	}
 }
