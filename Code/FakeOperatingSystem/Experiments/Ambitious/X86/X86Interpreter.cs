@@ -1,5 +1,6 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
+using Sandbox;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -56,6 +57,7 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.MovEaxMemHandler() );
 		InstructionSet.RegisterHandler( new Handlers.MovRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovR8Rm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovMoffs32EaxHandler() );
 		InstructionSet.RegisterHandler( new Handlers.LesHandler() );
 		InstructionSet.RegisterHandler( new Handlers.PopRegHandler() );
 		InstructionSet.RegisterHandler( new Handlers.PushRegHandler() );
@@ -207,6 +209,7 @@ public partial class X86Interpreter
 
 		for ( i = 0; i < maxInstructions; i++ )
 		{
+			await GameTask.Yield();
 			// Check for program exit
 			if ( Core.Registers["eip"] == 0xFFFFFFFF )
 			{

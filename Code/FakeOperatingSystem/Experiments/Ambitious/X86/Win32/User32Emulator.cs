@@ -70,6 +70,29 @@ public class User32Emulator : APIEmulator
 				return (uint)len;
 			}
 		);
+		RegisterStdCallFunction<uint, uint, uint, uint, uint>(
+			"LoadStringW",
+			( hInstance, uID, lpBuffer, cchBufferMax ) =>
+			{
+				// Try to find the string resource
+				if ( !Interpreter.StringResources.TryGetValue( (hInstance, uID), out var value ) )
+				{
+					Log.Info( $"LoadStringW: Resource not found (hInstance=0x{hInstance:X8}, uID={uID})" );
+					if ( cchBufferMax > 0 )
+						Core.WriteWord( lpBuffer, 0 ); // Null-terminate (UTF-16)
+					return 0;
+				}
+
+				// Copy up to cchBufferMax-1 characters, null-terminate
+				int len = Math.Min( value.Length, (int)cchBufferMax - 1 );
+				for ( int i = 0; i < len; i++ )
+					Core.WriteWord( lpBuffer + (uint)(i * 2), value[i] );
+				Core.WriteWord( lpBuffer + (uint)(len * 2), 0 );
+
+				Log.Info( $"LoadStringW: Loaded \"{value}\" (hInstance=0x{hInstance:X8}, uID={uID}, len={len})" );
+				return (uint)len;
+			}
+		);
 
 		RegisterStdCallFunction<uint, uint>(
 			"GetProcessDefaultLayout",
@@ -81,6 +104,58 @@ public class User32Emulator : APIEmulator
 				return 1; // TRUE
 			}
 		);
+		RegisterStdCallFunction<uint, uint>(
+			"CharNextW",
+			( lpsz ) =>
+			{
+				// Read the current WCHAR (2 bytes)
+				ushort ch = Core.ReadWord( lpsz );
+				Core.LogVerbose( $"CharNextW called (lpsz=0x{lpsz:X8}, char=0x{ch:X4})" );
+				if ( ch == 0 )
+					return lpsz; // Already at null terminator, don't advance
+				return lpsz + 2; // Advance to next WCHAR
+			}
+		);
+		RegisterStdCallFunction<uint, uint, uint>(
+			"LoadIconW",
+			( hInstance, lpIconName ) =>
+			{
+				Log.Info( $"LoadIconW called (stub) hInstance=0x{hInstance:X8}, lpIconName=0x{lpIconName:X8}" );
+				// Return a fake icon handle (nonzero)
+				return 0x10001;
+			}
+		);
+
+		RegisterStdCallFunction<uint, uint, uint>(
+			"LoadCursorW",
+			( hInstance, lpCursorName ) =>
+			{
+				Log.Info( $"LoadCursorW called (stub) hInstance=0x{hInstance:X8}, lpCursorName=0x{lpCursorName:X8}" );
+				// Return a fake cursor handle (nonzero)
+				return 0x20001;
+			}
+		);
+
+		RegisterStdCallFunction<uint, uint>(
+			"RegisterClassExW",
+			( lpwcx ) =>
+			{
+				Log.Info( $"RegisterClassExW called (stub) lpwcx=0x{lpwcx:X8}" );
+				// Return a fake ATOM (nonzero)
+				return 0x4001;
+			}
+		);
+
+		RegisterStdCallFunction<uint, uint>(
+			"GetSysColorBrush",
+			( nIndex ) =>
+			{
+				Log.Info( $"GetSysColorBrush called (stub) nIndex={nIndex}" );
+				// Return a fake brush handle (nonzero)
+				return 0x30001;
+			}
+		);
+
 
 		// wsprintfA - Formats a string using variable arguments
 		RegisterCdeclVariadicFunction( "wsprintfA", core =>

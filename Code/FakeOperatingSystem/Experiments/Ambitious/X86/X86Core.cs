@@ -103,6 +103,19 @@ public class X86Core
 		WriteByte( address + 3, (byte)((value >> 24) & 0xFF), protect: false );
 	}
 
+	public void WriteWord( uint address, ushort value, bool protect = true )
+	{
+		WriteByte( address, (byte)(value & 0xFF), protect: false );
+		WriteByte( address + 1, (byte)((value >> 8) & 0xFF), protect: false );
+	}
+	public ushort ReadWord( uint address )
+	{
+		return (ushort)(
+			ReadByte( address ) |
+			(ReadByte( address + 1 ) << 8)
+		);
+	}
+
 	public void Push( uint value )
 	{
 		LogVerbose( $"Pushing value: 0x{value:X8} to stack at ESP=0x{Registers["esp"]:X8}" );

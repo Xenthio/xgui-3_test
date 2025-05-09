@@ -56,7 +56,7 @@ public static class X86AddressingHelper
 					ea += indexValue * scaleFactor;
 				}
 			}
-			Log.Info( $"[EA] SIB/ESP: EIP=0x{instructionAddress:X8}, ESP=0x{core.Registers["esp"]:X8}, base={base_}, index={index}, scale={scale}, mod={mod}, sibOffset={sibOffset}, ea=0x{ea:X8}" );
+			core.LogVerbose( $"[EA] SIB/ESP: EIP=0x{instructionAddress:X8}, ESP=0x{core.Registers["esp"]:X8}, base={base_}, index={index}, scale={scale}, mod={mod}, sibOffset={sibOffset}, ea=0x{ea:X8}" );
 		}
 		else // Standard addressing mode
 		{

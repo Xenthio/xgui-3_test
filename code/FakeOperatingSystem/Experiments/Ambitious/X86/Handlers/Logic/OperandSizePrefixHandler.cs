@@ -1,3 +1,5 @@
+using System;
+
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.Handlers;
 
 public class OperandSizePrefixHandler : IInstructionHandler
@@ -33,10 +35,13 @@ public class OperandSizePrefixHandler : IInstructionHandler
 			case 0x81: // Immediate Group 1 with 16-bit immediate
 				Handle66_Immediate_Group1( core, nextByte );
 				break;
+			case 0x85: // TEST r/m16, r16 (with 0x66 prefix)
+				Handle66_TEST_Rm16_R16( core );
+				break;
 
 			default:
 				// For unhandled combinations, we'll log and skip the instruction
-				Log.Warning( $"Unhandled 0x66 prefix combination: 0x66 0x{nextByte:X2}" );
+				Log.Warning( $"EIP=0x{eip:X8}: Unhandled 0x66 prefix combination: 0x66 0x{nextByte:X2}" );
 				// Skip the next byte too (the instruction after the prefix)
 				core.Registers["eip"]++;
 				break;
@@ -45,25 +50,62 @@ public class OperandSizePrefixHandler : IInstructionHandler
 
 	private void Handle66_MOV_Rm16_R16( X86Core core )
 	{
-		// Similar to MOV r/m32, r32 but operates on 16-bit registers
 		uint eip = core.Registers["eip"];
 		byte modrm = core.ReadByte( eip + 1 );
+		byte mod = (byte)(modrm >> 6);
+		byte reg = (byte)((modrm >> 3) & 0x7);
+		byte rm = (byte)(modrm & 0x7);
 
-		// For simplicity in this stub, just skip the instruction
-		// In a full implementation, you would handle the 16-bit MOV
-		core.Registers["eip"] += 2; // Skip opcode and modrm
-		Log.Info( "16-bit MOV r/m16, r16 (stub implementation)" );
+		ushort regValue = (ushort)(core.Registers[Get16BitRegisterName( reg )] & 0xFFFF);
+
+		if ( mod == 3 )
+		{
+			// Register to register
+			string destReg = Get16BitRegisterName( rm );
+			core.Registers[destReg] = (core.Registers[destReg] & 0xFFFF0000) | regValue;
+			core.Registers["eip"] += 2;
+			Log.Info( $"16-bit MOV {destReg}, {Get16BitRegisterName( reg )} (reg-reg)" );
+		}
+		else
+		{
+			// Register to memory
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			core.WriteWord( addr, regValue );
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += len;
+			Log.Info( $"16-bit MOV [0x{addr:X8}], {Get16BitRegisterName( reg )} (reg-mem)" );
+		}
 	}
 
 	private void Handle66_MOV_R16_Rm16( X86Core core )
 	{
-		// Similar to MOV r32, r/m32 but operates on 16-bit registers
 		uint eip = core.Registers["eip"];
 		byte modrm = core.ReadByte( eip + 1 );
+		byte mod = (byte)(modrm >> 6);
+		byte reg = (byte)((modrm >> 3) & 0x7);
+		byte rm = (byte)(modrm & 0x7);
 
-		// For simplicity in this stub, just skip the instruction
-		core.Registers["eip"] += 2; // Skip opcode and modrm
-		Log.Info( "16-bit MOV r16, r/m16 (stub implementation)" );
+		if ( mod == 3 )
+		{
+			// Register to register
+			string destReg = Get16BitRegisterName( reg );
+			string srcReg = Get16BitRegisterName( rm );
+			ushort value = (ushort)(core.Registers[srcReg] & 0xFFFF);
+			core.Registers[destReg] = (core.Registers[destReg] & 0xFFFF0000) | value;
+			core.Registers["eip"] += 2;
+			Log.Info( $"16-bit MOV {destReg}, {srcReg} (reg-reg)" );
+		}
+		else
+		{
+			// Memory to register
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			ushort value = core.ReadWord( addr );
+			string destReg = Get16BitRegisterName( reg );
+			core.Registers[destReg] = (core.Registers[destReg] & 0xFFFF0000) | value;
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += len;
+			Log.Info( $"16-bit MOV {destReg}, [0x{addr:X8}] (mem-reg)" );
+		}
 	}
 
 	private void Handle66_0F_Prefix( X86Core core )
@@ -102,5 +144,56 @@ public class OperandSizePrefixHandler : IInstructionHandler
 
 		Log.Info( $"16-bit Group 1 immediate instruction: 0x66 0x{opcode:X2} (stub implementation)" );
 	}
+
+	private void Handle66_TEST_Rm16_R16( X86Core core )
+	{
+		uint eip = core.Registers["eip"];
+		byte modrm = core.ReadByte( eip + 1 );
+		byte mod = (byte)(modrm >> 6);
+		byte reg = (byte)((modrm >> 3) & 0x7);
+		byte rm = (byte)(modrm & 0x7);
+
+		ushort value1, value2;
+		if ( mod == 3 )
+		{
+			// Register-direct: TEST reg16, reg16
+			string regName1 = Get16BitRegisterName( rm );
+			string regName2 = Get16BitRegisterName( reg );
+			value1 = (ushort)(core.Registers[regName1] & 0xFFFF);
+			value2 = (ushort)(core.Registers[regName2] & 0xFFFF);
+			core.Registers["eip"] += 2;
+			Log.Info( $"16-bit TEST {regName1}, {regName2} (reg-reg)" );
+		}
+		else
+		{
+			// Memory operand: TEST [mem], reg16
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			value1 = core.ReadWord( addr );
+			string regName2 = Get16BitRegisterName( reg );
+			value2 = (ushort)(core.Registers[regName2] & 0xFFFF);
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += len;
+			Log.Info( $"16-bit TEST [0x{addr:X8}], {regName2} (mem-reg)" );
+		}
+
+		ushort result = (ushort)(value1 & value2);
+		core.ZeroFlag = result == 0;
+		core.SignFlag = (result & 0x8000) != 0;
+		core.CarryFlag = false;
+		core.OverflowFlag = false;
+	}
+
+	private string Get16BitRegisterName( int code ) => code switch
+	{
+		0 => "eax", // AX
+		1 => "ecx", // CX
+		2 => "edx", // DX
+		3 => "ebx", // BX
+		4 => "esp", // SP
+		5 => "ebp", // BP
+		6 => "esi", // SI
+		7 => "edi", // DI
+		_ => throw new ArgumentException( $"Invalid 16-bit register code: {code}" )
+	};
 }
 

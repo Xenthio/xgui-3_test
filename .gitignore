@@ -402,3 +402,4 @@ FodyWeavers.xsd
 /Libraries/xenthio.xmovement/.bin
 *.surface_c
 *.vmat_c
+*.vsnd_c

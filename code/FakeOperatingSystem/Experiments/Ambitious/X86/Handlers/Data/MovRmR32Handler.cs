@@ -45,7 +45,9 @@ public class MovRmR32Handler : IInstructionHandler
 		if ( rm != 4 ) // Not SIB
 			ea = core.Registers[GetRegisterName( rm )];
 		else
-			throw new NotImplementedException( "MovRmR32Handler: SIB addressing not implemented" );
+		{
+
+		}
 
 		// Displacement
 		if ( mod == 1 ) // 8-bit displacement
