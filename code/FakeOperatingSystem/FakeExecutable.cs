@@ -157,7 +157,7 @@ public static class FakeExecutable
 		}
 		catch ( Exception ex )
 		{
-			Log.Error( $"Failed to read fake executable '{path}': {ex.Message}" );
+			Log.Warning( $"Failed to read fake executable '{path}': {ex.Message}" );
 			return null;
 		}
 	}

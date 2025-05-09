@@ -26,7 +26,7 @@ public class PortIOHandler : IInstructionHandler
 
 					// For IN AL, DX - read a byte from the port into AL
 					// In a virtual environment, we typically return 0 or simulate the hardware
-					byte value = VirtualPortIO( port, 1 );
+					byte value = VirtualPortIO( core, port, 1 );
 
 					// Store in AL (low byte of EAX), preserving other bytes
 					core.Registers["eax"] = (core.Registers["eax"] & 0xFFFFFF00) | value;
@@ -46,11 +46,11 @@ public class PortIOHandler : IInstructionHandler
 	}
 
 	// Simulated port I/O
-	private byte VirtualPortIO( ushort port, byte size )
+	private byte VirtualPortIO( X86Core core, ushort port, byte size )
 	{
 		// In a real emulator, this would interface with virtual hardware
 		// For now, just return 0 for all ports
-		Log.Warning( $"Virtual port I/O - Reading from port 0x{port:X4} (stubbed)" );
+		Log.Warning( $"(EIP: 0x{core.Registers["eip"]:X8}) Virtual port I/O - Reading from port 0x{port:X4} (stubbed)" );
 		return 0;
 	}
 }

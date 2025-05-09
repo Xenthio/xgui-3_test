@@ -195,6 +195,57 @@ public class OpcodeFFHandler : IInstructionHandler
 				core.Registers["eip"] = target;
 			}
 		}
+		else if ( reg == 4 ) // JMP r/m32
+		{
+			uint target;
+			if ( mod == 3 ) // Register operand
+			{
+				string regName = GetRegisterName( rm );
+				target = core.Registers[regName];
+			}
+			else // Memory operand
+			{
+				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+				target = core.ReadDword( effectiveAddress );
+			}
+
+			// Calculate instruction length
+			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+
+			// Advance EIP to after the instruction
+			core.Registers["eip"] += length;
+
+			// Check for API call
+			var api = _interpreter.Imports.FirstOrDefault( x => x.Value == target );
+			if ( api.Key != null )
+			{
+				core.LogVerbose( $"OpcodeFFHandler: Detected JMP to API {api.Key}" );
+				bool handled = false;
+				foreach ( var emu in _interpreter.APIEmulators )
+				{
+					if ( emu.TryCall( api.Key, core, out var result ) )
+					{
+						handled = true;
+						break;
+					}
+				}
+				if ( !handled )
+				{
+					APIEmulator.ReportMissingExport( _interpreter, api.Key );
+					core.Registers["eax"] = 0;
+				}
+				// After API call, EIP should be set to the return address (simulate RET)
+				// You may want to pop the return address from the stack if needed, or just halt.
+				// For JMP, there is no return, so you may want to set EIP to 0xFFFFFFFF to halt.
+				//core.Registers["eip"] = 0xFFFFFFFF;
+				return;
+			}
+			else
+			{
+				// Normal JMP
+				core.Registers["eip"] = target;
+			}
+		}
 		else if ( reg == 6 ) // PUSH r/m32
 		{
 			uint value;
@@ -216,31 +267,31 @@ public class OpcodeFFHandler : IInstructionHandler
 			// Push the value onto the stack
 			core.Push( value );
 		}
-		else if ( reg == 7 ) // Technically undefined in standard x86
-		{
-			if ( mod == 3 && rm == 7 && modrm == 0xFF ) // FF FF pattern
-			{
-				// This specific pattern (0xFF 0xFF) appears to be used in Windows executables
-				// and is executed without error on real CPUs. Treat as NOP.
-				Log.Warning( $"Handling undefined instruction 0xFF 0xFF (FF /7 EDI) as NOP at {eip:X8}" );
-				core.Registers["eip"] += 2;
-			}
-			else
-			{
-				// Other FF /7 variants - also treat as NOP but log differently
-				Log.Warning( $"Encountered unusual instruction: 0xFF /7 (modrm=0x{modrm:X2}). Treating as NOP." );
+		/*		else if ( reg == 7 ) // Technically undefined in standard x86
+				{
+					if ( mod == 3 && rm == 7 && modrm == 0xFF ) // FF FF pattern
+					{
+						// This specific pattern (0xFF 0xFF) appears to be used in Windows executables
+						// and is executed without error on real CPUs. Treat as NOP.
+						Log.Warning( $"Handling undefined instruction 0xFF 0xFF (FF /7 EDI) as NOP at {eip:X8}" );
+						core.Registers["eip"] += 2;
+					}
+					else
+					{
+						// Other FF /7 variants - also treat as NOP but log differently
+						Log.Warning( $"Encountered unusual instruction: 0xFF /7 (modrm=0x{modrm:X2}). Treating as NOP." );
 
-				if ( mod == 3 ) // Register operand
-				{
-					core.Registers["eip"] += 2;
-				}
-				else // Memory operand
-				{
-					uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
-					core.Registers["eip"] += length;
-				}
-			}
-		}
+						if ( mod == 3 ) // Register operand
+						{
+							core.Registers["eip"] += 2;
+						}
+						else // Memory operand
+						{
+							uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+							core.Registers["eip"] += length;
+						}
+					}
+				}*/
 		else
 		{
 			throw new InvalidOperationException( $"Unimplemented 0xFF /{reg} (modrm=0x{modrm:X2}, mod={mod}, rm={rm})" );

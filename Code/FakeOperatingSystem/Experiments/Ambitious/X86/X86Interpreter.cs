@@ -1,6 +1,7 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
 
@@ -22,6 +23,7 @@ public partial class X86Interpreter
 		APIEmulators.Add( new User32Emulator() );
 		APIEmulators.Add( new MsvcrtEmulator() );
 		APIEmulators.Add( new Kernel32Emulator() );
+		APIEmulators.Add( new Shell32Emulator() );
 
 		// Register all instruction handlers
 		InstructionSet.RegisterHandler( new Handlers.AddRm32R32Handler() );
@@ -70,13 +72,16 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.StringOperationsHandler() );
 		InstructionSet.RegisterHandler( new Handlers.TestRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.XorRm8R8Handler() );
-
+		InstructionSet.RegisterHandler( new Handlers.OrR32Rm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.CmpAlImm8Handler() );
 
 
 
 		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
+		InstructionSet.RegisterHandler( new Handlers.Opcode80Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode81Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode83Handler() );
+		InstructionSet.RegisterHandler( new Handlers.OpcodeF6Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeFFHandler( this ) );
 	}
 
@@ -95,15 +100,17 @@ public partial class X86Interpreter
 
 	public void Execute()
 	{
+		Core.Push( 0xFFFFFFFF ); // Address of our final return, this will be used if we hit a RET without anything else in the stack, which we can assume is our final RET
 		Core.Registers["eip"] = _entryPoint;
-		int maxInstructions = 10000;
+		uint maxInstructions = 0xFFFFFFFF;
+		var i = 0;
 
-		for ( int i = 0; i < maxInstructions; i++ )
+		for ( i = 0; i < maxInstructions; i++ )
 		{
 			// Check for program exit
 			if ( Core.Registers["eip"] == 0xFFFFFFFF )
 			{
-				Log.Info( "Program execution completed via RET" );
+				Log.Info( "Program execution completed via final RET" );
 				break;
 			}
 
@@ -114,9 +121,83 @@ public partial class X86Interpreter
 			catch ( System.Exception ex )
 			{
 				// Optionally log or handle errors
-				Log.Error( $"Execution error: {ex.Message}" );
+				Log.Error( $"Execution error at 0x{Core.Registers["eip"]:X8}: {ex.Message}" );
+
+				// dont show popup if it starts with ! (Means we've shown a message already)
+				if ( !ex.Message.StartsWith( "!" ) )
+				{
+					MessageBoxUtility.ShowCustom( $"Execution error at 0x{Core.Registers["eip"]:X8}: {ex.Message}", "Execution Error", MessageBoxIcon.Error, MessageBoxButtons.OK );
+				}
 				break; // Exit on errors
 			}
+		}
+
+		if ( i >= maxInstructions )
+		{
+			Log.Warning( "Execution reached maximum instruction limit." );
+		}
+		else
+		{
+			Log.Info( $"Executed {i} instructions." );
+		}
+
+		Log.Info( "Execution completed successfully!" );
+		DumpMemory( 0x00401000, 0x0300 ); // Example memory dump
+		DumpMemoryAsString( 0x00401000, 0x0300 ); // Example memory dump
+		DumpMemory( 0x00402000, 0x0300 ); // Example memory dump
+		DumpMemoryAsString( 0x00402000, 0x0300 ); // Example memory dump
+		DumpMemory( 0x00602000, 0x0300 ); // Example memory dump
+		DumpMemoryAsString( 0x00602000, 0x0300 ); // Example memory dump
+		Log.Info( DumpRegisters() );
+	}
+
+	public async Task ExecuteAsync( uint maxInstructions = 0xFFFFFFFF, int yieldEvery = 10_000 )
+	{
+		Core.Push( 0xFFFFFFFF ); // Address of our final return, this will be used if we hit a RET without anything else in the stack, which we can assume is our final RET
+		Core.Registers["eip"] = _entryPoint;
+		int i = 0;
+
+		for ( i = 0; i < maxInstructions; i++ )
+		{
+			// Check for program exit
+			if ( Core.Registers["eip"] == 0xFFFFFFFF )
+			{
+				Log.Info( "Program execution completed via final RET" );
+				break;
+			}
+
+			try
+			{
+				InstructionSet.ExecuteNext( Core, this );
+			}
+			catch ( System.Exception ex )
+			{
+				Log.Error( $"Execution error at EIP 0x{Core.Registers["eip"]:X8}: {ex.Message}" );
+
+				if ( !ex.Message.StartsWith( "!" ) )
+				{
+					MessageBoxUtility.ShowCustom(
+						$"Execution error at 0x{Core.Registers["eip"]:X8}: {ex.Message}",
+						"Execution Error",
+						MessageBoxIcon.Error,
+						MessageBoxButtons.OK
+					);
+				}
+				break;
+			}
+
+			// Yield to UI every N instructions
+			if ( (i % yieldEvery) == 0 )
+				await Task.Yield();
+		}
+
+		if ( i >= maxInstructions )
+		{
+			Log.Warning( "Execution reached maximum instruction limit." );
+		}
+		else
+		{
+			Log.Info( $"Executed {i} instructions." );
 		}
 	}
 
@@ -179,6 +260,6 @@ public partial class X86Interpreter
 	public void HaltWithMessageBox( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore )
 	{
 		OnHaltWithMessageBox?.Invoke( title, message, icon, buttons );
-		throw new System.Exception( $"{title}: {message}" );
+		throw new System.Exception( $"!{title}: {message}" );
 	}
 }

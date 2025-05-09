@@ -46,6 +46,25 @@ public class User32Emulator : APIEmulator
 			}
 		);
 
+		RegisterStdCallFunction<uint, uint, uint, uint, uint>(
+			"LoadStringA",
+			( hInstance, uID, lpBuffer, cchBufferMax ) =>
+			{
+				// Option 1: Always fail (resource not found)
+				// return 0;
+
+				// Option 2: Write a placeholder string
+				string placeholder = $"STRING_{uID}";
+				int len = Math.Min( placeholder.Length, (int)cchBufferMax - 1 );
+				for ( int i = 0; i < len; i++ )
+					Core.WriteByte( lpBuffer + (uint)i, (byte)placeholder[i] );
+				Core.WriteByte( lpBuffer + (uint)len, 0 ); // Null-terminate
+
+				Log.Info( $"LoadStringA(hInstance=0x{hInstance:X8}, uID={uID}, lpBuffer=0x{lpBuffer:X8}, cchBufferMax={cchBufferMax}) => \"{placeholder}\"" );
+				return (uint)len;
+			}
+		);
+
 		// wsprintfA - Formats a string using variable arguments
 		RegisterCdeclVariadicFunction( "wsprintfA", core =>
 		{

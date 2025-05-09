@@ -207,6 +207,7 @@ public class VirtualFileBrowserView : FileBrowserView
 					var program = _virtualFileSystem.GetProgramFromFile( entry.RealPath );
 					if ( program != null )
 					{
+						if ( program.IsRealExecutable ) return;
 						Log.Info( $"Launching program: {program.Name}" );
 						program.Launch();
 						return;

@@ -143,19 +143,41 @@ public static class MessageBoxUtility
 		msgBox.PositionAtScreenCenter();
 
 		// Play system sound
+		// In windows98, they're all chord.
 		switch ( icon )
 		{
 			case MessageBoxIcon.Error:
-				// Todo: Play error sound
-				break;
 			case MessageBoxIcon.Warning:
-				// Todo: Play warning sound
-				break;
 			case MessageBoxIcon.Information:
 			case MessageBoxIcon.Question:
-				// Todo: Play information sound
+				var soundpath = XGUISoundSystem.GetSound( "CHORD" );
+				var soundfile = SoundFile.Load( soundpath );
+				Sound.PlayFile( soundfile );
 				break;
 		}
+		/*		switch ( icon )
+				{
+					case MessageBoxIcon.Error:
+						var soundpath = XGUISoundSystem.GetSound( "CHORD" );
+						var soundfile = SoundFile.Load( soundpath );
+						Sound.PlayFile( soundfile );
+						break;
+					case MessageBoxIcon.Warning:
+						soundpath = XGUISoundSystem.GetSound( "EXCLAMATION" );
+						soundfile = SoundFile.Load( soundpath );
+						Sound.PlayFile( soundfile );
+						break;
+					case MessageBoxIcon.Information:
+						soundpath = XGUISoundSystem.GetSound( "DING" );
+						soundfile = SoundFile.Load( soundpath );
+						Sound.PlayFile( soundfile );
+						break;
+					case MessageBoxIcon.Question:
+						soundpath = XGUISoundSystem.GetSound( "CHIMES" );
+						soundfile = SoundFile.Load( soundpath );
+						Sound.PlayFile( soundfile );
+						break;
+				}*/
 
 		// Bring to front and focus
 		msgBox.FocusWindow();

@@ -25,6 +25,11 @@ public class ProgramDescriptor
 	public string IconName { get; set; }
 
 	/// <summary>
+	/// True if this program is a real executable and should be ran in emulated x86 mode
+	/// </summary>
+	public bool IsRealExecutable { get; set; } = false;
+
+	/// <summary>
 	/// Type name of the XGUI panel to create when this program is launched
 	/// </summary>
 	public string PanelTypeName { get; set; }
@@ -53,6 +58,7 @@ public class ProgramDescriptor
 		Filename = filename;
 		IconName = iconName;
 		PanelTypeName = panelTypeName;
+
 	}
 
 	/// <summary>
@@ -62,6 +68,11 @@ public class ProgramDescriptor
 	{
 		try
 		{
+			if ( IsRealExecutable )
+			{
+				return null;
+			}
+
 			if ( string.IsNullOrEmpty( PanelTypeName ) )
 				return null;
 
@@ -118,7 +129,7 @@ public class ProgramDescriptor
 		}
 		catch ( Exception ex )
 		{
-			Log.Error( $"Failed to parse program descriptor: {ex.Message}" );
+			Log.Warning( $"Failed to parse FakeEXE program descriptor: {ex.Message}" );
 			return null;
 		}
 	}

@@ -737,16 +737,15 @@ public class VirtualFileSystem
 			// Try to read as a fake executable first
 			var program = FakeExecutable.ReadFromFakeExe( path );
 
-			// If that fails, try the old JSON-only format for backward compatibility
-			if ( program == null )
-			{
-				string content = _realFileSystem.ReadAllText( path );
-				program = ProgramDescriptor.FromFileContent( content );
-			}
-
 			// If that fails, use x86 interpreter to execute the file
 			if ( program == null )
 			{
+				program = new ProgramDescriptor( "virtual", path, "n/a", "n/a" )
+				{
+					IsRealExecutable = true,
+				};
+
+				Log.Warning( $"Loading EXE as real PE File, executing via emulated x86." );
 				var interpreter = new X86Interpreter();
 
 				interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
@@ -756,7 +755,7 @@ public class VirtualFileSystem
 				byte[] fileBytes = _realFileSystem.ReadAllBytes( path ).ToArray();
 				if ( interpreter.LoadExecutable( fileBytes, path ) )
 				{
-					interpreter.Execute();
+					interpreter.ExecuteAsync();
 				}
 			}
 
