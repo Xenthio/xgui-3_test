@@ -12,7 +12,6 @@
 
 @code {
     private VirtualFileBrowserView BrowserView;
-    private VirtualFileSystem _virtualFileSystem;
 
     protected override void OnAfterTreeRender(bool firstTime)
     {
@@ -22,10 +21,9 @@
         {
             // Create virtual file system
             FakeSystemRoot.TryCreateSystemRoot();
-            _virtualFileSystem = new VirtualFileSystem(FileSystem.Data, "FakeSystemRoot");
 
             // Initialize browser view with virtual file system
-            BrowserView.Initialize(_virtualFileSystem, FileSystem.Data);
+            BrowserView.Initialize(VirtualFileSystem.Instance, FileSystem.Data);
 
             // Intercept directory opening to launch Explorer instead of navigating 
 			BrowserView.OpenDirectoryEnabled = false;
@@ -42,7 +40,7 @@
     private void HandleDirectoryOpened(string path)
     {
         // Prevent navigation for the desktop view itself
-        var entry = _virtualFileSystem.GetEntry(path);
+        var entry = VirtualFileSystem.Instance.GetEntry(path);
 
         if (entry != null && path != VirtualFileSystem.DESKTOP)
         {
@@ -71,12 +69,5 @@
 
         // Focus the new Explorer window
         explorer.FocusWindow();
-    }
-
-
-    // Helper method to get VirtualFileSystem for other components
-    public VirtualFileSystem GetVirtualFileSystem()
-    {
-        return _virtualFileSystem;
     }
 }

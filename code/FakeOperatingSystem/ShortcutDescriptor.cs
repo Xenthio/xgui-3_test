@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FakeOperatingSystem;
+using System;
 using System.IO;
 
 namespace FakeDesktop;
@@ -107,31 +108,28 @@ public class ShortcutDescriptor
 			// Check if target is an EXE file
 			if ( TargetPath.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
 			{
-				// Get the program descriptor from the target path
-				var program = fileSystem.GetProgramFromFile( TargetPath );
-				if ( program != null )
+				// Prepare launch options from shortcut properties
+				var launchOptions = new Win32LaunchOptions
 				{
-					// Set any arguments if specified in the shortcut
-					if ( !string.IsNullOrEmpty( Arguments ) )
+					Arguments = Arguments ?? "",
+					WorkingDirectory = !string.IsNullOrEmpty( WorkingDirectory )
+						? WorkingDirectory
+						: System.IO.Path.GetDirectoryName( TargetPath ),
+					WindowState = ShowState switch
 					{
-						program.Arguments = Arguments;
+						WindowShowState.Minimized => WindowState.Minimized,
+						WindowShowState.Maximized => WindowState.Maximized,
+						_ => WindowState.Normal
 					}
+				};
 
-					// Set working directory if specified
-					if ( !string.IsNullOrEmpty( WorkingDirectory ) )
-					{
-						program.WorkingDirectory = WorkingDirectory;
-					}
-
-					// Launch the program
-					program.Launch();
+				// Launch using the new process manager
+				var process = ProcessManager.Instance?.OpenExecutable( TargetPath, launchOptions );
+				if ( process != null )
 					return true;
-				}
-				else
-				{
-					Log.Warning( $"Failed to resolve shortcut target: {TargetPath}" );
-					return false;
-				}
+
+				Log.Warning( $"Failed to launch shortcut target: {TargetPath}" );
+				return false;
 			}
 			// Check if target is a folder or other filesystem path
 			else

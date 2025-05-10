@@ -4,9 +4,16 @@ using XGUI;
 
 namespace FakeDesktop;
 
+
+public class NativeProgramDescriptor
+{
+	public string TypeName { get; set; }
+}
+
 /// <summary>
 /// Describes a virtual program that can be launched in the virtual operating system
 /// </summary>
+[Obsolete( "This class is obsolete and will be removed in a future version." )]
 public class ProgramDescriptor
 {
 	/// <summary>

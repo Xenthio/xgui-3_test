@@ -1,20 +1,16 @@
-﻿using Sandbox;
+using FakeDesktop;
+using Sandbox;
 using System;
 using System.IO;
 using System.Text;
 
-namespace FakeDesktop;
+namespace FakeOperatingSystem;
 
-/// <summary>
-/// Handles creation and parsing of hybrid executable files that contain both
-/// a real Windows executable header and embedded program descriptor data
-/// </summary>
-[Obsolete( "This class is obsolete and will be removed in a future version." )]
-public static class FakeExecutable
+public abstract class NativeProgram
 {
 	// The hexadecimal representation of our minimal Win32 executable
 	// that displays a message box when run on a real system
-	private static readonly string ExeTemplateHex =
+	protected static readonly string ExeTemplateHex =
 		"4D5A90000300000004000000FFFF" +
 		"0000B80000000000000040000000" +
 		"0000000000000000000000000000" +
@@ -92,49 +88,108 @@ public static class FakeExecutable
 		"40320000";
 
 	// Convert the hex string to a byte array when first used
-	public static readonly byte[] ExeTemplateBytes = HexStringToByteArray( ExeTemplateHex );
+	protected static readonly byte[] ExeTemplateBytes = HexStringToByteArray( ExeTemplateHex );
+
+	public abstract string FilePath { get; }
+	public abstract void Main( NativeProcess process );
 
 	/// <summary>
-	/// Creates a fake executable file with embedded program descriptor
+	/// Creates a fake executable file with embedded program descriptor for the given NativeProgram type.
 	/// </summary>
-	public static void CreateFakeExe( string path, ProgramDescriptor program )
+	public static void CompileIntoExe( Type programType, string path )
 	{
-		// Create the descriptor JSON
-		string descriptorJson = program.ToFileContent();
+		// Use TypeLibrary to get the full type name for this NativeProgram
+		var typeDesc = TypeLibrary.GetType( programType );
+		string typeName = typeDesc?.Name ?? programType.FullName;
 
-		// Convert the JSON to bytes
+		// Create the descriptor with this program's info
+		var descriptor = new NativeProgramDescriptor()
+		{
+			TypeName = typeName,
+		};
+
+		// Serialize descriptor
+		string descriptorJson = Json.Serialize( descriptor );
 		byte[] descriptorBytes = Encoding.UTF8.GetBytes( descriptorJson );
 
-		// Combine the EXE header with the descriptor
+		// Combine EXE template and descriptor
 		byte[] combinedBytes = new byte[ExeTemplateBytes.Length + descriptorBytes.Length];
-
-		// Copy the EXE template into the combined array
 		Array.Copy( ExeTemplateBytes, combinedBytes, ExeTemplateBytes.Length );
-
-		// Copy the descriptor bytes after the EXE template
 		Array.Copy( descriptorBytes, 0, combinedBytes, ExeTemplateBytes.Length, descriptorBytes.Length );
 
-		// Ensure the directory exists
+		// Ensure directory exists using VirtualFileSystem.Instance
 		string directory = Path.GetDirectoryName( path );
 		if ( !FileSystem.Data.DirectoryExists( directory ) )
-		{
 			FileSystem.Data.CreateDirectory( directory );
-		}
 
-		// Write the combined bytes to the file
-		var stream = FileSystem.Data.OpenWrite( path );
+		// Write to file using VirtualFileSystem.Instance
+		using var stream = FileSystem.Data.OpenWrite( path );
 		stream.Write( combinedBytes, 0, combinedBytes.Length );
 
-
-		Log.Info( $"Created fake executable at {path}" );
+		Log.Info( $"Created fake executable at {path} for program type {typeName}" );
 	}
 
 	/// <summary>
-	/// Utility to convert a hex string to a byte array
+	/// Reads a NativeProgram from a fake executable file using TypeLibrary reflection.
 	/// </summary>
-	private static byte[] HexStringToByteArray( string hex )
+	public static NativeProgram ReadFromExe( string path )
 	{
-		// trim whitespace and remove spaces
+		Log.Info( $"Reading fake executable from: {path}" );
+		try
+		{
+			// Read the file from the virtual file system
+			if ( !VirtualFileSystem.Instance.PathExists( path ) )
+			{
+				Log.Warning( $"Executable not found: {path}" );
+				return null;
+			}
+
+			var file = VirtualFileSystem.Instance.GetEntry( path );
+			var realPath = file?.RealPath;
+			var realFS = file?.AssociatedFileSystem ?? FileSystem.Data;
+
+			byte[] fileBytes = realFS.ReadAllBytes( realPath ).ToArray();
+
+			if ( fileBytes.Length <= ExeTemplateBytes.Length )
+			{
+				Log.Warning( $"File too small to be a valid fake executable: {path}" );
+				return null;
+			}
+
+			byte[] descriptorBytes = new byte[fileBytes.Length - ExeTemplateBytes.Length];
+			Array.Copy( fileBytes, ExeTemplateBytes.Length, descriptorBytes, 0, descriptorBytes.Length );
+
+			string descriptorJson = Encoding.UTF8.GetString( descriptorBytes );
+
+			var descriptor = Json.Deserialize<NativeProgramDescriptor>( descriptorJson );
+			if ( descriptor == null || string.IsNullOrEmpty( descriptor.TypeName ) )
+				return null;
+
+			var typeDesc = TypeLibrary.GetType( descriptor.TypeName );
+			if ( typeDesc == null )
+			{
+				Log.Warning( $"TypeLibrary could not find type '{descriptor.TypeName}'" );
+				return null;
+			}
+
+			var instance = typeDesc.Create<NativeProgram>();
+			if ( instance == null )
+			{
+				Log.Warning( $"Failed to instantiate NativeProgram of type '{descriptor.TypeName}'" );
+				return null;
+			}
+
+			return instance;
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( $"Failed to read fake executable '{path}': {ex.Message}" );
+			return null;
+		}
+	}
+
+	protected static byte[] HexStringToByteArray( string hex )
+	{
 		hex = hex.Replace( " ", "" ).Replace( "\n", "" ).Replace( "\r", "" );
 		int length = hex.Length;
 		byte[] bytes = new byte[length / 2];
@@ -147,3 +202,5 @@ public static class FakeExecutable
 		return bytes;
 	}
 }
+
+

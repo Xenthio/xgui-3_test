@@ -147,35 +147,7 @@ public partial class X86Interpreter
 		return loaded;
 	}
 
-	// List of all processes
-	public static List<X86Interpreter> AllProcesses = new();
-	public Task ProcessTask { get; private set; }
-
-	public string ProcessName => ExecutableName;
-	public uint ProcessId { get; private set; } = 0;
-	private static uint LastProcessId { get; set; } = 0;
-	public void StartProcess()
-	{
-		ProcessTask = ExecuteAsync();
-		ProcessId = ++LastProcessId;
-
-
-		AllProcesses.Add( this );
-	}
-
-	// Stop the process, terminating the task
-	public void StopProcess()
-	{
-		if ( ProcessTask != null )
-		{
-			_haltASAP = true; // Set the flag to halt execution
-			ProcessTask.Wait();
-			ProcessTask = null;
-		}
-	}
-
-	bool _haltASAP = false;
-
+	private bool _haltASAP = false;
 	public async Task ExecuteAsync( uint maxInstructions = 0xFFFFFFFF, int yieldEvery = 100 )
 	{
 		Core.Push( 0xFFFFFFFF ); // Address of our final return, this will be used if we hit a RET without anything else in the stack, which we can assume is our final RET
@@ -184,7 +156,6 @@ public partial class X86Interpreter
 
 		for ( i = 0; i < maxInstructions; i++ )
 		{
-			//await GameTask.Yield();
 			// Yield to UI every N instructions 
 			// Check for program exit
 			if ( Core.Registers["eip"] == 0xFFFFFFFF )
@@ -195,7 +166,7 @@ public partial class X86Interpreter
 
 			if ( _haltASAP )
 			{
-				Log.Info( "Execution halted by user." );
+				Log.Info( "Execution halted by user request." );
 				break;
 			}
 
@@ -238,6 +209,11 @@ public partial class X86Interpreter
 		{
 			Log.Info( $"Executed {i} instructions." );
 		}
+	}
+
+	public void Halt()
+	{
+		_haltASAP = true;
 	}
 
 	public void DumpMemory( uint start, uint length )
@@ -294,7 +270,6 @@ public partial class X86Interpreter
 		dump.AppendLine( $"ZF: {Core.ZeroFlag}, SF: {Core.SignFlag}, CF: {Core.CarryFlag}, OF: {Core.OverflowFlag}" );
 		return dump.ToString();
 	}
-
 
 	public void HaltWithMessageBox( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore )
 	{

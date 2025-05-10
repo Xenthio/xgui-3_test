@@ -4,6 +4,7 @@
 @using XGUI;
 @using System.IO;
 @using FakeDesktop;
+@using FakeOperatingSystem;
 @using FakeOperatingSystem.Experiments.Ambitious.X86;
 @attribute [StyleSheet("Notepad.razor.scss")]
 @inherits Window
@@ -15,7 +16,7 @@
 	  class="notepad-window">
 
 	<div class="window-content">
-		@foreach (var process in X86Interpreter.AllProcesses)
+		@foreach (var process in ProcessManager.Instance.GetProcesses())
 		{
 			<div class="process-item">
 				<div class="process-name">@process.ProcessName</div>
@@ -32,6 +33,6 @@
 	// override buildhash
 	protected override int BuildHash()
 	{
-		return System.HashCode.Combine(X86Interpreter.AllProcesses.Count);
+		return System.HashCode.Combine(ProcessManager.Instance.GetProcessCount());
 	}
 }

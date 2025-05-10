@@ -1,0 +1,55 @@
+// code/FakeOperatingSystem/Process/X86PEProcess.cs
+using FakeDesktop;
+using FakeOperatingSystem.Experiments.Ambitious.X86;
+using System.IO;
+using System.Threading.Tasks;
+
+namespace FakeOperatingSystem;
+public class X86PEProcess : BaseProcess
+{
+	private X86Interpreter _interpreter;
+	private Task _executionTask;
+	private static int _lastProcessId = 0;
+
+	public X86PEProcess( string exePath, Win32LaunchOptions options )
+	{
+		ProcessFilePath = exePath;
+		LaunchOptions = options;
+		ProcessName = Path.GetFileNameWithoutExtension( exePath );
+		_interpreter = new X86Interpreter();
+	}
+
+	public override void Start()
+	{
+		// lookup in virtual file system 
+		if ( !VirtualFileSystem.Instance.PathExists( ProcessFilePath ) )
+		{
+			Log.Warning( $"Executable not found: {ProcessFilePath}" );
+			return;
+		}
+		var file = VirtualFileSystem.Instance.GetEntry( ProcessFilePath );
+
+		byte[] fileBytes = file.AssociatedFileSystem.ReadAllBytes( file.RealPath ).ToArray();
+		if ( !_interpreter.LoadExecutable( fileBytes, ProcessFilePath ) )
+		{
+			Log.Warning( $"Failed to load PE executable: {ProcessFilePath}" );
+			return;
+		}
+
+		// Assign a unique process ID
+		ProcessId = ++_lastProcessId;
+
+		// Optionally, set up interpreter event hooks here (e.g., for message boxes)
+		// _interpreter.OnHaltWithMessageBox += ...;
+
+		// Start execution asynchronously
+		_executionTask = _interpreter.ExecuteAsync();
+
+		// Optionally, you can log or track the task for process management
+	}
+
+	public override void Terminate()
+	{
+		_interpreter.Halt();
+	}
+}

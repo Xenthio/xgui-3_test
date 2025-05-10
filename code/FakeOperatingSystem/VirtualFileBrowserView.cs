@@ -1,4 +1,5 @@
-﻿using Sandbox;
+﻿using FakeOperatingSystem;
+using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -201,17 +202,18 @@ public class VirtualFileBrowserView : FileBrowserView
 					return;
 				}
 
-				// EXE files are launched directly
+				// EXE files are launched directly using the new process manager
 				if ( entry.Name.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
 				{
-					var program = _virtualFileSystem.GetProgramFromFile( entry.RealPath );
-					if ( program != null )
+					Log.Info( $"Launching executable: {entry.Name}" );
+					// You can extend Win32LaunchOptions as needed
+					var launchOptions = new Win32LaunchOptions
 					{
-						if ( program.IsRealExecutable ) return;
-						Log.Info( $"Launching program: {program.Name}" );
-						program.Launch();
-						return;
-					}
+						Arguments = "", // Optionally parse arguments
+						WorkingDirectory = System.IO.Path.GetDirectoryName( entry.RealPath )
+					};
+					ProcessManager.Instance?.OpenExecutable( entry.Path, launchOptions );
+					return;
 				}
 
 				// For other files, use file associations

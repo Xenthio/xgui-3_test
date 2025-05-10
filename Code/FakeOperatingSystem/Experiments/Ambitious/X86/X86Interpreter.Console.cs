@@ -1,6 +1,4 @@
-﻿using FakeDesktop;
-using Sandbox;
-using System;
+﻿using Sandbox;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
 
@@ -9,7 +7,9 @@ public partial class X86Interpreter
 	[ConCmd( "xguitest_x86_run_exec" )]
 	public static void RunX86Exec( string path )
 	{
-		Log.Info( $"Running x86 executable from: {path}" );
+
+		// TODO: Fix this
+		/*Log.Info( $"Running x86 executable from: {path}" );
 
 		try
 		{
@@ -42,6 +42,6 @@ public partial class X86Interpreter
 		catch ( Exception ex )
 		{
 			Log.Error( $"Error executing x86 program: {ex.Message}" );
-		}
+		}*/
 	}
 }

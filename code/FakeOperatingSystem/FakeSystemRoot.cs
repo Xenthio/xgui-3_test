@@ -1,4 +1,5 @@
 ﻿using FakeDesktop;
+using FakeOperatingSystem;
 using Sandbox;
 using System.IO;
 
@@ -126,15 +127,7 @@ public class FakeSystemRoot
 		);
 
 		// Notepad (system application)
-		CreateProgramFile(
-			$"{windowsDir}/notepad.exe",
-			new ProgramDescriptor(
-				"Notepad",
-				"notepad.exe",
-				"notepad",
-				"Notepad"
-			)
-		);
+		NativeProgram.CompileIntoExe( typeof( NotepadProgram ), $"{windowsDir}/notepad.exe" );
 
 		// Paint (system application)
 		CreateProgramFile(

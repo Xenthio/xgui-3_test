@@ -1,4 +1,5 @@
-﻿using System;
+﻿using FakeOperatingSystem;
+using System;
 using System.Collections.Generic;
 
 namespace FakeDesktop;
@@ -126,22 +127,19 @@ public class FileAction
 			// Replace %1 with the actual file path
 			string processedArgs = Arguments.Replace( "%1", filePath );
 
-			// Get the program descriptor from the program file
-			var programDescriptor = fileSystem.GetProgramFromFile( programPath );
-			if ( programDescriptor != null )
+			// Prepare launch options
+			var launchOptions = new Win32LaunchOptions
 			{
-				// Set arguments if needed
-				if ( !string.IsNullOrEmpty( processedArgs ) )
-				{
-					programDescriptor.Arguments = processedArgs;
-				}
+				Arguments = processedArgs,
+				WorkingDirectory = System.IO.Path.GetDirectoryName( filePath )
+			};
 
-				// Launch the program
-				programDescriptor.Launch();
+			// Launch using the new process manager
+			var process = ProcessManager.Instance?.OpenExecutable( programPath, launchOptions );
+			if ( process != null )
 				return true;
-			}
 
-			Log.Warning( $"Failed to load program descriptor: {programPath}" );
+			Log.Warning( $"Failed to launch process for: {programPath}" );
 			return false;
 		}
 		catch ( Exception ex )

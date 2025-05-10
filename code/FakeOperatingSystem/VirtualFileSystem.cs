@@ -1,5 +1,4 @@
-﻿using FakeOperatingSystem.Experiments.Ambitious.X86;
-using Sandbox;
+﻿using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -38,8 +37,11 @@ public class VirtualFileSystem
 	// File associations for handling file types
 	private Dictionary<string, FileAssociation> _fileAssociations = new Dictionary<string, FileAssociation>( StringComparer.OrdinalIgnoreCase );
 
+	public static VirtualFileSystem Instance { get; private set; } = null!;
+
 	public VirtualFileSystem( BaseFileSystem realFileSystem, string rootPath )
 	{
+		Instance = this;
 		_realFileSystem = realFileSystem;
 		_rootPath = rootPath;
 
@@ -713,59 +715,6 @@ public class VirtualFileSystem
 	public void ClearCache()
 	{
 		_cachedDirectoryContents.Clear();
-	}
-
-	/// <summary>
-	/// Creates a program exe file with embedded panel information
-	/// </summary>
-	public void CreateProgramFile( string programPath, ProgramDescriptor program )
-	{
-		// Use the FakeExecutable helper to create a hybrid EXE + JSON file
-		FakeExecutable.CreateFakeExe( programPath, program );
-	}
-
-	/// <summary>
-	/// Tries to read a program descriptor from an exe file
-	/// </summary>
-	public ProgramDescriptor GetProgramFromFile( string path )
-	{
-		if ( !_realFileSystem.FileExists( path ) )
-			return null;
-
-		try
-		{
-			// Try to read as a fake executable first
-			var program = FakeExecutable.ReadFromFakeExe( path );
-
-			// If that fails, use x86 interpreter to execute the file
-			if ( program == null )
-			{
-				program = new ProgramDescriptor( "virtual", path, "n/a", "n/a" )
-				{
-					IsRealExecutable = true,
-				};
-
-				Log.Warning( $"Loading EXE as real PE File, executing via emulated x86." );
-				var interpreter = new X86Interpreter();
-
-				interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
-				{
-					MessageBoxUtility.ShowCustom( message, title, icon, buttons );
-				};
-				byte[] fileBytes = _realFileSystem.ReadAllBytes( path ).ToArray();
-				if ( interpreter.LoadExecutable( fileBytes, path ) )
-				{
-					interpreter.ExecuteAsync();
-				}
-			}
-
-			return program;
-		}
-		catch ( Exception ex )
-		{
-			Log.Error( $"Failed to read program file '{path}': {ex.Message}" );
-			return null;
-		}
 	}
 
 	/// <summary>

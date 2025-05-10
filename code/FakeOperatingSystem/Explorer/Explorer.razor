@@ -45,7 +45,6 @@
 
 	private string CurrentPath = "";
 	private string StatusText = "Ready";
-	private VirtualFileSystem _virtualFileSystem;
 
 	// New property for initial path
 	public string InitialPath { get; set; }
@@ -63,10 +62,9 @@
 
 			// Create virtual file system
 			FakeSystemRoot.TryCreateSystemRoot();
-			_virtualFileSystem = new VirtualFileSystem(FileSystem.Data, "FakeSystemRoot");
 
 			// Set up the file browser
-			BrowserView.Initialize(_virtualFileSystem, FileSystem.Data);
+			BrowserView.Initialize(VirtualFileSystem.Instance, FileSystem.Data);
 
 			// The tree will still use the regular file system
 			BrowserTree.CurrentFileSystem = FileSystem.Data;
@@ -120,7 +118,7 @@
 			return "";
 
 		// Get the entry to check its type
-		var entry = _virtualFileSystem.GetEntry(virtualPath);
+		var entry = VirtualFileSystem.Instance.GetEntry(virtualPath);
 		if (entry == null)
 			return virtualPath;
 
@@ -327,19 +325,19 @@
 		}
 
 		// Check if it's a special folder in My Computer
-		if (_virtualFileSystem.GetEntry($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{input}") != null)
+		if (VirtualFileSystem.Instance.GetEntry($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{input}") != null)
 		{
 			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{input}";
 		}
 
 		// Check if it's a direct child of Desktop
-		if (_virtualFileSystem.GetEntry($"{VirtualFileSystem.DESKTOP}/{input}") != null)
+		if (VirtualFileSystem.Instance.GetEntry($"{VirtualFileSystem.DESKTOP}/{input}") != null)
 		{
 			return $"{VirtualFileSystem.DESKTOP}/{input}";
 		}
 
 		// If it's a full virtual path already, use it directly
-		if (_virtualFileSystem.GetEntry(input) != null)
+		if (VirtualFileSystem.Instance.GetEntry(input) != null)
 		{
 			return input;
 		}
