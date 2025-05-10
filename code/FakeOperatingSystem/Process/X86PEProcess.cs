@@ -9,13 +9,13 @@ public class X86PEProcess : BaseProcess
 {
 	private X86Interpreter _interpreter;
 	private Task _executionTask;
-	private static int _lastProcessId = 0;
 
 	public X86PEProcess( string exePath, Win32LaunchOptions options )
 	{
-		ProcessFilePath = exePath;
 		LaunchOptions = options;
 		ProcessName = Path.GetFileNameWithoutExtension( exePath );
+		ProcessFileName = Path.GetFileName( exePath );
+		ProcessFilePath = exePath;
 		_interpreter = new X86Interpreter();
 	}
 
@@ -35,9 +35,6 @@ public class X86PEProcess : BaseProcess
 			Log.Warning( $"Failed to load PE executable: {ProcessFilePath}" );
 			return;
 		}
-
-		// Assign a unique process ID
-		ProcessId = ++_lastProcessId;
 
 		// Optionally, set up interpreter event hooks here (e.g., for message boxes)
 		// _interpreter.OnHaltWithMessageBox += ...;

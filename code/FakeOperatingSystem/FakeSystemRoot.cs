@@ -58,54 +58,21 @@ public class FakeSystemRoot
 		// Internet Explorer folder
 		string ieDir = $"{programFilesDir}/Internet Explorer";
 		FileSystem.Data.CreateDirectory( ieDir );
-		CreateProgramFile(
-			$"{ieDir}/iexplore.exe",
-			new ProgramDescriptor(
-				"Internet Explorer",
-				"iexplore.exe",
-				"iexplore",
-				"InternetExplorer"
-			)
-		);
+		NativeProgram.CompileIntoExe( typeof( InternetExplorerProgram ), $"{ieDir}/iexplore.exe" );
 
 		// Ultimate Doom for Windows 95
 		string doomDir = $"{programFilesDir}/Ultimate Doom for Windows 95";
 		FileSystem.Data.CreateDirectory( doomDir );
-		CreateProgramFile(
-			$"{doomDir}/doom95.exe",
-			new ProgramDescriptor(
-				"Doom 95",
-				"doom95.exe",
-				"doom95",
-				"Wad"
-			)
-		);
+		NativeProgram.CompileIntoExe( typeof( Doom95Program ), $"{doomDir}/doom95.exe" );
 
 		// Outlook Express
 		string outlookDir = $"{programFilesDir}/Outlook Express";
-		FileSystem.Data.CreateDirectory( outlookDir );
-		CreateProgramFile(
-			$"{outlookDir}/outlook.exe",
-			new ProgramDescriptor(
-				"Outlook Express",
-				"outlook.exe",
-				"outlook",
-				"OutlookExpress"
-			)
-		);
+		NativeProgram.CompileIntoExe( typeof( OutlookExpressProgram ), $"{outlookDir}/outlook.exe" );
 
 		// Steam (modern app not in Windows 98, but included for fun)
 		string steamDir = $"{programFilesDir}/Steam";
 		FileSystem.Data.CreateDirectory( steamDir );
-		CreateProgramFile(
-			$"{steamDir}/steam.exe",
-			new ProgramDescriptor(
-				"Steam",
-				"steam.exe",
-				"steam",
-				"GameLauncher"
-			)
-		);
+		NativeProgram.CompileIntoExe( typeof( SteamProgram ), $"{steamDir}/steam.exe" );
 	}
 
 	/// <summary>
@@ -116,29 +83,13 @@ public class FakeSystemRoot
 		string windowsDir = "FakeSystemRoot/Windows";
 
 		// Windows Explorer (system application)
-		CreateProgramFile(
-			$"{windowsDir}/explorer.exe",
-			new ProgramDescriptor(
-				"Windows Explorer",
-				"explorer.exe",
-				"explorer",
-				"Explorer"
-			)
-		);
+		NativeProgram.CompileIntoExe( typeof( ExplorerProgram ), $"{windowsDir}/explorer.exe" );
 
 		// Notepad (system application)
 		NativeProgram.CompileIntoExe( typeof( NotepadProgram ), $"{windowsDir}/notepad.exe" );
 
 		// Paint (system application)
-		CreateProgramFile(
-			$"{windowsDir}/mspaint.exe",
-			new ProgramDescriptor(
-				"Paint",
-				"mspaint.exe",
-				"paint",
-				"Paint"
-			)
-		);
+		NativeProgram.CompileIntoExe( typeof( PaintProgram ), $"{windowsDir}/mspaint.exe" );
 	}
 
 	public static void CreateDefaultDesktopItems()
@@ -157,14 +108,6 @@ public class FakeSystemRoot
 			"FakeSystemRoot/Program Files/Ultimate Doom for Windows 95/doom95.exe",
 			"doom95"
 		);
-	}
-
-	/// <summary>
-	/// Creates a program exe file with embedded panel information
-	/// </summary>
-	private static void CreateProgramFile( string programPath, ProgramDescriptor program )
-	{
-		FakeExecutable.CreateFakeExe( programPath, program );
 	}
 
 	/// <summary>

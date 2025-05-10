@@ -6,6 +6,7 @@ public class ProcessManager
 {
 	public static ProcessManager Instance { get; private set; }
 	private List<BaseProcess> _processes = new();
+	private static int _lastProcessId = 0;
 	public ProcessManager()
 	{
 		Instance?.TerminateAll();
@@ -17,6 +18,7 @@ public class ProcessManager
 		{
 			process.Manager = this;
 			_processes.Add( process );
+			process.ProcessId = ++_lastProcessId;
 		}
 	}
 	public void TerminateProcess( BaseProcess process )

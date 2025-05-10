@@ -1,5 +1,6 @@
 // code/FakeOperatingSystem/Process/NativeProcess.cs
 using System.Collections.Generic;
+using System.IO;
 using XGUI;
 
 namespace FakeOperatingSystem;
@@ -13,6 +14,7 @@ public class NativeProcess : BaseProcess
 		Program = program;
 		LaunchOptions = options;
 		ProcessName = program.GetType().Name;
+		ProcessFileName = Path.GetFileName( program.FilePath );
 		ProcessFilePath = program.FilePath;
 	}
 
@@ -20,8 +22,6 @@ public class NativeProcess : BaseProcess
 	{
 		// Let the program create its windows and perform startup logic
 		Program.Main( this );
-		// Optionally assign a unique process ID
-		ProcessId = GetHashCode();
 	}
 
 	public override void Terminate()
@@ -43,9 +43,9 @@ public class NativeProcess : BaseProcess
 			window.OnCloseAction += () =>
 			{
 				OwnedWindows.Remove( window );
-				if ( OwnedWindows.Count == 0 )
+				if ( OwnedWindows.Count <= 0 )
 				{
-					Terminate();
+					ProcessManager.Instance.TerminateProcess( this );
 				}
 			};
 		}

@@ -19,7 +19,7 @@
 		@foreach (var process in ProcessManager.Instance.GetProcesses())
 		{
 			<div class="process-item">
-				<div class="process-name">@process.ProcessName</div>
+				<div class="process-name">@process.ProcessFileName</div>
 				<div class="process-id">@process.ProcessId</div>
 				@* <div class="process-memory">@process.MemoryUsage</div>
 				<div class="process-cpu">@process.CpuUsage</div> *@
