@@ -71,6 +71,36 @@ public class ShiftRotateHandler : IInstructionHandler
 					else result = value;
 					break;
 
+				case 2: // RCL - Rotate through Carry Left
+					if ( count > 0 )
+					{
+						for ( int i = 0; i < count; i++ )
+						{
+							uint carryIn = core.CarryFlag ? 1u : 0u;
+							uint newCarry = (value & 0x80000000) != 0 ? 1u : 0u;
+							value = (value << 1) | carryIn;
+							core.CarryFlag = newCarry != 0;
+						}
+						result = value;
+					}
+					else result = value;
+					break;
+
+				case 3: // RCR - Rotate through Carry Right
+					if ( count > 0 )
+					{
+						for ( int i = 0; i < count; i++ )
+						{
+							uint carryIn = core.CarryFlag ? 0x80000000u : 0u;
+							uint newCarry = (value & 1) != 0 ? 1u : 0u;
+							value = (value >> 1) | carryIn;
+							core.CarryFlag = newCarry != 0;
+						}
+						result = value;
+					}
+					else result = value;
+					break;
+
 				case 4: // SHL/SAL - Shift Left
 					result = value << count;
 					core.CarryFlag = count > 0 && ((value >> (32 - count)) & 1) == 1;
@@ -79,6 +109,7 @@ public class ShiftRotateHandler : IInstructionHandler
 					break;
 
 				case 5: // SHR - Logical Shift Right
+					core.LogVerbose( $"SHR: {value:X8} >> {count}" );
 					result = value >> count;
 					core.CarryFlag = count > 0 && ((value >> (count - 1)) & 1) == 1;
 					core.ZeroFlag = result == 0;
@@ -115,9 +146,111 @@ public class ShiftRotateHandler : IInstructionHandler
 		}
 		else
 		{
-			// Memory operands not implemented for simplicity
-			Log.Warning( "Shift with memory operand not implemented" );
-			core.Registers["eip"] += 3;
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			value = core.ReadDword( addr );
+
+			switch ( opcode )
+			{
+				case 0xC0: // Shift r/m8, imm8
+				case 0xC1: // Shift r/m32, imm8
+					count = core.ReadByte( eip + 2 );
+					core.Registers["eip"] += 3;
+					break;
+				case 0xD0: // Shift r/m8, 1
+				case 0xD1: // Shift r/m32, 1
+					count = 1;
+					core.Registers["eip"] += 2;
+					break;
+				case 0xD2: // Shift r/m8, CL
+				case 0xD3: // Shift r/m32, CL
+					count = (byte)(core.Registers["ecx"] & 0xFF);
+					core.Registers["eip"] += 2;
+					break;
+			}
+
+			uint result = 0;
+			switch ( reg )
+			{
+				case 0: // ROL
+					if ( count > 0 )
+					{
+						count %= 32;
+						result = (value << count) | (value >> (32 - count));
+						core.CarryFlag = (result & 1) == 1;
+					}
+					else result = value;
+					break;
+				case 1: // ROR
+					if ( count > 0 )
+					{
+						count %= 32;
+						result = (value >> count) | (value << (32 - count));
+						core.CarryFlag = ((result >> 31) & 1) == 1;
+					}
+					else result = value;
+					break;
+				case 2: // RCL - Rotate through Carry Left
+					if ( count > 0 )
+					{
+						for ( int i = 0; i < count; i++ )
+						{
+							uint carryIn = core.CarryFlag ? 1u : 0u;
+							uint newCarry = (value & 0x80000000) != 0 ? 1u : 0u;
+							value = (value << 1) | carryIn;
+							core.CarryFlag = newCarry != 0;
+						}
+						result = value;
+					}
+					else result = value;
+					break;
+				case 3: // RCR - Rotate through Carry Right
+					if ( count > 0 )
+					{
+						for ( int i = 0; i < count; i++ )
+						{
+							uint carryIn = core.CarryFlag ? 0x80000000u : 0u;
+							uint newCarry = (value & 1) != 0 ? 1u : 0u;
+							value = (value >> 1) | carryIn;
+							core.CarryFlag = newCarry != 0;
+						}
+						result = value;
+					}
+					else result = value;
+					break;
+				case 4: // SHL/SAL
+					result = value << count;
+					core.CarryFlag = count > 0 && ((value >> (32 - count)) & 1) == 1;
+					core.ZeroFlag = result == 0;
+					core.SignFlag = ((result >> 31) & 1) == 1;
+					break;
+				case 5: // SHR
+					result = value >> count;
+					core.CarryFlag = count > 0 && ((value >> (count - 1)) & 1) == 1;
+					core.ZeroFlag = result == 0;
+					core.SignFlag = ((result >> 31) & 1) == 1;
+					break;
+				case 7: // SAR
+					if ( count > 0 )
+					{
+						bool signBit = ((value >> 31) & 1) == 1;
+						result = value >> count;
+						if ( signBit )
+						{
+							result |= ~((1u << (32 - count)) - 1);
+						}
+						core.CarryFlag = ((value >> (count - 1)) & 1) == 1;
+					}
+					else result = value;
+					core.ZeroFlag = result == 0;
+					core.SignFlag = ((result >> 31) & 1) == 1;
+					break;
+				default:
+					Log.Warning( $"Unimplemented shift operation: {reg}" );
+					result = value;
+					break;
+			}
+
+			core.WriteDword( addr, result );
 		}
 	}
 

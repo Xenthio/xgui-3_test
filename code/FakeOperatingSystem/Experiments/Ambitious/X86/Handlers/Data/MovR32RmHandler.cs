@@ -15,6 +15,8 @@ public class MovR32RmHandler : IInstructionHandler
 		byte reg = (byte)((modrm >> 3) & 0x7);
 		byte rm = (byte)(modrm & 0x7);
 
+		core.LogVerbose( $"MOV r32, r/m32: modrm=0x{modrm:X2}, reg={reg}, mod={mod}, rm={rm}" );
+
 		string destReg = X86AddressingHelper.GetRegisterName( reg );
 
 		if ( mod == 3 ) // Register to register

@@ -1,10 +1,13 @@
 ﻿using FakeDesktop;
+using Sandbox;
 using System.Collections.Generic;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
 
 public class X86InstructionSet
 {
+	[ConVar( "xguitest_x86_log_opcode" )]
+	public static bool OpcodeLogging { get; set; } = false;
 	private readonly List<IInstructionHandler> _handlers = new();
 
 	public void RegisterHandler( IInstructionHandler handler ) => _handlers.Add( handler );
@@ -13,6 +16,11 @@ public class X86InstructionSet
 	{
 		uint eip = core.Registers["eip"];
 		byte opcode = core.ReadByte( eip );
+
+		if ( OpcodeLogging )
+		{
+			Log.Info( $"EIP=0x{eip:X8}: Executing opcode 0x{opcode:X2} (ECX={core.Registers["ecx"]:X8})" );
+		}
 
 		foreach ( var handler in _handlers )
 		{

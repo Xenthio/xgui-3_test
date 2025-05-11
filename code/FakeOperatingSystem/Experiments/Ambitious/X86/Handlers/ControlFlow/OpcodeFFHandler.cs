@@ -22,7 +22,7 @@ public class OpcodeFFHandler : IInstructionHandler
 		byte mod = (byte)(modrm >> 6);
 		byte rm = (byte)(modrm & 0x7);
 
-		core.LogVerbose( $"OpcodeFFHandler: opcode=0xFF, modrm=0x{modrm:X2}, reg={reg}, mod={mod}, rm={rm}" );
+		core.LogVerbose( $"OpcodeFFHandler: opcode=0xFF, EIP={eip:X8} modrm=0x{modrm:X2}, reg={reg}, mod={mod}, rm={rm}" );
 
 		if ( reg == 0 ) // INC r/m32
 		{

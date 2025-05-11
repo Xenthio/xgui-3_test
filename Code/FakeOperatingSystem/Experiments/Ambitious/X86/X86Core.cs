@@ -97,10 +97,10 @@ public class X86Core
 
 	public void WriteDword( uint address, uint value, bool protect = true )
 	{
-		WriteByte( address, (byte)(value & 0xFF), protect: false );
-		WriteByte( address + 1, (byte)((value >> 8) & 0xFF), protect: false );
-		WriteByte( address + 2, (byte)((value >> 16) & 0xFF), protect: false );
-		WriteByte( address + 3, (byte)((value >> 24) & 0xFF), protect: false );
+		WriteByte( address, (byte)(value & 0xFF), protect: protect );
+		WriteByte( address + 1, (byte)((value >> 8) & 0xFF), protect: protect );
+		WriteByte( address + 2, (byte)((value >> 16) & 0xFF), protect: protect );
+		WriteByte( address + 3, (byte)((value >> 24) & 0xFF), protect: protect );
 	}
 
 	public void WriteWord( uint address, ushort value, bool protect = true )
@@ -178,6 +178,32 @@ public class X86Core
 		catch ( Exception ex )
 		{
 			Log.Error( $"ReadString failed at 0x{address:X8}: {ex.Message}" );
+			return "";
+		}
+	}
+
+	public string ReadWideString( uint address )
+	{
+		if ( address == 0 )
+			return "";
+
+		var result = new System.Text.StringBuilder();
+		int maxLength = 1000; // Safety limit
+
+		try
+		{
+			for ( int i = 0; i < maxLength; i++ )
+			{
+				ushort ch = ReadWord( address + (uint)(i * 2) );
+				if ( ch == 0 )
+					break;
+				result.Append( (char)ch );
+			}
+			return result.ToString();
+		}
+		catch ( Exception ex )
+		{
+			Log.Error( $"ReadWideString failed at 0x{address:X8}: {ex.Message}" );
 			return "";
 		}
 	}

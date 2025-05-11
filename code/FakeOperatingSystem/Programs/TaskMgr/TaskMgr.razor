@@ -21,8 +21,7 @@
 			<div class="process-item">
 				<div class="process-name">@process.ProcessFileName</div>
 				<div class="process-id">@process.ProcessId</div>
-				@* <div class="process-memory">@process.MemoryUsage</div>
-				<div class="process-cpu">@process.CpuUsage</div> *@
+				<button class="end-task-btn" @onclick=@(() => EndTask(process))>End Task</button>
 			</div>
 		}
 	</div> 
@@ -30,9 +29,14 @@
 
 @code {
 	
-	// override buildhash
 	protected override int BuildHash()
 	{
 		return System.HashCode.Combine(ProcessManager.Instance.GetProcessCount());
+	}
+
+	private void EndTask(BaseProcess process)
+	{
+		ProcessManager.Instance.TerminateProcess(process);
+		StateHasChanged();
 	}
 }

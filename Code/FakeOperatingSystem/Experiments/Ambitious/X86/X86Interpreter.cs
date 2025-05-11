@@ -1,5 +1,6 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
+using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -16,6 +17,8 @@ public partial class X86Interpreter
 	private uint _entryPoint;
 	public string ExecutableName { get; private set; } = "VIRTUAL.EXE";
 	public Dictionary<string, string> ImportSourceDlls = new();
+
+	public uint HeapStart = 0x00400000; // Default heap start address
 
 	public Dictionary<(uint hInstance, uint uID), string> StringResources = new();
 
@@ -40,12 +43,16 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.SubRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.SubR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AdcRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AdcR32Rm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AdcRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.XorRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.XorRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.XorHandler() );
 		InstructionSet.RegisterHandler( new Handlers.OrR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OrEaxImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AndR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AndAlImm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AndEaxImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.BCDArithmeticHandler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpHandler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpAlImm8Handler() );
@@ -53,6 +60,7 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.Opcode81Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode83Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeF6Handler() );
+		InstructionSet.RegisterHandler( new Handlers.OpcodeF7Handler() );
 
 		// === Data Movement ===
 		InstructionSet.RegisterHandler( new Handlers.MovRegImm32Handler() );
@@ -101,6 +109,10 @@ public partial class X86Interpreter
 
 		// === Port/IO ===
 		InstructionSet.RegisterHandler( new Handlers.PortIOHandler() );
+
+		// === Testing ===
+
+		//InstructionSet.RegisterHandler( new Handlers.TestingHandlerNotReal() );
 	}
 
 	public bool LoadExecutable( byte[] fileBytes, string path = null )
@@ -112,7 +124,7 @@ public partial class X86Interpreter
 		}
 
 		var loader = new PELoader();
-		bool loaded = loader.Load( fileBytes, Core, out _entryPoint, out Imports, out ImportSourceDlls );
+		bool loaded = loader.Load( fileBytes, Core, out _entryPoint, out Imports, out ImportSourceDlls, out HeapStart );
 
 		if ( loader.ParseAllResources( fileBytes, out var resources ) )
 		{
@@ -148,6 +160,8 @@ public partial class X86Interpreter
 		return loaded;
 	}
 
+	[ConVar( "xguitest_x86_log_eip" )]
+	public static bool EIPLogging { get; set; } = false;
 	private bool _haltASAP = false;
 	public async Task ExecuteAsync( uint maxInstructions = 0xFFFFFFFF, int yieldEvery = 100 )
 	{
@@ -169,6 +183,11 @@ public partial class X86Interpreter
 			{
 				Log.Info( "Execution halted by user request." );
 				break;
+			}
+
+			if ( EIPLogging )
+			{
+				Log.Info( $"EIP: 0x{Core.Registers["eip"]:X8}" );
 			}
 
 			try

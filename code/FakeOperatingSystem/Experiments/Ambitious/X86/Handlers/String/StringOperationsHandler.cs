@@ -32,37 +32,46 @@ public class StringOperationsHandler : IInstructionHandler
 			return;
 		}
 
-		uint count = _hasRepPrefix ? core.Registers["ecx"] : 1;
 		bool continueRep = true;
 
 		switch ( opcode )
 		{
 			case 0xA4: // MOVSB
-				for ( uint i = 0; i < count; i++ )
+				if ( _hasRepPrefix )
+				{
+					while ( core.Registers["ecx"] != 0 )
+					{
+						ExecuteMovsb( core );
+						core.Registers["ecx"]--;
+					}
+				}
+				else
 				{
 					ExecuteMovsb( core );
-					if ( _hasRepPrefix )
-						core.Registers["ecx"]--;
 				}
 				break;
 
 			case 0xA5: // MOVSD
-				for ( uint i = 0; i < count; i++ )
+				if ( _hasRepPrefix )
+				{
+					while ( core.Registers["ecx"] != 0 )
+					{
+						ExecuteMovsd( core );
+						core.Registers["ecx"]--;
+					}
+				}
+				else
 				{
 					ExecuteMovsd( core );
-					if ( _hasRepPrefix )
-						core.Registers["ecx"]--;
 				}
 				break;
 
 			case 0xAC: // LODSB
 				ExecuteLodsb( core );
-				count--;
 				break;
 
 			case 0xAA: // STOSB
 				ExecuteStosb( core );
-				count--;
 				break;
 
 			case 0xAE: // SCASB
@@ -75,26 +84,16 @@ public class StringOperationsHandler : IInstructionHandler
 						continueRep = false;
 					}
 				}
-				count--;
 				break;
 
 				// Handle other string operations similarly
 		}
 
-		// Continue REP execution if needed
-		if ( _hasRepPrefix && count > 0 && continueRep )
-		{
-			core.Registers["ecx"] = count;
-			// Don't increment EIP - repeat the instruction
-		}
-		else
-		{
-			// Advance EIP past the instruction
-			core.Registers["eip"]++;
+		// Always advance EIP by 1 (the instruction length for these string ops)
+		core.Registers["eip"]++;
 
-			// Reset REP state
-			_hasRepPrefix = false;
-		}
+		// Reset REP state
+		_hasRepPrefix = false;
 	}
 
 	private void ExecuteLodsb( X86Core core )
@@ -177,11 +176,11 @@ public class StringOperationsHandler : IInstructionHandler
 		uint value = core.ReadDword( esi );
 		core.WriteDword( edi, value );
 
+		core.LogVerbose( $"MOVSD: Copied 0x{value:X8} from [0x{esi:X8}] to [0x{edi:X8}]" );
+
 		int delta = core.DirectionFlag ? -4 : 4;
 		core.Registers["esi"] = (uint)(esi + delta);
 		core.Registers["edi"] = (uint)(edi + delta);
-
-		Log.Info( $"MOVSD: Copied 0x{value:X8} from [0x{esi:X8}] to [0x{edi:X8}]" );
 	}
 }
 

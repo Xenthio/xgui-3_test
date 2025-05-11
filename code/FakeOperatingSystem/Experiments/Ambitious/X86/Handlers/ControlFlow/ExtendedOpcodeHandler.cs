@@ -51,9 +51,9 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 				{
 					case 0: // Max function & vendor ID
 						core.Registers["eax"] = 1;
-						core.Registers["ebx"] = 0x756E6547; // "Genu"
-						core.Registers["edx"] = 0x49656E69; // "ineI"
-						core.Registers["ecx"] = 0x6C65746E; // "ntel"
+						core.Registers["ebx"] = 0x756E6547; // "Genu" "Auth"
+						core.Registers["edx"] = 0x49656E69; // "ineI" "enti"
+						core.Registers["ecx"] = 0x6C65746E; // "ntel" "cAMD"
 						break;
 					case 1: // Feature flags
 						core.Registers["eax"] = 0x00000633; // Family 6, Model 3, Stepping 3
@@ -84,6 +84,73 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 			case 0xAF: // IMUL r32, r/m32
 				HandleImul( core );
 				break;
+
+			case 0xAC: // SHRD r/m32, r32, imm8
+				{
+					byte modrm = core.ReadByte( eip + 2 );
+					byte mod = (byte)(modrm >> 6);
+					byte reg = (byte)((modrm >> 3) & 0x7);
+					byte rm = (byte)(modrm & 0x7);
+					byte count = core.ReadByte( eip + 3 );
+
+					string srcReg = GetRegisterName( reg );
+
+					if ( mod == 3 )
+					{
+						string destReg = GetRegisterName( rm );
+						uint dest = core.Registers[destReg];
+						uint src = core.Registers[srcReg];
+						count &= 0x1F; // Only lower 5 bits are used
+						uint result = (count == 0) ? dest : (dest >> count) | (src << (32 - count));
+						core.Registers[destReg] = result;
+						// Flags (simplified)
+						core.ZeroFlag = result == 0;
+						core.SignFlag = (result & 0x80000000) != 0;
+						core.Registers["eip"] += 4;
+					}
+					else
+					{
+						uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+						uint dest = core.ReadDword( addr );
+						uint src = core.Registers[srcReg];
+						count &= 0x1F;
+						uint result = (count == 0) ? dest : (dest >> count) | (src << (32 - count));
+						core.WriteDword( addr, result );
+						// Flags (simplified)
+						core.ZeroFlag = result == 0;
+						core.SignFlag = (result & 0x80000000) != 0;
+						uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+						core.Registers["eip"] += 3 + len - 2; // 0F AC + modrm + imm8 (+ SIB/disp)
+					}
+					break;
+				}
+
+			case 0x94: // SETZ/SETE r/m8
+				{
+					byte modrm = core.ReadByte( eip + 2 );
+					byte mod = (byte)(modrm >> 6);
+					byte rm = (byte)(modrm & 0x7);
+					byte value = (byte)(core.ZeroFlag ? 1 : 0);
+
+					if ( mod == 3 )
+					{
+						// Register destination (low 8 bits)
+						string regName = GetRegisterName( rm );
+						uint regVal = core.Registers[regName];
+						regVal = (regVal & 0xFFFFFF00) | value;
+						core.Registers[regName] = regVal;
+						core.Registers["eip"] += 3;
+					}
+					else
+					{
+						// Memory destination
+						uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+						core.WriteByte( addr, value );
+						uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+						core.Registers["eip"] += 2 + len;
+					}
+					break;
+				}
 
 			default:
 				Log.Warning( $"Unimplemented extended opcode: 0x0F 0x{secondByte:X2}" );
@@ -133,7 +200,7 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 		byte rm = (byte)(modrm & 0x7);
 
 		string destReg = GetRegisterName( reg );
-		Log.Info( $"MOVZX at EIP=0x{eip:X8}" );
+		core.LogVerbose( $"MOVZX at EIP=0x{eip:X8}" );
 
 		if ( mod == 3 ) // Register operand
 		{
@@ -183,18 +250,17 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 
 	private void HandleImul( X86Core core )
 	{
-		// Simplified stub for IMUL instruction
 		uint eip = core.Registers["eip"];
 		byte modrm = core.ReadByte( eip + 2 );
 		byte mod = (byte)(modrm >> 6);
 		byte reg = (byte)((modrm >> 3) & 0x7);
 		byte rm = (byte)(modrm & 0x7);
 
+		string destReg = GetRegisterName( reg );
+
 		if ( mod == 3 ) // Register operand
 		{
-			string destReg = GetRegisterName( reg );
 			string sourceReg = GetRegisterName( rm );
-
 			int result = (int)core.Registers[destReg] * (int)core.Registers[sourceReg];
 			core.Registers[destReg] = (uint)result;
 
@@ -204,11 +270,19 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 
 			core.Registers["eip"] += 3;
 		}
-		else
+		else // Memory operand
 		{
-			// Handle memory operands if needed
-			Log.Warning( "IMUL with memory operand not implemented" );
-			core.Registers["eip"] += 3;
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			int memValue = (int)core.ReadDword( addr );
+			int result = (int)core.Registers[destReg] * memValue;
+			core.Registers[destReg] = (uint)result;
+
+			// Set flags
+			core.ZeroFlag = result == 0;
+			core.SignFlag = (result < 0);
+
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += 2 + len; // 0F AF + modrm + SIB/disp
 		}
 	}
 

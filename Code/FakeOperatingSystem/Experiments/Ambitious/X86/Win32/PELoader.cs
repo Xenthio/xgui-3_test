@@ -7,11 +7,13 @@ namespace FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 public class PELoader
 {
 	public bool Load( byte[] fileBytes, X86Core core, out uint entryPoint,
-					 out Dictionary<string, uint> imports, out Dictionary<string, string> importSourceDlls )
+					 out Dictionary<string, uint> imports, out Dictionary<string, string> importSourceDlls,
+					 out uint heapStart ) // <-- add this out parameter
 	{
 		entryPoint = 0;
 		imports = new();
 		importSourceDlls = new();
+		heapStart = 0;
 
 		// 1. Check MZ header
 		if ( fileBytes.Length < 0x40 || fileBytes[0] != 'M' || fileBytes[1] != 'Z' )
@@ -35,6 +37,7 @@ public class PELoader
 		ushort numSections = BitConverter.ToUInt16( fileBytes, (int)peOffset + 6 );
 		uint sectionHeadersOffset = peOffset + 24 + BitConverter.ToUInt16( fileBytes, (int)peOffset + 20 );
 
+		uint maxEnd = 0;
 		for ( int i = 0; i < numSections; i++ )
 		{
 			uint s = sectionHeadersOffset + (uint)(i * 40);
@@ -44,6 +47,10 @@ public class PELoader
 			uint rawDataSize = BitConverter.ToUInt32( fileBytes, (int)s + 16 );
 			string sectionName = Encoding.ASCII.GetString( fileBytes, (int)s, 8 ).TrimEnd( '\0' );
 			uint sectionFlags = BitConverter.ToUInt32( fileBytes, (int)s + 36 );
+
+			uint sectionEnd = imageBase + virtualAddress + Math.Max( virtualSize, rawDataSize );
+			if ( sectionEnd > maxEnd )
+				maxEnd = sectionEnd;
 
 			// Copy raw data from file
 			for ( uint j = 0; j < rawDataSize; j++ )
@@ -75,6 +82,7 @@ public class PELoader
 				}
 			}
 		}
+		heapStart = maxEnd + 0x10000; // 64KB padding
 
 		// 6. Parse imports
 		ParseImports( fileBytes, peOffset, imageBase, core, imports, importSourceDlls );

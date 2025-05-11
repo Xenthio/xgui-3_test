@@ -13,7 +13,7 @@ public class MovRegImm32Handler : IInstructionHandler
 		int reg = opcode - 0xB8;
 		uint imm = core.ReadDword( eip + 1 );
 		string regName = GetRegisterName( reg );
-		Log.Info( $"MOV {regName}, 0x{imm:X8} at EIP=0x{eip:X8}" );
+		core.LogVerbose( $"MOV {regName}, 0x{imm:X8} at EIP=0x{eip:X8}" );
 		core.Registers[regName] = imm;
 		core.Registers["eip"] += 5;
 	}

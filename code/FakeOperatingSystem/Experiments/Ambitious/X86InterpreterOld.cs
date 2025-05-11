@@ -11,7 +11,7 @@ namespace FakeOperatingSystem.Experiments;
 /// <summary>
 /// A simplified x86 interpreter to run basic Windows executables, Thank you claude 3.7 lol.
 /// </summary>
-public class X86Interpreter
+public class X86InterpreterOld
 {
 	#region Memory and Register Management
 
@@ -76,7 +76,7 @@ public class X86Interpreter
 
 	#endregion
 
-	public X86Interpreter()
+	public X86InterpreterOld()
 	{
 		InitializeWin32Api();
 	}
@@ -1947,7 +1947,7 @@ public class X86Interpreter
 			}
 
 			// Create the interpreter
-			var interpreter = new X86Interpreter();
+			var interpreter = new X86InterpreterOld();
 
 			// Register debug output
 			interpreter.DebugOutput = message => Log.Info( $"X86: {message}" );
