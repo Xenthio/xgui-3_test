@@ -31,7 +31,7 @@ public class PortIOHandler : IInstructionHandler
 					// Store in AL (low byte of EAX), preserving other bytes
 					core.Registers["eax"] = (core.Registers["eax"] & 0xFFFFFF00) | value;
 
-					Log.Info( $"IN AL, DX - Read 0x{value:X2} from port 0x{port:X4}" );
+					core.LogVerbose( $"IN AL, DX - Read 0x{value:X2} from port 0x{port:X4}" );
 					core.Registers["eip"] += 1;
 				}
 				break;
