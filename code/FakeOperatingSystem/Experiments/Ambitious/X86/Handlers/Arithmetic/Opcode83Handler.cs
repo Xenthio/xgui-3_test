@@ -94,7 +94,7 @@ public class Opcode83Handler : IInstructionHandler
 					throw new NotImplementedException( $"Opcode 0x83 with reg={reg} not implemented" );
 			}
 			// Advance EIP by the correct instruction length
-			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip ) + 1;
 			core.Registers["eip"] += len;
 		}
 	}

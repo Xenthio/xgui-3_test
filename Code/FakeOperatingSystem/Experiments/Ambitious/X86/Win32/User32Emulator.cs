@@ -3,7 +3,7 @@ using System;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 
-public class User32Emulator : APIEmulator
+public partial class User32Emulator : APIEmulator
 {
 	private static void ParseMessageBoxStyle( uint style, out MessageBoxIcon icon, out MessageBoxButtons buttons )
 	{
@@ -31,6 +31,8 @@ public class User32Emulator : APIEmulator
 	}
 	public User32Emulator()
 	{
+		RegisterGUIFunctions();
+
 		Log.Info( "User32Emulator: Registering MessageBoxA" );
 
 		RegisterStdCallFunction<uint, string, string, uint, uint>(

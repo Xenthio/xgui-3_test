@@ -164,7 +164,7 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 				core.Registers[destReg] = value;
 			}
 			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
-			core.Registers["eip"] += 2 + len; // 0x0F + opcode + modrm/SIB/disp
+			core.Registers["eip"] += len; // 0x0F + opcode + modrm/SIB/disp
 		}
 	}
 

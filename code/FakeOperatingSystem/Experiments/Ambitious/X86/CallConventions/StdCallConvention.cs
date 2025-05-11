@@ -61,6 +61,52 @@ public class StdCallConvention : CallingConvention
 		_registeredFunctions[name] = callback;
 		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ) };
 	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, TResult>( string name, Func<T1, T2, T3, T4, T5, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, T7, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ), typeof( T7 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, T7, T8, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ), typeof( T7 ), typeof( T8 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ), typeof( T7 ), typeof( T8 ), typeof( T9 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ), typeof( T7 ), typeof( T8 ), typeof( T9 ), typeof( T10 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ), typeof( T7 ), typeof( T8 ), typeof( T9 ), typeof( T10 ), typeof( T11 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ), typeof( T7 ), typeof( T8 ), typeof( T9 ), typeof( T10 ), typeof( T11 ), typeof( T12 ) };
+	}
+	public void RegisterFunction<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, TResult> callback )
+	{
+		_registeredFunctions[name] = callback;
+		_parameterTypes[name] = new[] { typeof( T1 ), typeof( T2 ), typeof( T3 ), typeof( T4 ), typeof( T5 ), typeof( T6 ), typeof( T7 ), typeof( T8 ), typeof( T9 ), typeof( T10 ), typeof( T11 ), typeof( T12 ), typeof( T13 ) };
+	}
+
 
 	public bool TryCallFunction( string name, X86Core core, out uint result, bool isJump = false )
 	{

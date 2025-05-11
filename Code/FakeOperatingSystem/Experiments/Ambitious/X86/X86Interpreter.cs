@@ -1,5 +1,6 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
@@ -209,12 +210,15 @@ public partial class X86Interpreter
 		{
 			Log.Info( $"Executed {i} instructions." );
 		}
+		OnFinish?.Invoke();
 	}
 
 	public void Halt()
 	{
 		_haltASAP = true;
 	}
+
+	public Action OnFinish;
 
 	public void DumpMemory( uint start, uint length )
 	{

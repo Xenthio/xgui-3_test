@@ -40,6 +40,11 @@ public class X86PEProcess : BaseProcess
 		// _interpreter.OnHaltWithMessageBox += ...;
 
 		// Start execution asynchronously
+
+		_interpreter.OnFinish += () =>
+		{
+			Manager.TerminateProcess( this );
+		};
 		_executionTask = _interpreter.ExecuteAsync();
 
 		// Optionally, you can log or track the task for process management

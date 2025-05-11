@@ -45,7 +45,7 @@ public class NativeProcess : BaseProcess
 				OwnedWindows.Remove( window );
 				if ( OwnedWindows.Count <= 0 )
 				{
-					ProcessManager.Instance.TerminateProcess( this );
+					Terminate();
 				}
 			};
 		}
