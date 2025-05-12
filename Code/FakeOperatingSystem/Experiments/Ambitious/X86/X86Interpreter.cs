@@ -58,6 +58,7 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.BCDArithmeticHandler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpHandler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpAlImm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.CmpR8Rm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode80Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode81Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode83Handler() );
