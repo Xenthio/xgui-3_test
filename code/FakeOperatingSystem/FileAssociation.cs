@@ -29,19 +29,27 @@ public class FileAssociation
 	public string DefaultProgram { get; set; }
 
 	/// <summary>
+	/// If the file type should be shown in the shell's "Create New" context menu
+	/// </summary>
+	public bool ShouldShowInShellCreateNew { get; set; } = false;
+
+	/// <summary>
 	/// The actions that can be performed on this file type
 	/// </summary>
 	public Dictionary<string, FileAction> Actions { get; set; } = new Dictionary<string, FileAction>();
+	public static Dictionary<string, FileAssociation> Associations { get; set; } = new Dictionary<string, FileAssociation>();
 
 	/// <summary>
 	/// Create a new file association
 	/// </summary>
-	public FileAssociation( string extension, string friendlyName, string iconName, string defaultProgram )
+	public FileAssociation( string extension, string friendlyName, string iconName, string defaultProgram, bool shouldShowInShellCreateNew = false )
 	{
 		Extension = extension.StartsWith( "." ) ? extension : "." + extension;
 		FriendlyName = friendlyName;
 		IconName = iconName;
 		DefaultProgram = defaultProgram;
+		Associations[Extension] = this;
+		ShouldShowInShellCreateNew = shouldShowInShellCreateNew;
 
 		// Default "open" action
 		if ( !string.IsNullOrEmpty( defaultProgram ) )

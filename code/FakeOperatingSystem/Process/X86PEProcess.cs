@@ -25,6 +25,7 @@ public class X86PEProcess : BaseProcess
 		if ( !VirtualFileSystem.Instance.PathExists( ProcessFilePath ) )
 		{
 			Log.Warning( $"Executable not found: {ProcessFilePath}" );
+			Manager.TerminateProcess( this );
 			return;
 		}
 		var file = VirtualFileSystem.Instance.GetEntry( ProcessFilePath );

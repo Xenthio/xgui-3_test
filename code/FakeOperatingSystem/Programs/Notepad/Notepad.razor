@@ -300,7 +300,7 @@
         activeMenu.AddMenuItem("Save", () => SaveFile());
         activeMenu.AddMenuItem("Save As...", () => SaveFile(true));
         activeMenu.AddSeparator();
-        activeMenu.AddMenuItem("Exit", () => Delete());
+        activeMenu.AddMenuItem("Exit", () => Close());
     }
 
     private void ShowEditMenu()

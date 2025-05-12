@@ -2,6 +2,7 @@
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
+@using FakeOperatingSystem;
 @attribute [StyleSheet("StartMenu.razor.scss")]
 @inherits Window
 
@@ -154,9 +155,9 @@
 				}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 			}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 			submenu.AddMenuItem("Calculator", () => Log.Info("Opening Calculator"), iconurl: "XGUI/Resources/95/calculator_icon_16.png");
-			submenu.AddMenuItem("Notepad", () => OpenPanelAndClose("notepad"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
+			submenu.AddMenuItem("Notepad", () => OpenExeAndClose("C:\\Windows\\notepad.exe"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
 			submenu.AddMenuItem("Paint", () => Log.Info("Opening Paint"), iconurl: "XGUI/Resources/95/paint_icon_16.png");
-			submenu.AddMenuItem("Task Manager", () => OpenPanelAndClose("taskmgr"), iconurl: "XGUI/Resources/95/taskmgr_icon_16.png");
+			submenu.AddMenuItem("Task Manager", () => OpenExeAndClose("C:\\Windows\\System32\\taskmgr.exe"), iconurl: "XGUI/Resources/95/taskmgr_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
 		activeMenu.AddSubmenuItem("Ultimate Doom for S&box95", (submenu) =>
@@ -180,7 +181,7 @@
 			submenu.AddClass("Large");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
-		activeMenu.AddMenuItem("Windows Explorer", () => OpenPanelAndClose("Explorer"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
+		activeMenu.AddMenuItem("Windows Explorer", () => OpenExeAndClose("C:\\Windows\\explorer.exe"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
 
 
 		activeMenu.AddSubmenuItem("Steam", (submenu) =>
@@ -194,7 +195,7 @@
 	{
 		CloseActiveMenu();
 
-		 // Add "open" class to the Documents button
+		// Add "open" class to the Documents button
 		DocumentsButton.AddClass("open");
 
 		// Create the Documents menu
@@ -211,7 +212,7 @@
 	{
 		CloseActiveMenu();
 
-		 // Add "open" class to the Settings button
+		// Add "open" class to the Settings button
 		SettingsButton.AddClass("open");
 
 		// Create the Settings menu
@@ -221,7 +222,7 @@
 		SetupMenuMouseEvents(activeMenu); 
 
 		// Taskbar submenu
-		activeMenu.AddMenuItem("Control Panel", () => Log.Info("Opening Control Panel"), iconurl: "XGUI/Resources/95/control_panel_icon_16.png");
+		activeMenu.AddMenuItem("Control Panel", () => OpenFolderAndClose("Desktop/My Computer/Control Panel"), iconurl: "XGUI/Resources/95/control_panel_icon_16.png");
 		activeMenu.AddMenuItem("Printers", () => Log.Info("Opening Printers Settings"), iconurl: "XGUI/Resources/95/printers_icon_16.png");
 		activeMenu.AddMenuItem("Taskbar...", () => Log.Info("Opening Taskbar Settings"), iconurl: "XGUI/Resources/95/taskbar_icon_16.png");
 		activeMenu.AddMenuItem("XGUI Theme...", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/95/global_theme_icon_16.png");
@@ -244,7 +245,7 @@
 	{
 		CloseActiveMenu();
 
-		 // Add "open" class to the Find button
+		// Add "open" class to the Find button
 		FindButton.AddClass("open");
 
 		// Create the Search menu
@@ -263,7 +264,7 @@
 	{
 		CloseActiveMenu();
 
-		 // Add "open" class to the Help button
+		// Add "open" class to the Help button
 		HelpButton.AddClass("open");
 
 		// Create the Help menu
@@ -279,7 +280,7 @@
 	{
 		CloseActiveMenu();
 
-		 // Add "open" class to the Run button
+		// Add "open" class to the Run button
 		RunButton.AddClass("open");
 
 		// Create a simple Run menu (typically opens a dialog in Windows 95)
@@ -296,7 +297,7 @@
 	{
 		CloseActiveMenu();
 
-		 // Add "open" class to the Shutdown button
+		// Add "open" class to the Shutdown button
 		ShutdownButton.AddClass("open");
 
 		// Create the shutdown menu
@@ -337,6 +338,32 @@
 	public void OpenPanelAndClose(string panel)
 	{
 		OpenPanel(panel);
+		Delete();
+	}
+
+	public void OpenExe(string path)
+	{
+		// Open the executable file
+		ProcessManager.Instance.OpenExecutable(path, new Win32LaunchOptions());
+	}
+
+	public void OpenExeAndClose(string path)
+	{
+		OpenExe(path);
+		Delete();
+	}
+
+	public void OpenFolder(string path)
+	{
+		// Open the folder in explorer
+		ProcessManager.Instance.OpenExecutable("C:\\Windows\\explorer.exe", new Win32LaunchOptions() {
+			Arguments = path
+		});
+	}
+
+	public void OpenFolderAndClose(string path)
+	{
+		OpenFolder(path);
 		Delete();
 	}
 

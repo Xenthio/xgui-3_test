@@ -65,22 +65,27 @@ public class VirtualFileSystem
 	private void SetupDefaultFileAssociations()
 	{
 		// Text files
-		var txtAssociation = new FileAssociation( ".txt", "Text Document", "notepad", "notepad.exe" );
+		var txtAssociation = new FileAssociation( ".txt", "Text Document", "txt", "notepad.exe", shouldShowInShellCreateNew: true );
 		RegisterFileAssociation( txtAssociation );
 
 		// HTML files
-		var htmlAssociation = new FileAssociation( ".html", "HTML Document", "iexplore", "iexplore.exe" );
+		var htmlAssociation = new FileAssociation( ".html", "HTML Document", "html", "iexplore.exe" );
 		htmlAssociation.AddAction( "edit", "Edit", "notepad.exe" );
 		RegisterFileAssociation( htmlAssociation );
 
 		// WAD files (for Doom)
-		var wadAssociation = new FileAssociation( ".wad", "Doom WAD File", "doom95", "doom95.exe" );
+		var wadAssociation = new FileAssociation( ".wad", "Doom WAD File", "wad", "doom95.exe" );
 		RegisterFileAssociation( wadAssociation );
 
 		// Shortcuts
-		var lnkAssociation = new FileAssociation( ".lnk", "Shortcut", "shortcut", null );
+		var lnkAssociation = new FileAssociation( ".lnk", "Shortcut", "lnk", null );
 		// Shortcuts are handled specially in the file browser
 		RegisterFileAssociation( lnkAssociation );
+
+		// Ini files
+		var iniAssociation = new FileAssociation( ".ini", "INI File", "ini", "notepad.exe" );
+		iniAssociation.AddAction( "edit", "Edit", "notepad.exe" );
+		RegisterFileAssociation( iniAssociation );
 
 		// Add more associations as needed
 	}
@@ -163,10 +168,10 @@ public class VirtualFileSystem
 			};
 
 			// D: Drive (inside My Computer) - this points to the Mounted filesystem
-			_virtualPaths[$"{DESKTOP}/{MY_COMPUTER}/FS:Mounted"] = new VirtualEntry
+			_virtualPaths[$"{DESKTOP}/{MY_COMPUTER}/FS:A:"] = new VirtualEntry
 			{
-				Name = "FS:Mounted",
-				Path = $"{DESKTOP}/{MY_COMPUTER}/FS:Mounted",
+				Name = "Mounted (FS:A:)",
+				Path = $"{DESKTOP}/{MY_COMPUTER}/FS:A:",
 				RealPath = "/",
 				Type = EntryType.Drive,
 				IsVirtual = false,
@@ -175,10 +180,10 @@ public class VirtualFileSystem
 			};
 
 			// Y: Drive (inside My Computer) - this points to the OrganizationData filesystem
-			_virtualPaths[$"{DESKTOP}/{MY_COMPUTER}/FS:OrgData"] = new VirtualEntry
+			_virtualPaths[$"{DESKTOP}/{MY_COMPUTER}/FS:B:"] = new VirtualEntry
 			{
-				Name = "FS:OrgData",
-				Path = $"{DESKTOP}/{MY_COMPUTER}/FS:OrgData",
+				Name = "OrgData (FS:B:)",
+				Path = $"{DESKTOP}/{MY_COMPUTER}/FS:B:",
 				RealPath = "/",
 				Type = EntryType.Drive,
 				IsVirtual = false,
@@ -187,10 +192,10 @@ public class VirtualFileSystem
 			};
 
 			// Z: Drive (inside My Computer) - this points to the Data filesystem
-			_virtualPaths[$"{DESKTOP}/{MY_COMPUTER}/FS:Data"] = new VirtualEntry
+			_virtualPaths[$"{DESKTOP}/{MY_COMPUTER}/FS:C:"] = new VirtualEntry
 			{
-				Name = "FS:Data",
-				Path = $"{DESKTOP}/{MY_COMPUTER}/FS:Data",
+				Name = "Data (FS:C:)",
+				Path = $"{DESKTOP}/{MY_COMPUTER}/FS:C:",
 				RealPath = "/",
 				Type = EntryType.Drive,
 				IsVirtual = false,
@@ -285,6 +290,7 @@ public class VirtualFileSystem
 
 		foreach ( var (name, icon) in applets )
 		{
+			Log.Info( $"Adding Control Panel applet: {name}" );
 			string appletPath = $"{controlPanelPath}/{name}";
 			_virtualPaths[appletPath] = new VirtualEntry
 			{
@@ -491,7 +497,8 @@ public class VirtualFileSystem
 			e.Type == EntryType.Directory ||
 			e.Type == EntryType.SpecialFolder ||
 			e.Type == EntryType.Drive ||
-			e.Type == EntryType.ControlPanel );
+			e.Type == EntryType.ControlPanel ||
+			e.Type == EntryType.ControlPanelApplet );
 	}
 
 	/// <summary>
@@ -617,6 +624,23 @@ public class VirtualFileSystem
 	/// </summary>
 	private VirtualEntry ResolveVirtualPath( string virtualPath )
 	{
+		// Support Windows-style drive letter paths (C:/..., D:\..., etc)
+		if ( !string.IsNullOrEmpty( virtualPath ) &&
+			virtualPath.Length >= 2 &&
+			char.IsLetter( virtualPath[0] ) &&
+			virtualPath[1] == ':' )
+		{
+			// Normalize slashes
+			virtualPath = virtualPath.Replace( '\\', '/' );
+
+			// Remove any leading slash after the drive letter
+			string rest = virtualPath.Substring( 2 );
+			if ( rest.StartsWith( "/" ) ) rest = rest.Substring( 1 );
+
+			// Compose the virtual path in the VFS format
+			virtualPath = $"{DESKTOP}/{MY_COMPUTER}/{virtualPath[0]}:/{rest}";
+		}
+
 		// Check if this path is directly in our virtual path mapping
 		if ( _virtualPaths.TryGetValue( virtualPath, out var entry ) )
 			return entry;

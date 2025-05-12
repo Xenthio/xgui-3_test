@@ -1,5 +1,6 @@
 ﻿using FakeOperatingSystem;
 using Sandbox;
+using Sandbox.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,13 +42,13 @@ public class VirtualFileBrowserView : FileBrowserView
 		base.CurrentFileSystem = defaultFileSystem;
 
 		// Navigate to Desktop (root of the virtual file system)
-		NavigateToVirtualPath( VirtualFileSystem.DESKTOP );
+		NavigateToVirtualPath( VirtualFileSystem.DESKTOP, sound: false );
 	}
 
 	/// <summary>
 	/// Navigate to a virtual path
 	/// </summary>
-	public void NavigateToVirtualPath( string virtualPath )
+	public void NavigateToVirtualPath( string virtualPath, bool sound = true )
 	{
 		if ( _virtualFileSystem == null )
 			return;
@@ -72,6 +73,9 @@ public class VirtualFileBrowserView : FileBrowserView
 			Log.Warning( $"Virtual path not found: {virtualPath}" );
 			return;
 		}
+
+		if ( sound ) PlaySingleClickSound();
+		_currentContextMenu?.Delete();
 
 		// Clear existing items
 		ItemContainer.DeleteChildren();
@@ -138,7 +142,7 @@ public class VirtualFileBrowserView : FileBrowserView
 		else
 		{
 			// If no slashes, go to root Desktop
-			NavigateToVirtualPath( VirtualFileSystem.DESKTOP );
+			NavigateToVirtualPath( VirtualFileSystem.DESKTOP, sound: false );
 		}
 	}
 
@@ -153,6 +157,7 @@ public class VirtualFileBrowserView : FileBrowserView
 		if ( !OpenDirectoryEnabled )
 			return;
 
+		PlayDoubleClickSoundNoFirstClick();
 		if ( _usingVirtualMode )
 		{
 			// Check if this is one of our virtual items
@@ -166,9 +171,6 @@ public class VirtualFileBrowserView : FileBrowserView
 				}
 			}
 		}
-
-		// If not in virtual mode, or not a virtual path, use base navigation
-		// This is already handled by the base class
 	}
 
 	/// <summary>
@@ -178,6 +180,10 @@ public class VirtualFileBrowserView : FileBrowserView
 	{
 		if ( !OpenFileEnabled )
 			return;
+
+		// doubleclick sound
+		PlayDoubleClickSound();
+
 		if ( _usingVirtualMode )
 		{
 			var entry = _virtualFileSystem.GetEntry( path );
@@ -228,6 +234,27 @@ public class VirtualFileBrowserView : FileBrowserView
 		}
 	}
 
+	async void PlayDoubleClickSoundNoFirstClick()
+	{
+		//PlaySingleClickSound();
+		await GameTask.DelaySeconds( 0.16f );
+		PlaySingleClickSound();
+	}
+	async void PlayDoubleClickSound()
+	{
+		PlaySingleClickSound();
+		await GameTask.DelaySeconds( 0.16f );
+		PlaySingleClickSound();
+	}
+
+	async void PlaySingleClickSound()
+	{
+		var soundpath = XGUISoundSystem.GetSound( "START" );
+		var soundfile = SoundFile.Load( soundpath );
+		Sound.PlayFile( soundfile );
+		await GameTask.DelaySeconds( 0.08f );
+		Sound.PlayFile( soundfile );
+	}
 
 	/// <summary>
 	/// Populate the browser view from a virtual path
@@ -274,9 +301,15 @@ public class VirtualFileBrowserView : FileBrowserView
 			{
 				if ( item.IconPanel is XGUIIconPanel iconPanel )
 				{
-					// Use proper icon type based on item type
+					// Use custom icon from desktop.ini if present
 					if ( isDirectory )
 					{
+						string customIcon = GetCustomFolderIconFromDesktopIni( path );
+						if ( !string.IsNullOrEmpty( customIcon ) )
+						{
+							iconPanel.SetFolderIcon( customIcon, 32 );
+							break;
+						}
 						if ( string.IsNullOrEmpty( iconName ) || iconName == "folder" )
 						{
 							iconPanel.SetFolderIcon( "folder", 32 );
@@ -295,6 +328,14 @@ public class VirtualFileBrowserView : FileBrowserView
 							extension = extension.Substring( 1 );
 						}
 
+						if ( extension == "exe" )
+						{
+							// todo, lookup icon inside of exe.
+							var filename = System.IO.Path.GetFileNameWithoutExtension( path );
+							iconPanel.SetFileIcon( $"exe_{filename}", 32 );
+							return;
+						}
+
 						if ( string.IsNullOrEmpty( iconName ) || iconName == "file" )
 						{
 							iconPanel.SetFileIcon( extension, 32 );
@@ -310,6 +351,186 @@ public class VirtualFileBrowserView : FileBrowserView
 		}
 	}
 
+	protected override void OnClick( MousePanelEvent e )
+	{
+		_currentContextMenu?.Delete();
+	}
+	ContextMenu _currentContextMenu;
+	protected override void OnRightClick( MousePanelEvent e )
+	{
+		base.OnRightClick( e );
+
+		// Determine if the click was on empty space (not on a file/folder item)
+		bool clickedOnItem = false;
+		foreach ( var item in FileItems )
+		{
+			if ( item.HasHovered )
+			{
+				clickedOnItem = true;
+				// You may want to show the file/folder context menu here instead
+				ShowItemContextMenu( item, e );
+				// also select item
+				SelectItem( item );
+				break;
+			}
+		}
+
+		if ( !clickedOnItem )
+		{
+			ShowEmptySpaceContextMenu( e );
+		}
+	}
+
+	private void ShowEmptySpaceContextMenu( MousePanelEvent e )
+	{
+		_currentContextMenu?.Delete();
+		_currentContextMenu = new ContextMenu( this, ContextMenu.PositionMode.UnderMouse );
+
+		_currentContextMenu.AddMenuItem( "Refresh", () =>
+		{
+			Refresh();
+			_currentContextMenu?.Delete();
+		} );
+
+		_currentContextMenu.AddSeparator();
+
+		// "New" submenu
+		_currentContextMenu.AddSubmenuItem( "New", submenu =>
+		{
+			// Get all registered file associations (file types)
+			var associations = FileAssociation.Associations;
+
+			if ( associations != null )
+			{
+				submenu.AddMenuItem( "Folder", () =>
+				{
+					string newFolderName = "New Folder";
+
+					string basePath = _currentVirtualPath;
+					var entry = _virtualFileSystem.GetEntry( basePath );
+					var fs = entry.AssociatedFileSystem ?? FileSystem.Data;
+
+					string newFolderPath = $"{entry.RealPath}/{newFolderName}";
+
+					// Ensure unique folder name
+					int count = 1;
+					while ( fs.DirectoryExists( newFolderPath ) )
+					{
+						newFolderName = $"New Folder ({count})";
+						newFolderPath = $"{_currentVirtualPath}/{newFolderName}";
+						count++;
+					}
+					fs.CreateDirectory( newFolderPath );
+					Refresh();
+					_currentContextMenu?.Delete();
+				} );
+
+				submenu.AddSeparator();
+
+				// Sort by friendly name for a nice menu
+				foreach ( var assoc in associations.Values.OrderBy( a => a?.Actions?.FirstOrDefault().Value?.DisplayName ?? a.ToString() ) )
+				{
+					if ( !assoc.ShouldShowInShellCreateNew )
+						continue;
+					// Use the extension as the file type, e.g., "Text Document"
+					string ext = assoc.Extension;
+					string friendlyName = assoc.FriendlyName ?? ext.ToUpper() + " File";
+					string iconName = assoc.IconName ?? "";
+
+					submenu.AddMenuItem( friendlyName, () =>
+					{
+						string basePath = _currentVirtualPath;
+						var entry = _virtualFileSystem.GetEntry( basePath );
+						var fs = entry.AssociatedFileSystem ?? FileSystem.Data;
+
+						// Default new file name
+						string newFileName = $"New {friendlyName}.{ext}";
+						string newFilePath = $"{entry.RealPath}/{newFileName}";
+
+						// Ensure unique file name
+						int count = 1;
+						while ( fs.FileExists( newFilePath ) )
+						{
+							newFileName = $"New {friendlyName} ({count}).{ext}";
+							newFilePath = $"{entry.RealPath}/{newFileName}";
+							count++;
+						}
+
+						fs.WriteAllText( newFilePath, "" );
+						Refresh();
+						_currentContextMenu?.Delete();
+					} );
+				}
+			}
+			else
+			{
+			}
+		}
+		);
+
+		_currentContextMenu.AddSeparator();
+
+
+		_currentContextMenu.AddMenuItem( "Properties", () => Log.Info( $"Properties for {CurrentPath}" ) );
+	}
+
+	// Optional: Show context menu for file/folder items
+	private void ShowItemContextMenu( FileItem item, MousePanelEvent e )
+	{
+		_currentContextMenu?.Delete();
+		_currentContextMenu = new ContextMenu( this, ContextMenu.PositionMode.UnderMouse );
+		//menu.SetPosition( Mouse.Position.x, Mouse.Position.y );
+
+		_currentContextMenu.AddMenuItem( "Open", () =>
+		{
+			if ( item.IsDirectory )
+			{
+				HandleDirectoryOpened( item.FullPath );
+			}
+			else
+			{
+				HandleFileOpened( item.FullPath );
+			}
+			_currentContextMenu?.Delete();
+		} );
+		_currentContextMenu.AddMenuItem( "Rename", () => Log.Info( $"Rename {item.FullPath}" ) );
+		_currentContextMenu.AddMenuItem( "Delete", () =>
+		{
+			if ( item.IsDirectory )
+			{
+				var entry = _virtualFileSystem.GetEntry( item.FullPath );
+				var fs = entry.AssociatedFileSystem ?? FileSystem.Data;
+				if ( fs.DirectoryExists( entry.RealPath ) )
+				{
+					fs.DeleteDirectory( entry.RealPath );
+					Refresh();
+				}
+				else
+				{
+					Log.Warning( $"Directory not found for deletion: {item.FullPath}" );
+				}
+			}
+			else
+			{
+				var entry = _virtualFileSystem.GetEntry( item.FullPath );
+				var fs = entry.AssociatedFileSystem ?? FileSystem.Data;
+				if ( fs.FileExists( entry.RealPath ) )
+				{
+					fs.DeleteFile( entry.RealPath );
+					Refresh();
+				}
+				else
+				{
+					Log.Warning( $"File not found for deletion: {item.FullPath}" );
+				}
+			}
+			_currentContextMenu?.Delete();
+		} );
+
+		_currentContextMenu.AddSeparator();
+		_currentContextMenu.AddMenuItem( "Properties", () => Log.Info( $"Properties for {item.FullPath}" ) );
+	}
+
 	/// <summary>
 	/// Override the refresh method to handle virtual paths
 	/// </summary>
@@ -317,11 +538,49 @@ public class VirtualFileBrowserView : FileBrowserView
 	{
 		if ( _usingVirtualMode && !string.IsNullOrEmpty( _currentVirtualPath ) )
 		{
-			NavigateToVirtualPath( _currentVirtualPath );
+			NavigateToVirtualPath( _currentVirtualPath, sound: false );
 		}
 		else
 		{
 			base.Refresh();
 		}
+	}
+
+	private string GetCustomFolderIconFromDesktopIni( string virtualPath )
+	{
+		// Build the path to the desktop.ini file
+		string iniVirtualPath = virtualPath + "/desktop.ini";
+		var iniEntry = _virtualFileSystem.GetEntry( iniVirtualPath );
+		if ( iniEntry == null )
+			return null;
+
+		var fs = iniEntry.AssociatedFileSystem ?? FileSystem.Data;
+		if ( string.IsNullOrWhiteSpace( iniEntry.RealPath ) || !fs.FileExists( iniEntry?.RealPath ) )
+			return null;
+
+		//Log.Info( $"Reading desktop.ini for {iniEntry.RealPath}" );
+
+		// Read the file contents
+		string[] lines = fs.ReadAllText( iniEntry.RealPath ).Split( '\n' );
+		bool inSection = false;
+		foreach ( var rawLine in lines )
+		{
+			string line = rawLine.Trim();
+			if ( line.StartsWith( "[.XGUIInfo]", StringComparison.OrdinalIgnoreCase ) )
+			{
+				inSection = true;
+				continue;
+			}
+			if ( inSection )
+			{
+				if ( line.StartsWith( "[" ) && line.EndsWith( "]" ) )
+					break; // New section, stop
+				if ( line.StartsWith( "Icon=", StringComparison.OrdinalIgnoreCase ) )
+				{
+					return line.Substring( "Icon=".Length ).Trim();
+				}
+			}
+		}
+		return null;
 	}
 }

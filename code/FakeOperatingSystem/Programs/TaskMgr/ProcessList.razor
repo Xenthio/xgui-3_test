@@ -1,0 +1,61 @@
+@using XGUI;
+@using Sandbox;
+@using FakeOperatingSystem.Experiments.Ambitious.X86;
+@using FakeOperatingSystem;
+@attribute [Library("processlist")]
+
+<root>
+	<selectlist @ref=List style="flex-grow:1;">
+		@foreach (var process in ProcessManager.Instance.GetProcesses())
+		{
+			<processlistoption ownerprocess="@process" class="process-item" processid=@process.ProcessId>
+				<div class="process-name">@process.ProcessFileName</div>
+				<div class="process-id">@process.ProcessId</div>
+			</processlistoption>
+		}
+	</selectlist>
+
+@* 	<div style="flex-direction:row-reverse">
+		<button style="width:78px; margin-left:5px;" @onclick=@EndSelectedTask>End Task</button>
+		<button style="width:78px; margin-left:5px;">Switch To</button>
+		<button style="width:78px; margin-left:5px;">New Task...</button>
+	</div> *@
+
+	<div style="flex-direction:row-reverse">
+		<button style="width:78px; margin-left:5px;" @onclick=@EndSelectedProcess>End Process</button>
+	</div>
+</root>
+
+@code {
+
+	public SelectList List;	
+	public BaseProcess SelectedProcess => (List.SelectedOption as ProcessListOption).Process;
+
+	public void EndSelectedProcess()
+	{
+		if (SelectedProcess != null)
+		{
+			ProcessManager.Instance.TerminateProcess(SelectedProcess);
+			StateHasChanged();
+		}
+		else 
+		{
+			// get by process id
+			var processId = int.Parse(List.SelectedOption?.GetAttribute("processid"));
+			if (processId != null)
+			{
+				var process = ProcessManager.Instance.GetProcessById(processId);
+				if (process != null)
+				{
+					ProcessManager.Instance.TerminateProcess(process);
+					StateHasChanged();
+				}
+			}
+		}
+	}
+
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine(ProcessManager.Instance.GetProcessCount());
+	}
+}

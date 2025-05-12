@@ -21,10 +21,18 @@ public class FakeSystemRoot
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Program Files" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/My Documents" );
+		FileSystem.Data.WriteAllText( "FakeSystemRoot/My Documents/desktop.ini", "[.XGUIInfo]\nIcon=mydocuments\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,3\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=3" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Recycled" );
+		FileSystem.Data.WriteAllText( "FakeSystemRoot/Recycled/desktop.ini", "[.XGUIInfo]\nIcon=recyclebinfull\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,10\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=10" );
+
+		SetupRootFiles();
 
 		// Windows
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Fonts" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Help" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Media" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Offline Web Pages" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32/drivers" );
@@ -46,6 +54,15 @@ public class FakeSystemRoot
 
 		// Create desktop shortcuts and other items
 		CreateDefaultDesktopItems();
+	}
+
+	public static void SetupRootFiles()
+	{
+		string rootDir = "FakeSystemRoot";
+		FileSystem.Data.WriteAllText( $"{rootDir}/Autoexec.bat", "@echo off\n win" );
+		FileSystem.Data.WriteAllText( $"{rootDir}/Config.sys", "DEVICE=C:\\WINDOWS\\HIMEM.SYS\nDEVICE=C:\\WINDOWS\\EMM386.EXE" );
+		FileSystem.Data.WriteAllText( $"{rootDir}/MSDOS.SYS", "[Paths]\nWinDir=C:\\WINDOWS\nWinBootDir=C:\\WINDOWS\nHostWinBootDrv=C\n\n[Options]\nBootMulti=1\nBootGUI=1\nDoubleBuffer=1\nAutoScan=1\nWinVer=4.10.2222" );
+		FileSystem.Data.WriteAllText( $"{rootDir}/boot.ini", "[boot loader]\nTimeout=30\nDefault=multi(0)disk(0)rdisk(0)partition(1)\\WINDOWS\n[operating systems]\nmulti(0)disk(0)rdisk(0)partition(1)\\WINDOWS=\"Microsoft Windows 98 Hybrid NT Edition\" /fastdetect" );
 	}
 
 	/// <summary>
@@ -90,6 +107,9 @@ public class FakeSystemRoot
 
 		// Paint (system application)
 		NativeProgram.CompileIntoExe( typeof( PaintProgram ), $"{windowsDir}/mspaint.exe" );
+
+		// taskmgr (system application)
+		NativeProgram.CompileIntoExe( typeof( TaskMgrProgram ), $"{windowsDir}/System32/taskmgr.exe" );
 	}
 
 	public static void CreateDefaultDesktopItems()

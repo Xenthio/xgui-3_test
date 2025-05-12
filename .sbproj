@@ -27,7 +27,7 @@
     "Public": true,
     "CsProjName": "",
     "HttpAllowList": null,
-    "StartupScene": "scenes/xguitest_simple.scene",
+    "StartupScene": "scenes/fakeos.scene",
     "LaunchMode": "Normal"
   }
 }

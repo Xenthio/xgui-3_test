@@ -8,7 +8,7 @@
 @inherits Window
 @attribute [StyleSheet("Explorer.razor.scss")]
 
-<root title="Explorer" width="640" height="480" class="window1">
+<root title="Explorer" width="640" height="480" class="window1" hasminimise="true" hasmaximise="true">
 	<div class="window-content">
 		<toolbarcontainer>
 			<!-- Menu Toolbar -->
@@ -93,12 +93,12 @@
 			// Initialize with the provided path or default to Desktop
 			if (!string.IsNullOrEmpty(InitialPath))
 			{
-				BrowserView.NavigateToVirtualPath(InitialPath);
+				BrowserView.NavigateToVirtualPath(InitialPath, sound: false);
 			}
 			else
 			{
 				// Default to Desktop if no path specified
-				BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP);
+				BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP, sound: false);
 			}
 
 			// Set default view mode
@@ -108,6 +108,15 @@
 			BrowserTree.Style.Display = DisplayMode.None;
 		}
 	}
+	async void PlaySingleClickSound()
+	{
+		var soundpath = XGUISoundSystem.GetSound("START");
+		var soundfile = SoundFile.Load(soundpath);
+		Sound.PlayFile(soundfile);
+		await GameTask.DelaySeconds(0.08f);
+		Sound.PlayFile(soundfile);
+	}
+
 
 	/// <summary>
 	/// Formats a virtual path for display in the address bar
@@ -143,10 +152,15 @@
 				string pathAfterDrive = relativePath.Substring(driveLetter.Length);
 
 				// Format like "C:/Documents"
-				return driveLetter + pathAfterDrive;
+				return (driveLetter + pathAfterDrive).Replace("/", "\\");
 			}
 			else
 			{
+				// Check if we're at the root of a drive
+				if (relativePath.Contains(':'))
+				{
+					return relativePath + "\\";
+				}
 				// Just return the folder name inside My Computer
 				return relativePath;
 			}

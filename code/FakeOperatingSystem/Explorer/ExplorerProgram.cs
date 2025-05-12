@@ -7,6 +7,10 @@ public class ExplorerProgram : NativeProgram
 	{
 		// TODO: Replace with your actual Explorer window/panel
 		var window = new Explorer();
+		if ( launchOptions != null )
+		{
+			window.InitialPath = launchOptions.Arguments;
+		}
 		process.RegisterWindow( window );
 	}
 }

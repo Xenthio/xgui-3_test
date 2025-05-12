@@ -3,6 +3,7 @@
 @using Sandbox.UI;
 @using XGUI;
 @using FakeDesktop;
+@using FakeOperatingSystem;
 @attribute [StyleSheet("Desktop.razor.scss")]
 @inherits XGUIPanel
 
@@ -26,14 +27,14 @@
             BrowserView.Initialize(VirtualFileSystem.Instance, FileSystem.Data);
 
             // Intercept directory opening to launch Explorer instead of navigating 
-			BrowserView.OpenDirectoryEnabled = false;
+            BrowserView.OpenDirectoryEnabled = false;
             BrowserView.OnDirectoryOpened += HandleDirectoryOpened; 
 
             // Set default view mode
             BrowserView.ViewMode = FileBrowserViewMode.Icons;
 
             // Navigate to Desktop - this will stay fixed
-            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP);
+            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP, sound: false);
         }
     }
 
@@ -51,23 +52,16 @@
 
             // Prevent the desktop from navigating away
             // by navigating back to the desktop
-            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP);
+            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP, sound:false);
         }
     } 
 
     private void LaunchExplorerWithPath(string virtualPath)
     {
-        // Create a new Explorer window
-        var explorer = new Explorer() 
-		{
-			InitialPath = virtualPath,
-            AutoFocus = true,
-        };
-
-        // Add the Explorer window to the UI
-        Game.ActiveScene.GetSystem<XGUISystem>().Panel.AddChild(explorer);
-
-        // Focus the new Explorer window
-        explorer.FocusWindow();
+        // Launch the Explorer application with the specified virtual path
+        ProcessManager.Instance.OpenExecutable("C:\\Windows\\explorer.exe", new Win32LaunchOptions()
+        {
+			Arguments = $"{virtualPath}",
+        });
     }
 }

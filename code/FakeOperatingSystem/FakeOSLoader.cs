@@ -10,13 +10,16 @@ public class FakeOSLoader : Component
 	ProcessManager _processManager;
 	protected override void OnStart()
 	{
+		XGUISystem.Instance.SetGlobalTheme( "/XGUI/DefaultStyles/Computer95.scss" );
+
 		// Initialize the virtual file system
 		_virtualFileSystem = new VirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
 
 		// initialize program manager
 		_processManager = new ProcessManager();
 
-		Scene.GetSystem<XGUISystem>().Panel.AddChild<Explorer>();
+		//Scene.GetSystem<XGUISystem>().Panel.AddChild<Explorer>();
+		_processManager.OpenExecutable( "C:/Windows/explorer.exe", new Win32LaunchOptions() );
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<TaskBar>();
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<Desktop>();
 		base.OnStart();

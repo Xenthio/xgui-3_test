@@ -6,7 +6,7 @@ public class ProcessManager
 {
 	public static ProcessManager Instance { get; private set; }
 	private List<BaseProcess> _processes = new();
-	private static int _lastProcessId = 0;
+	private int _lastProcessId = 0;
 	public ProcessManager()
 	{
 		Instance?.TerminateAll();
@@ -60,5 +60,17 @@ public class ProcessManager
 		RegisterProcess( process );
 		process.Start();
 		return process;
+	}
+
+	public BaseProcess GetProcessById( int processId )
+	{
+		foreach ( var process in _processes )
+		{
+			if ( process.ProcessId == processId )
+			{
+				return process;
+			}
+		}
+		return null;
 	}
 }
