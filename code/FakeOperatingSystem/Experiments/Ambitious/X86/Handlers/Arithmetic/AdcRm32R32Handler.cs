@@ -41,5 +41,7 @@ public class AdcRm32R32Handler : IInstructionHandler
 			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += len;
 		}
+		// Log the operation
+		core.LogMaths( $"ADC {X86AddressingHelper.GetRegisterName( rm )}, {srcReg}, result: {core.Registers[X86AddressingHelper.GetRegisterName( rm )]} (EIP: {eip:X8})" );
 	}
 }

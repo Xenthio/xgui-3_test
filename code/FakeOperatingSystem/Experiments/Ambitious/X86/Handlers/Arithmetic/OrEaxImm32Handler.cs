@@ -20,5 +20,8 @@ public class OrEaxImm32Handler : IInstructionHandler
 
 		// Advance EIP past opcode and immediate
 		core.Registers["eip"] += 5;
+
+		// Log the operation
+		core.LogMaths( $"OR eax, {imm32:X8}, result: {core.Registers["eax"]} (EIP: {eip:X8})" );
 	}
 }

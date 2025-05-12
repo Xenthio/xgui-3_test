@@ -47,6 +47,8 @@ public class AddRm32R32Handler : IInstructionHandler
 			uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
 			core.Registers["eip"] += length;
 		}
+		// show the operation in the log
+		core.LogMaths( $"Added {sourceReg} to {X86AddressingHelper.GetRegisterName( rm )}, result: {core.Registers[X86AddressingHelper.GetRegisterName( rm )]} (EIP: {eip:X8})" );
 	}
 
 	private void SetFlags( X86Core core, uint destValue, uint sourceValue, uint result )

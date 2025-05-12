@@ -336,6 +336,27 @@ public class VirtualFileSystem
 	}
 
 	/// <summary>
+	/// Gets a virtual path from a real filesystem.data path
+	/// </summary>
+	public string GetVirtualPathFromRealPath( string realPath )
+	{
+		// Check if the real path is a direct mapping
+		foreach ( var kv in _virtualPaths )
+		{
+			if ( kv.Value.RealPath == realPath )
+				return kv.Key;
+		}
+		// try replace FakeSystemRoot with the virtual path
+		if ( realPath.StartsWith( _rootPath ) )
+		{
+			string relativePath = realPath.Substring( _rootPath.Length ).TrimStart( Path.DirectorySeparatorChar );
+			return $"{DESKTOP}/My Computer/C:{relativePath}";
+		}
+		return null;
+	}
+
+
+	/// <summary>
 	/// Checks if the virtual path is a directory
 	/// </summary>
 	public bool IsDirectory( string virtualPath )

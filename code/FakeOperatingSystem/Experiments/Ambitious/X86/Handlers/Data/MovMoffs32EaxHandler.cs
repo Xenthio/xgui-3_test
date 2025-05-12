@@ -1,19 +1,31 @@
-using System;
-
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.Handlers;
 
 public class MovMoffs32EaxHandler : IInstructionHandler
 {
-    public bool CanHandle(byte opcode) => opcode == 0xA3;
+	public bool CanHandle( byte opcode ) => opcode == 0xA3;
 
-    public void Execute(X86Core core)
-    {
-        uint eip = core.Registers["eip"];
-        // Read the 32-bit immediate address
-        uint addr = core.ReadDword(eip + 1);
-        uint value = core.Registers["eax"];
-        core.WriteDword(addr, value);
-        core.Registers["eip"] += 5; // 1 (opcode) + 4 (address)
-        core.LogVerbose($"MOV [0x{addr:X8}], EAX (0x{value:X8})");
-    }
+	public void Execute( X86Core core )
+	{
+		uint eip = core.Registers["eip"];
+		bool is16bit = false;
+
+		// Check for 0x66 prefix (operand size override)
+		if ( eip > 0 && core.ReadByte( eip - 1 ) == 0x66 )
+			is16bit = true;
+
+		uint address = core.ReadDword( eip + 1 );
+
+		if ( is16bit )
+		{
+			ushort value = (ushort)(core.Registers["eax"] & 0xFFFF);
+			core.WriteWord( address, value );
+			core.Registers["eip"] += 5; // 0x66 + 0xA3 + 4-byte address
+		}
+		else
+		{
+			uint value = core.Registers["eax"];
+			core.WriteDword( address, value );
+			core.Registers["eip"] += 5; // 0xA3 + 4-byte address
+		}
+	}
 }

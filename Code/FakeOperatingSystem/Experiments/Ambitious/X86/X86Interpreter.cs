@@ -28,9 +28,11 @@ public partial class X86Interpreter
 	public X86Interpreter()
 	{
 		APIEmulators.Add( new User32Emulator() );
-		APIEmulators.Add( new MsvcrtEmulator() );
 		APIEmulators.Add( new Kernel32Emulator() );
+		APIEmulators.Add( new MsvcrtEmulator() );
 		APIEmulators.Add( new Shell32Emulator() );
+		APIEmulators.Add( new Advapi32Emulator() );
+		APIEmulators.Add( new GDI32Emulator() );
 
 		// === Miscellaneous ===
 		InstructionSet.RegisterHandler( new Handlers.NopHandler() );

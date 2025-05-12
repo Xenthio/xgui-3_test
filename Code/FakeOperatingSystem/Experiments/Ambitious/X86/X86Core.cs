@@ -87,12 +87,19 @@ public class X86Core
 
 	public uint ReadDword( uint address )
 	{
-		return (uint)(
+		uint value = (uint)(
 			ReadByte( address ) |
 			(ReadByte( address + 1 ) << 8) |
 			(ReadByte( address + 2 ) << 16) |
 			(ReadByte( address + 3 ) << 24)
 		);
+		uint ebp = Registers["ebp"];
+		/*		if ( address == ebp + 0xFFFFFFCC || address == ebp + 0xFFFFFFD0 ||
+					address == ebp + 0xFFFFFFD4 || address == ebp + 0xFFFFFFD8 )
+				{
+					Log.Info( $"ReadDword: [0x{address:X8}] = 0x{value:X8} (EBP=0x{ebp:X8})" );
+				}*/
+		return value;
 	}
 
 	public void WriteDword( uint address, uint value, bool protect = true )
@@ -101,6 +108,12 @@ public class X86Core
 		WriteByte( address + 1, (byte)((value >> 8) & 0xFF), protect: protect );
 		WriteByte( address + 2, (byte)((value >> 16) & 0xFF), protect: protect );
 		WriteByte( address + 3, (byte)((value >> 24) & 0xFF), protect: protect );
+		uint ebp = Registers["ebp"];
+		/*		if ( address == ebp + 0xFFFFFFCC || address == ebp + 0xFFFFFFD0 ||
+					address == ebp + 0xFFFFFFD4 || address == ebp + 0xFFFFFFD8 )
+				{
+					Log.Info( $"WriteDword: [0x{address:X8}] = 0x{value:X8} (EBP=0x{ebp:X8})" );
+				}*/
 	}
 
 	public void WriteWord( uint address, ushort value, bool protect = true )
@@ -218,11 +231,20 @@ public class X86Core
 		}
 	}
 
-	[ConVar( "xguitest_x86_verbose" )]
+	[ConVar( "xguitest_x86_log_verbose" )]
 	public static bool VerboseLogging { get; set; } = false;
 	public void LogVerbose( string message )
 	{
 		if ( !VerboseLogging )
+			return;
+		Log.Info( $"EIP=0x{Registers["eip"]:X8}: {message}" );
+	}
+
+	[ConVar( "xguitest_x86_log_maths" )]
+	public static bool MathsLogging { get; set; } = false;
+	public void LogMaths( string message )
+	{
+		if ( !MathsLogging )
 			return;
 		Log.Info( $"EIP=0x{Registers["eip"]:X8}: {message}" );
 	}

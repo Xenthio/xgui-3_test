@@ -28,10 +28,35 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 				break;
 
 			case 0x45: // CMOVNE r16, r/m16 - Conditional move if not equal/not zero
-					   // This is a conditional move instruction that moves only if ZF=0
-				core.Registers["eip"] += 3; // Skip the instruction
-				Log.Info( "16-bit CMOVNE (0x66 0x0F 0x45) instruction (stub implementation)" );
-				break;
+				{
+					eip = core.Registers["eip"];
+					byte modrm = core.ReadByte( eip + 2 );
+					byte mod = (byte)(modrm >> 6);
+					byte reg = (byte)((modrm >> 3) & 0x7);
+					byte rm = (byte)(modrm & 0x7);
+
+					string destReg = GetRegisterName( reg );
+
+					if ( !core.ZeroFlag )
+					{
+						ushort value;
+						if ( mod == 3 )
+						{
+							string srcReg = GetRegisterName( rm );
+							value = (ushort)(core.Registers[srcReg] & 0xFFFF);
+						}
+						else
+						{
+							uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+							value = core.ReadWord( addr );
+						}
+						// Only update the lower 16 bits of the destination register
+						core.Registers[destReg] = (core.Registers[destReg] & 0xFFFF0000) | value;
+					}
+
+					core.Registers["eip"] += 3; // 0x66 0F 45 + modrm
+					break;
+				}
 
 			case 0x4E: // CMOVLE r32, r/m32 - Conditional Move if Less or Equal
 				HandleConditionalMove( core, secondByte, (core.ZeroFlag || (core.SignFlag != core.OverflowFlag)) );
@@ -101,11 +126,31 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 						uint dest = core.Registers[destReg];
 						uint src = core.Registers[srcReg];
 						count &= 0x1F; // Only lower 5 bits are used
-						uint result = (count == 0) ? dest : (dest >> count) | (src << (32 - count));
+
+						uint result;
+						if ( count == 0 )
+						{
+							result = dest;
+						}
+						else
+						{
+							result = (dest >> count) | (src << (32 - count));
+							// Carry flag: last bit shifted out from dest
+							core.CarryFlag = ((dest >> (count - 1)) & 1) != 0;
+						}
+
 						core.Registers[destReg] = result;
-						// Flags (simplified)
 						core.ZeroFlag = result == 0;
 						core.SignFlag = (result & 0x80000000) != 0;
+
+						// Overflow flag: only defined if count == 1
+						if ( count == 1 )
+						{
+							bool msb = (result & 0x80000000) != 0;
+							bool secMsb = (result & 0x40000000) != 0;
+							core.OverflowFlag = msb ^ secMsb;
+						}
+
 						core.Registers["eip"] += 4;
 					}
 					else
@@ -114,13 +159,36 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 						uint dest = core.ReadDword( addr );
 						uint src = core.Registers[srcReg];
 						count &= 0x1F;
-						uint result = (count == 0) ? dest : (dest >> count) | (src << (32 - count));
+
+						uint result;
+						if ( count == 0 )
+						{
+							result = dest;
+						}
+						else
+						{
+							result = (dest >> count) | (src << (32 - count));
+							// Set carry flag - last bit shifted out
+							core.CarryFlag = ((dest >> (count - 1)) & 1) != 0;
+
+							// Set overflow flag if count == 1
+							if ( count == 1 )
+							{
+								bool msb = (result & 0x80000000) != 0;
+								bool secMsb = (result & 0x40000000) != 0;
+								core.OverflowFlag = msb ^ secMsb;
+							}
+						}
+
 						core.WriteDword( addr, result );
-						// Flags (simplified)
 						core.ZeroFlag = result == 0;
 						core.SignFlag = (result & 0x80000000) != 0;
+
 						uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
-						core.Registers["eip"] += 3 + len - 2; // 0F AC + modrm + imm8 (+ SIB/disp)
+						core.Registers["eip"] += 3 + len - 2;
+
+						// Log for debugging
+						core.LogMaths( $"SHRD MEM[0x{addr:X8}], {srcReg}={src:X8}, {count} => {result:X8} (CF={core.CarryFlag})" );
 					}
 					break;
 				}
@@ -131,6 +199,33 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 					byte mod = (byte)(modrm >> 6);
 					byte rm = (byte)(modrm & 0x7);
 					byte value = (byte)(core.ZeroFlag ? 1 : 0);
+
+					if ( mod == 3 )
+					{
+						// Register destination (low 8 bits)
+						string regName = GetRegisterName( rm );
+						uint regVal = core.Registers[regName];
+						regVal = (regVal & 0xFFFFFF00) | value;
+						core.Registers[regName] = regVal;
+						core.Registers["eip"] += 3;
+					}
+					else
+					{
+						// Memory destination
+						uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+						core.WriteByte( addr, value );
+						uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+						core.Registers["eip"] += 2 + len;
+					}
+					break;
+				}
+
+			case 0x95: // SETNZ/SETNE r/m8
+				{
+					byte modrm = core.ReadByte( eip + 2 );
+					byte mod = (byte)(modrm >> 6);
+					byte rm = (byte)(modrm & 0x7);
+					byte value = (byte)(!core.ZeroFlag ? 1 : 0);
 
 					if ( mod == 3 )
 					{
@@ -231,7 +326,7 @@ public class ExtendedOpcodeHandler : IInstructionHandler
 				core.Registers[destReg] = value;
 			}
 			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
-			core.Registers["eip"] += len; // 0x0F + opcode + modrm/SIB/disp
+			core.Registers["eip"] += 1 + len; // 0x0F + opcode + modrm/SIB/disp
 		}
 	}
 

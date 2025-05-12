@@ -37,7 +37,10 @@ public class X86PEProcess : BaseProcess
 		}
 
 		// Optionally, set up interpreter event hooks here (e.g., for message boxes)
-		// _interpreter.OnHaltWithMessageBox += ...;
+		_interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
+		{
+			MessageBoxUtility.ShowCustom( message, title, icon, buttons );
+		};
 
 		// Start execution asynchronously
 

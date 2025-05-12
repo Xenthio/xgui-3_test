@@ -1,5 +1,4 @@
 ﻿using FakeOperatingSystem;
-using System;
 using System.Collections.Generic;
 
 namespace FakeDesktop;
@@ -114,38 +113,32 @@ public class FileAction
 	/// </summary>
 	public bool Execute( string filePath, VirtualFileSystem fileSystem )
 	{
-		try
+		// Resolve program path based on provided program name
+		string programPath = fileSystem.ResolveProgramPath( Program );
+		if ( string.IsNullOrEmpty( programPath ) )
 		{
-			// Resolve program path based on provided program name
-			string programPath = fileSystem.ResolveProgramPath( Program );
-			if ( string.IsNullOrEmpty( programPath ) )
-			{
-				Log.Warning( $"Could not find program: {Program}" );
-				return false;
-			}
-
-			// Replace %1 with the actual file path
-			string processedArgs = Arguments.Replace( "%1", filePath );
-
-			// Prepare launch options
-			var launchOptions = new Win32LaunchOptions
-			{
-				Arguments = processedArgs,
-				WorkingDirectory = System.IO.Path.GetDirectoryName( filePath )
-			};
-
-			// Launch using the new process manager
-			var process = ProcessManager.Instance?.OpenExecutable( programPath, launchOptions );
-			if ( process != null )
-				return true;
-
-			Log.Warning( $"Failed to launch process for: {programPath}" );
+			Log.Warning( $"Could not find program: {Program}" );
 			return false;
 		}
-		catch ( Exception ex )
+
+		// Replace %1 with the actual file path
+		string processedArgs = Arguments.Replace( "%1", filePath );
+
+		// Prepare launch options
+		var launchOptions = new Win32LaunchOptions
 		{
-			Log.Error( $"Error executing file action: {ex.Message}" );
-			return false;
-		}
+			Arguments = processedArgs,
+			WorkingDirectory = System.IO.Path.GetDirectoryName( filePath )
+		};
+
+		var virtpath = fileSystem.GetVirtualPathFromRealPath( programPath );
+
+		// Launch using the new process manager
+		var process = ProcessManager.Instance?.OpenExecutable( virtpath, launchOptions );
+		if ( process != null )
+			return true;
+
+		Log.Warning( $"Failed to launch process for: {programPath}" );
+		return false;
 	}
 }

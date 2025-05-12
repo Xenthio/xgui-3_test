@@ -17,40 +17,50 @@ public class Opcode83Handler : IInstructionHandler
 
 		// This is like 0x81 but with sign-extended 8-bit immediate
 		sbyte imm8 = (sbyte)core.ReadByte( eip + 2 );
-		int signExtImm = imm8; // Automatic sign extension to int
+		uint signExtImm = (uint)imm8; // Sign-extended to 32 bits
 
 		if ( mod == 3 ) // Register operand
 		{
 			string destReg = GetRegisterName( rm );
 			uint value = core.Registers[destReg];
+			uint result = 0;
 
 			switch ( reg )
 			{
 				case 0: // ADD
-					core.Registers[destReg] = value + (uint)signExtImm;
-					core.LogVerbose( $"Add {destReg}, {signExtImm:X8} = {core.Registers[destReg]:X8}" );
+					result = value + signExtImm;
+					SetFlagsAdd( core, value, signExtImm, result );
+					core.Registers[destReg] = result;
+					core.LogVerbose( $"Add {destReg}, {imm8:X8} = {result:X8}" );
 					break;
 				case 1: // OR
-					core.Registers[destReg] = value | (uint)signExtImm;
-					core.LogVerbose( $"Or {destReg}, {signExtImm:X8} = {core.Registers[destReg]:X8}" );
+					result = value | signExtImm;
+					SetFlagsLogic( core, result );
+					core.Registers[destReg] = result;
+					core.LogVerbose( $"Or {destReg}, {imm8:X8} = {result:X8}" );
 					break;
 				case 4: // AND
-					core.Registers[destReg] = value & (uint)signExtImm;
-					core.LogVerbose( $"And {destReg}, {signExtImm:X8} = {core.Registers[destReg]:X8}" );
+					result = value & signExtImm;
+					SetFlagsLogic( core, result );
+					core.Registers[destReg] = result;
+					core.LogVerbose( $"And {destReg}, {imm8:X8} = {result:X8}" );
 					break;
 				case 5: // SUB
-					core.Registers[destReg] = value - (uint)signExtImm;
-					core.LogVerbose( $"Sub {destReg}, {signExtImm:X8} = {core.Registers[destReg]:X8}" );
+					result = value - signExtImm;
+					SetFlagsSub( core, value, signExtImm, result );
+					core.Registers[destReg] = result;
+					core.LogVerbose( $"Sub {destReg}, {imm8:X8} = {result:X8}" );
 					break;
 				case 6: // XOR
-					core.Registers[destReg] = value ^ (uint)signExtImm;
-					core.LogVerbose( $"Xor {destReg}, {signExtImm:X8} = {core.Registers[destReg]:X8}" );
+					result = value ^ signExtImm;
+					SetFlagsLogic( core, result );
+					core.Registers[destReg] = result;
+					core.LogVerbose( $"Xor {destReg}, {imm8:X8} = {result:X8}" );
 					break;
 				case 7: // CMP
-					uint result = value - (uint)signExtImm;
-					core.ZeroFlag = result == 0;
-					core.SignFlag = (result & 0x80000000) != 0;
-					core.CarryFlag = value < (uint)signExtImm;
+					result = value - signExtImm;
+					SetFlagsSub( core, value, signExtImm, result );
+					core.LogVerbose( $"Cmp {destReg}, {imm8:X8} = {result:X8}" );
 					break;
 				default:
 					throw new NotImplementedException( $"Opcode 0x83 with reg={reg} not implemented" );
@@ -61,34 +71,44 @@ public class Opcode83Handler : IInstructionHandler
 		{
 			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
 			uint value = core.ReadDword( addr );
+			uint result = 0;
 
 			switch ( reg )
 			{
 				case 0: // ADD
-					core.WriteDword( addr, value + (uint)signExtImm );
-					core.LogVerbose( $"Add [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					result = value + signExtImm;
+					SetFlagsAdd( core, value, signExtImm, result );
+					core.WriteDword( addr, result );
+					core.LogVerbose( $"Add [0x{addr:X8}], {imm8:X8} = {result:X8}" );
 					break;
 				case 1: // OR
-					core.WriteDword( addr, value | (uint)signExtImm );
-					core.LogVerbose( $"Or [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					result = value | signExtImm;
+					SetFlagsLogic( core, result );
+					core.WriteDword( addr, result );
+					core.LogVerbose( $"Or [0x{addr:X8}], {imm8:X8} = {result:X8}" );
 					break;
 				case 4: // AND
-					core.WriteDword( addr, value & (uint)signExtImm );
-					core.LogVerbose( $"And [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					result = value & signExtImm;
+					SetFlagsLogic( core, result );
+					core.WriteDword( addr, result );
+					core.LogVerbose( $"And [0x{addr:X8}], {imm8:X8} = {result:X8}" );
 					break;
 				case 5: // SUB
-					core.WriteDword( addr, value - (uint)signExtImm );
-					core.LogVerbose( $"Sub [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					result = value - signExtImm;
+					SetFlagsSub( core, value, signExtImm, result );
+					core.WriteDword( addr, result );
+					core.LogVerbose( $"Sub [0x{addr:X8}], {imm8:X8} = {result:X8}" );
 					break;
 				case 6: // XOR
-					core.WriteDword( addr, value ^ (uint)signExtImm );
-					core.LogVerbose( $"Xor [0x{addr:X8}], {signExtImm:X8} = {core.ReadDword( addr ):X8}" );
+					result = value ^ signExtImm;
+					SetFlagsLogic( core, result );
+					core.WriteDword( addr, result );
+					core.LogVerbose( $"Xor [0x{addr:X8}], {imm8:X8} = {result:X8}" );
 					break;
 				case 7: // CMP
-					uint result = value - (uint)signExtImm;
-					core.ZeroFlag = result == 0;
-					core.SignFlag = (result & 0x80000000) != 0;
-					core.CarryFlag = value < (uint)signExtImm;
+					result = value - signExtImm;
+					SetFlagsSub( core, value, signExtImm, result );
+					core.LogVerbose( $"Cmp [0x{addr:X8}], {imm8:X8} = {result:X8}" );
 					break;
 				default:
 					throw new NotImplementedException( $"Opcode 0x83 with reg={reg} not implemented" );
@@ -97,6 +117,36 @@ public class Opcode83Handler : IInstructionHandler
 			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip ) + 1;
 			core.Registers["eip"] += len;
 		}
+	}
+
+	private void SetFlagsAdd( X86Core core, uint dest, uint src, uint result )
+	{
+		core.ZeroFlag = result == 0;
+		core.SignFlag = (result & 0x80000000) != 0;
+		core.CarryFlag = result < dest;
+		bool destSign = (dest & 0x80000000) != 0;
+		bool srcSign = (src & 0x80000000) != 0;
+		bool resultSign = (result & 0x80000000) != 0;
+		core.OverflowFlag = (destSign == srcSign) && (resultSign != destSign);
+	}
+
+	private void SetFlagsSub( X86Core core, uint dest, uint src, uint result )
+	{
+		core.ZeroFlag = result == 0;
+		core.SignFlag = (result & 0x80000000) != 0;
+		core.CarryFlag = dest < src;
+		bool destSign = (dest & 0x80000000) != 0;
+		bool srcSign = (src & 0x80000000) != 0;
+		bool resultSign = (result & 0x80000000) != 0;
+		core.OverflowFlag = (destSign != srcSign) && (resultSign != destSign);
+	}
+
+	private void SetFlagsLogic( X86Core core, uint result )
+	{
+		core.ZeroFlag = result == 0;
+		core.SignFlag = (result & 0x80000000) != 0;
+		core.CarryFlag = false;
+		core.OverflowFlag = false;
 	}
 
 	private string GetRegisterName( int code ) => code switch

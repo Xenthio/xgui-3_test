@@ -91,7 +91,7 @@ public abstract class NativeProgram
 	protected static readonly byte[] ExeTemplateBytes = HexStringToByteArray( ExeTemplateHex );
 
 	public abstract string FilePath { get; }
-	public abstract void Main( NativeProcess process );
+	public abstract void Main( NativeProcess process, Win32LaunchOptions launchOptions = default );
 
 	/// <summary>
 	/// Creates a fake executable file with embedded program descriptor for the given NativeProgram type.
@@ -143,6 +143,8 @@ public abstract class NativeProgram
 				Log.Warning( $"Executable not found: {path}" );
 				return null;
 			}
+
+			Log.Info( $"Opening {path}" );
 
 			var file = VirtualFileSystem.Instance.GetEntry( path );
 			var realPath = file?.RealPath;

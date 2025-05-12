@@ -39,6 +39,10 @@ public class OperandSizePrefixHandler : IInstructionHandler
 				Handle66_TEST_Rm16_R16( core );
 				break;
 
+			case 0xA3: // MOV moffs32, AX (with 0x66 prefix)
+				Handle66_MOV_Moffs32_AX( core );
+				break;
+
 			default:
 				// For unhandled combinations, we'll log and skip the instruction
 				Log.Warning( $"EIP=0x{eip:X8}: Unhandled 0x66 prefix combination: 0x66 0x{nextByte:X2}" );
@@ -134,15 +138,29 @@ public class OperandSizePrefixHandler : IInstructionHandler
 	private void Handle66_Immediate_Group1( X86Core core, byte opcode )
 	{
 		uint eip = core.Registers["eip"];
-
-		// These are like the 32-bit versions but operate on 16-bit operands
-		// For now, we'll just skip them
-		if ( opcode == 0x83 ) // With 8-bit sign-extended immediate
-			core.Registers["eip"] += 3; // opcode + modrm + imm8
-		else // With 16-bit immediate
-			core.Registers["eip"] += 4; // opcode + modrm + imm16
-
-		Log.Info( $"16-bit Group 1 immediate instruction: 0x66 0x{opcode:X2} (stub implementation)" );
+		byte modrm = core.ReadByte( eip + 1 );
+		byte mod = (byte)(modrm >> 6);
+		byte reg = (byte)((modrm >> 3) & 0x7);
+		byte rm = (byte)(modrm & 0x7);
+		if ( mod == 3 )
+		{
+			// Register to register
+			string destReg = Get16BitRegisterName( reg );
+			string srcReg = Get16BitRegisterName( rm );
+			core.Registers[destReg] = (core.Registers[destReg] & 0xFFFF0000) | (ushort)(core.Registers[srcReg] & 0xFFFF);
+			core.Registers["eip"] += 2;
+			Log.Info( $"16-bit Immediate Group 1: {destReg}, {srcReg} (reg-reg)" );
+		}
+		else
+		{
+			string destReg = Get16BitRegisterName( reg );
+			// Memory to register
+			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			core.WriteWord( addr, (ushort)(core.Registers[destReg] & 0xFFFF) );
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			core.Registers["eip"] += len;
+			Log.Info( $"16-bit Immediate Group 1: [0x{addr:X8}], {Get16BitRegisterName( reg )} (mem-reg)" );
+		}
 	}
 
 	private void Handle66_TEST_Rm16_R16( X86Core core )
@@ -181,6 +199,16 @@ public class OperandSizePrefixHandler : IInstructionHandler
 		core.SignFlag = (result & 0x8000) != 0;
 		core.CarryFlag = false;
 		core.OverflowFlag = false;
+	}
+
+	private void Handle66_MOV_Moffs32_AX( X86Core core )
+	{
+		uint eip = core.Registers["eip"];
+		uint offset = core.ReadDword( eip + 1 );
+		ushort axValue = (ushort)(core.Registers["eax"] & 0xFFFF);
+		core.WriteWord( offset, axValue );
+		core.Registers["eip"] += 5; // opcode + offset (4 bytes)
+		Log.Info( $"16-bit MOV [0x{offset:X8}], AX (moffs32-AX)" );
 	}
 
 	private string Get16BitRegisterName( int code ) => code switch

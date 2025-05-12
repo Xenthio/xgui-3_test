@@ -21,7 +21,7 @@ public class NativeProcess : BaseProcess
 	public override void Start()
 	{
 		// Let the program create its windows and perform startup logic
-		Program.Main( this );
+		Program.Main( this, LaunchOptions );
 	}
 
 	public override void Terminate()
