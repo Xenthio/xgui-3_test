@@ -1,6 +1,7 @@
 // code/FakeOperatingSystem/Process/X86PEProcess.cs
 using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86;
+using Sandbox;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -49,9 +50,10 @@ public class X86PEProcess : BaseProcess
 		{
 			Manager.TerminateProcess( this );
 		};
-		_executionTask = _interpreter.ExecuteAsync();
 
-		// Optionally, you can log or track the task for process management
+		// This will run the interpreter in a separate thread
+		// and allow the main thread to continue processing other tasks.
+		_executionTask = GameTask.RunInThreadAsync( _interpreter.ExecuteAsync );
 	}
 
 	public override void Terminate()

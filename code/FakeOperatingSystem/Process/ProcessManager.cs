@@ -62,6 +62,15 @@ public class ProcessManager
 		return process;
 	}
 
+	public IEnumerable<BaseProcess> GetChildProcesses( int parentId )
+	{
+		foreach ( var process in _processes )
+		{
+			if ( process.ParentProcessId == parentId )
+				yield return process;
+		}
+	}
+
 	public BaseProcess GetProcessById( int processId )
 	{
 		foreach ( var process in _processes )

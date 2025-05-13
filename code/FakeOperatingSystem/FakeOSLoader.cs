@@ -18,6 +18,8 @@ public class FakeOSLoader : Component
 		// initialize program manager
 		_processManager = new ProcessManager();
 
+		ThemeResources.ReloadAll();
+
 		//Scene.GetSystem<XGUISystem>().Panel.AddChild<Explorer>();
 		_processManager.OpenExecutable( "C:/Windows/explorer.exe", new Win32LaunchOptions() );
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<TaskBar>();

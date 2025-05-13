@@ -1,5 +1,7 @@
-﻿using Sandbox;
+﻿using FakeOperatingSystem;
+using Sandbox;
 using System;
+using System.Threading.Tasks;
 using XGUI;
 
 namespace FakeDesktop;
@@ -112,6 +114,23 @@ public static class MessageBoxUtility
 		CreateMessageBox( message, title, icon, buttons, callback );
 	}
 
+	/// <summary>
+	/// Code execution blocking custom message box.
+	/// </summary>
+	public static async Task<MessageBoxResult> ShowBlocking( string message, string title, MessageBoxIcon icon, MessageBoxButtons buttons )
+	{
+		MessageBoxResult result = MessageBoxResult.None;
+		CreateMessageBox( message, title, icon, buttons, ( res ) =>
+		{
+			result = res;
+		} );
+		while ( result == MessageBoxResult.None )
+		{
+			await Task.Yield();
+		}
+		return result;
+	}
+
 	private static void CreateMessageBox( string message, string title, MessageBoxIcon icon, MessageBoxButtons buttons, Action<MessageBoxResult> callback )
 	{
 		var xguiSystem = Game.ActiveScene.GetSystem<XGUISystem>();
@@ -150,9 +169,7 @@ public static class MessageBoxUtility
 			case MessageBoxIcon.Warning:
 			case MessageBoxIcon.Information:
 			case MessageBoxIcon.Question:
-				var soundpath = XGUISoundSystem.GetSound( "CHORD" );
-				var soundfile = SoundFile.Load( soundpath );
-				Sound.PlayFile( soundfile );
+				Sound.PlayFile( ThemeResources.ChordSoundFile );
 				break;
 		}
 		/*		switch ( icon )

@@ -160,10 +160,26 @@ public abstract class APIEmulator
 			dllName = sourceDll;
 		}
 
-		interpreter.HaltWithMessageBox(
+		var result = interpreter.HaltWithMessageBoxAsync(
 			$"{interpreter.ExecutableName} - Entry Point Not Found",
 			$"The procedure entry point {functionName} could not be located in the dynamic link library {dllName}.",
 			MessageBoxIcon.Error
 		);
+		if ( result != null )
+		{
+			switch ( result.Result )
+			{
+				case MessageBoxResult.Abort:
+					throw new System.InvalidOperationException( $"!The procedure entry point {functionName} could not be located in the dynamic link library {dllName}." );
+				case MessageBoxResult.Retry:
+					Log.Info( $"Retrying execution of {functionName} in {dllName}" );
+					// go back to the caller and try again
+					//interpreter.Core.Registers["eip"] -= 4; // Adjust EIP to retry the call
+					break;
+				case MessageBoxResult.Ignore:
+					Log.Warning( $"Ignoring missing export {functionName} in {dllName}" );
+					break;
+			}
+		}
 	}
 }

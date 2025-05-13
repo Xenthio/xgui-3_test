@@ -1,5 +1,7 @@
+using Sandbox;
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.CallConventions;
 
@@ -135,6 +137,32 @@ public class StdCallConvention : CallingConvention
 
 			if ( returnValue is bool boolResult )
 				return boolResult ? 1u : 0u;
+
+			// Handle async calls
+			if ( returnValue is Task taskValue )
+			{
+				GameTask.WaitAll( taskValue );
+
+				// Try to cast to known Task<TResult> types
+				if ( taskValue is Task<uint> uintTask )
+					return uintTask.Result;
+				if ( taskValue is Task<int> intTask )
+					return (uint)intTask.Result;
+				if ( taskValue is Task<bool> boolTask )
+					return boolTask.Result ? 1u : 0u;
+
+				// If it's just Task (no result)
+				if ( taskValue.GetType() == typeof( Task ) )
+					return 0;
+
+				throw new InvalidOperationException( "Unsupported Task result type without reflection." );
+			}
+
+
+			// Add this check for unsupported types
+			if ( !(returnValue is IConvertible) )
+				throw new InvalidOperationException( $"Return value of type '{returnValue.GetType()}' cannot be converted to uint." );
+
 
 			return Convert.ToUInt32( returnValue );
 		}, paramTypes, isJump );

@@ -1,6 +1,7 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 using Sandbox;
+using Sandbox.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -52,13 +53,16 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.XorHandler() );
 		InstructionSet.RegisterHandler( new Handlers.OrR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OrEaxImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.OrRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AndR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AndAlImm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AndEaxImm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AndRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.BCDArithmeticHandler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpHandler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpAlImm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.CmpR8Rm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.CmpEaxImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode80Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode81Handler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode83Handler() );
@@ -166,7 +170,11 @@ public partial class X86Interpreter
 	[ConVar( "xguitest_x86_log_eip" )]
 	public static bool EIPLogging { get; set; } = false;
 	private bool _haltASAP = false;
-	public async Task ExecuteAsync( uint maxInstructions = 0xFFFFFFFF, int yieldEvery = 100 )
+	uint maxInstructions = 0xFFFFFFFF;
+	int yieldEvery = 200;
+	public SyncTask ThisSyncTask { get; private set; }
+
+	public async void ExecuteAsync()
 	{
 		Core.Push( 0xFFFFFFFF ); // Address of our final return, this will be used if we hit a RET without anything else in the stack, which we can assume is our final RET
 		Core.Registers["eip"] = _entryPoint;
@@ -174,7 +182,6 @@ public partial class X86Interpreter
 
 		for ( i = 0; i < maxInstructions; i++ )
 		{
-			// Yield to UI every N instructions 
 			// Check for program exit
 			if ( Core.Registers["eip"] == 0xFFFFFFFF )
 			{
@@ -200,7 +207,8 @@ public partial class X86Interpreter
 			catch ( System.Exception ex )
 			{
 				Log.Error( $"Execution error at EIP 0x{Core.Registers["eip"]:X8}: {ex.Message}" );
-
+				if ( ex.InnerException != null ) Log.Error( ex.InnerException );
+				Log.Error( ex.StackTrace );
 				if ( !ex.Message.StartsWith( "!" ) )
 				{
 					MessageBoxUtility.ShowCustom(
@@ -296,7 +304,15 @@ public partial class X86Interpreter
 		dump.AppendLine( $"ZF: {Core.ZeroFlag}, SF: {Core.SignFlag}, CF: {Core.CarryFlag}, OF: {Core.OverflowFlag}" );
 		return dump.ToString();
 	}
-
+	public async Task<MessageBoxResult> HaltWithMessageBoxAsync(
+		string title,
+		string message,
+		MessageBoxIcon icon = MessageBoxIcon.Error,
+		MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore )
+	{
+		var result = await MessageBoxUtility.ShowBlocking( message, title, icon, buttons );
+		return result;
+	}
 	public void HaltWithMessageBox( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore )
 	{
 		OnHaltWithMessageBox?.Invoke( title, message, icon, buttons );
