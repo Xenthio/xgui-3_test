@@ -29,10 +29,18 @@ public class FakeSystemRoot
 
 		// Windows
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/All Users" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Downloaded Program Files" );
+		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Downloaded Program Files/desktop.ini", "[.XGUIInfo]\nIcon=downloadedprogramfiles\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,5\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=5" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Favorites" );
+		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Favorites/desktop.ini", "[.XGUIInfo]\nIcon=favourites\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,2\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=2" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Fonts" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Help" );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/History" );
+		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/History/desktop.ini", "[.XGUIInfo]\nIcon=history\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,4\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=4" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Media" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Offline Web Pages" );
+		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Offline Web Pages/desktop.ini", "[.XGUIInfo]\nIcon=offlinepages\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\webcheck.dll,1\nIconFile=C:\\WINDOWS\\system32\\webcheck.dll\nIconIndex=1" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32/drivers" );

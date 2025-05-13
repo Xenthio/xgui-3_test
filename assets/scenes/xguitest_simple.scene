@@ -55,16 +55,6 @@
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null
-        },
-        {
-          "__type": "FakeOperatingSystem.FakeOSLoader",
-          "__guid": "8c699e65-c9bf-4220-bbbf-6b9d1ffe1a57",
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null
         }
       ],
       "Children": []
@@ -73,7 +63,7 @@
       "__guid": "863c4597-af03-4759-8dfa-0f7f4e4e0c7b",
       "Flags": 0,
       "Name": "Camera",
-      "Position": "113.1367,-3145.211,192",
+      "Position": "-1470.782,-1561.292,192",
       "Rotation": "0,0,0.3826834,0.9238796",
       "Tags": "maincamera",
       "Enabled": true,
@@ -81,7 +71,7 @@
         {
           "__type": "Sandbox.CameraComponent",
           "__guid": "c52b19d7-3921-4b74-91a1-c197e1cf6bc0",
-          "BackgroundColor": "0,0.50196,0.50196,1",
+          "BackgroundColor": "0.33333,0.46275,0.52157,1",
           "ClearFlags": "All",
           "FieldOfView": 60,
           "FovAxis": "Horizontal",
@@ -146,6 +136,7 @@
       "Position": "232.9969,196.2164,-137.047",
       "Rotation": "-0.003418453,0.9901099,0.05987829,0.1268271",
       "Tags": "light_directional,light",
+      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.DirectionalLight",
@@ -170,6 +161,7 @@
       "Flags": 0,
       "Name": "Cube",
       "Position": "-519.033,105.7715,44.93551",
+      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -202,6 +194,7 @@
       "Flags": 0,
       "Name": "Box",
       "Position": "-893.9661,203.3416,47.35991",
+      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.MeshComponent",
@@ -347,6 +340,7 @@
       "Flags": 0,
       "Name": "Cube",
       "Position": "-717.022,-59.56158,15.08252",
+      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -379,6 +373,7 @@
       "Flags": 0,
       "Name": "Cube (1)",
       "Position": "-493.5223,-59.56158,5.216498",
+      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.ModelRenderer",
@@ -411,6 +406,7 @@
       "Flags": 0,
       "Name": "Envmap Probe",
       "Position": "-486.6051,-141.456,947.6989",
+      "Enabled": true,
       "Components": [
         {
           "__type": "Sandbox.EnvmapProbe",
