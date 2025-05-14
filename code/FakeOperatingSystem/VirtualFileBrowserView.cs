@@ -311,7 +311,7 @@ public class VirtualFileBrowserView : FileBrowserView
 					// Use custom icon from desktop.ini if present
 					if ( isDirectory )
 					{
-						string customIcon = GetCustomFolderIconFromDesktopIni( path );
+						string customIcon = FileIconHelper.GetCustomFolderIconFromDesktopIni( path, _virtualFileSystem );
 						if ( !string.IsNullOrEmpty( customIcon ) )
 						{
 							iconPanel.SetFolderIcon( customIcon, size );

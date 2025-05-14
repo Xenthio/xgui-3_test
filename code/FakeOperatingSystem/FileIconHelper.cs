@@ -110,7 +110,7 @@ namespace FakeDesktop
 		/// <summary>
 		/// Gets a custom folder icon from a desktop.ini file if present
 		/// </summary>
-		private static string GetCustomFolderIconFromDesktopIni( string virtualPath, VirtualFileSystem virtualFileSystem )
+		public static string GetCustomFolderIconFromDesktopIni( string virtualPath, VirtualFileSystem virtualFileSystem )
 		{
 			// Build the path to the desktop.ini file
 			string iniVirtualPath = virtualPath + "/desktop.ini";

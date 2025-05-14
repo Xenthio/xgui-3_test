@@ -26,9 +26,12 @@
 			<div class="splitter"></div>
 			<virtualfilebrowserview @ref=BrowserView class="browser-view" style="width:70%"></virtualfilebrowserview>
 		</div>
-		<div class="status-bar" style="flex-shrink:0">
+		<div class="status-bar layout-inset" style="flex-shrink:0;">
 			<div class="status-text">@StatusText</div>
 		</div>
+
+		<resizer>
+		</resizer>
 	</div>
 </root>
 
@@ -77,6 +80,11 @@
 				if (AddressInput != null)
 					AddressInput.Value = FormatAddressBarPath(path);
 				StatusText = FormatAddressBarPath(path);
+
+				// window title of open folder name
+				Title = $"{System.IO.Path.GetFileName(path)}";
+				var icon = FileIconHelper.GetFolderIcon(path, VirtualFileSystem.Instance, 16);
+				TitleBar.TitleIcon.Style.SetBackgroundImage(icon);
 			};
 
 			// Initialize with the provided path or default to Desktop

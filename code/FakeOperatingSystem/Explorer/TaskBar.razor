@@ -203,7 +203,7 @@
 						windows.Add(new WindowInfo
 						{
 							Title = win.Title ?? process.ProcessName ?? "Window",
-							Icon = "XGUI/Resources/95/app_default_16.png", // Optionally use a process-specific icon
+							Icon = win?.TitleBar?.TitleIcon?.Style?.BackgroundImage?.ResourcePath ?? "XGUI/Resources/95/app_default_16.png", // Optionally use a process-specific icon
 							WindowRef = win
 						});
 					}

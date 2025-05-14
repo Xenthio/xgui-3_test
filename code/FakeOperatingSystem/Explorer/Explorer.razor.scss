@@ -8,8 +8,9 @@ Explorer {
 		background-repeat: no-repeat;
 		background-color: black;
 		background-image: url("XGUI/Resources/95/browseui_throbber.png");
-		&.toolbar-container { 
-			margin: -1px; 
+
+		&.toolbar-container {
+			margin: -1px;
 		}
 	}
 
@@ -18,6 +19,13 @@ Explorer {
 	}
 
 	.address-bar {
+		align-items: center;
+	}
+
+	.status-bar {
+		margin-top: -2px;
+		padding: 0px 2px;
+		height: 18px;
 		align-items: center;
 	}
 }
