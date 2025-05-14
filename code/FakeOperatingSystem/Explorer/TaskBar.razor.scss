@@ -31,9 +31,26 @@ TaskBar {
 			height: 100%;
 
 			.quick-access-btn {
+				background-color: transparent;
+				border: none;
+				box-shadow: none;
 				height: 16px;
 				width: 16px;
-				margin-right: 3px;
+				margin-right: 6px;
+
+				&:nth-child(2) {
+					margin-left: 4px;
+				}
+
+				&:last-child {
+					margin-right: 5px;
+				}
+
+				.icon {
+					min-width: 16px;
+					min-height: 16px;
+					background-position: center;
+				}
 			}
 		}
 
@@ -47,6 +64,10 @@ TaskBar {
 				height: 20px;
 				width: 158px;
 				margin-right: 3px;
+
+				&.focused {
+					font-weight: bold;
+				}
 			}
 		}
 

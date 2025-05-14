@@ -60,6 +60,9 @@ public class FakeSystemRoot
 		// System and bundled applications in Windows directory
 		SetupWindowsFiles();
 
+		// Quick Launch folder
+		SetupQuickLaunch();
+
 		// Create desktop shortcuts and other items
 		CreateDefaultDesktopItems();
 	}
@@ -98,6 +101,30 @@ public class FakeSystemRoot
 		string steamDir = $"{programFilesDir}/Steam";
 		FileSystem.Data.CreateDirectory( steamDir );
 		NativeProgram.CompileIntoExe( typeof( SteamProgram ), $"{steamDir}/steam.exe" );
+	}
+
+	private static void SetupQuickLaunch()
+	{
+		string quickLaunchDir = "FakeSystemRoot/Windows/Application Data/Microsoft/Internet Explorer/Quick Launch";
+		FileSystem.Data.CreateDirectory( quickLaunchDir );
+		// Show Desktop shortcut
+		CreateShortcut(
+			$"{quickLaunchDir}/Show Desktop.lnk",
+			"C:/Windows/System32/Show Desktop.scf",
+			"Show Desktop"
+		);
+		// Internet Explorer shortcut
+		CreateShortcut(
+			$"{quickLaunchDir}/Internet Explorer.lnk",
+			"C:/Program Files/Internet Explorer/Iexplore.exe",
+			"iexplore"
+		);
+		// Outlook Express shortcut
+		CreateShortcut(
+			$"{quickLaunchDir}/Outlook Express.lnk",
+			"C:/Program Files/Outlook Express/outlook.exe",
+			"outlook"
+		);
 	}
 
 	/// <summary>

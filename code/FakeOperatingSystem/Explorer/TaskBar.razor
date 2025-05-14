@@ -4,6 +4,8 @@
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
+@using FakeDesktop;
+@using FakeOperatingSystem;
 @attribute [StyleSheet()]
 @inherits Window
 
@@ -68,25 +70,109 @@
 	bool StartMenuOpen => StartMenuWindow != null && StartMenuWindow.IsValid;
 
 	// --- Quick Access Implementation ---
-	public record QuickAccessItem(string Name, string Icon, Action OpenAction);
+	public record QuickAccessItem(string Name, string Path, string Icon, bool IsDirectory);
 
-	// Example: Add your own items or load dynamically
-	List<QuickAccessItem> QuickAccessItems = new()
-	{
-		new QuickAccessItem("Documents", "XGUI/Resources/95/folder_documents_16.png", () => OpenFolder("Documents")),
-		new QuickAccessItem("Pictures", "XGUI/Resources/95/folder_pictures_16.png", () => OpenFolder("Pictures")),
-		// Add more as needed
-	};
+	private List<QuickAccessItem> _quickAccessItems = new();
+	
+	public List<QuickAccessItem> QuickAccessItems => _quickAccessItems;
 
-	void OpenQuickAccessItem(QuickAccessItem item)
+	// Method to load quick launch items from the virtual file system
+	private void LoadQuickLaunchItems()
 	{
-		item.OpenAction?.Invoke();
+		_quickAccessItems.Clear();
+		
+		// Get the VirtualFileSystem instance
+		var virtualFileSystem = VirtualFileSystem.Instance;
+		if (virtualFileSystem == null)
+			return;
+			
+		// Path to Quick Launch folder
+		string quickLaunchPath = @"C:\Windows\Application Data\Microsoft\Internet Explorer\Quick Launch";
+		
+		// Check if the folder exists
+		var quickLaunchEntry = virtualFileSystem.GetEntry(quickLaunchPath);
+		if (quickLaunchEntry == null)
+			return;
+
+		Log.Info("Loading Quick Access Items");
+		// Get folder contents
+		var contents = virtualFileSystem.GetDirectoryContents(quickLaunchPath);
+		
+		// Add each item to the quick launch items
+		foreach (var entry in contents)
+		{
+			Log.Info($"Adding Quick Access Item: {entry.Name} ({entry.Type})");
+			int iconSize = 16;
+			string iconPath;
+			
+			if (entry.Type == VirtualFileSystem.EntryType.Directory ||
+				entry.Type == VirtualFileSystem.EntryType.SpecialFolder)
+			{
+				iconPath = FileIconHelper.GetFolderIcon(entry.Path, virtualFileSystem, iconSize);
+				_quickAccessItems.Add(new QuickAccessItem(
+					entry.Name,
+					entry.Path,
+					iconPath,
+					true
+				));
+			}
+			else
+			{
+				iconPath = FileIconHelper.GetFileIcon(entry.Path, virtualFileSystem, iconSize);
+				_quickAccessItems.Add(new QuickAccessItem(
+					entry.Name,
+					entry.Path,
+					iconPath,
+					false
+				));
+			}
+		}
 	}
-
-	static void OpenFolder(string folderName)
+	
+	// Method to open quick access item
+	private void OpenQuickAccessItem(QuickAccessItem item)
 	{
-		// TODO: Implement folder opening logic
-		// For example: Explorer.Open(folderName);
+		if (item.IsDirectory)
+		{
+			// Open folder in explorer
+			Log.Info($"Opening folder: {item.Path}");
+			// TODO: Launch Explorer with this path
+		}
+		else
+		{
+			// Handle file opening based on type
+			var virtualFileSystem = VirtualFileSystem.Instance;
+			if (virtualFileSystem == null)
+				return;
+				
+			var entry = virtualFileSystem.GetEntry(item.Path);
+			if (entry == null)
+				return;
+				
+			// Handle shortcuts
+			if (entry.Name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
+			{
+				Log.Info($"Opening shortcut: {entry.Name}");
+				virtualFileSystem.ResolveShortcut(entry.RealPath);
+				return;
+			}
+			
+			// Handle executables
+			if (entry.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+			{
+				Log.Info($"Launching executable: {entry.Name}");
+				var launchOptions = new Win32LaunchOptions
+				{
+					Arguments = "",
+					WorkingDirectory = System.IO.Path.GetDirectoryName(entry.RealPath)
+				};
+				ProcessManager.Instance?.OpenExecutable(entry.Path, launchOptions);
+				return;
+			}
+			
+			// For other files, use file associations
+			virtualFileSystem.OpenFile(entry.RealPath);
+		}
 	}
 
 	// --- Open Windows Implementation ---
@@ -138,7 +224,11 @@
 	{ 
 		SetClass("taskbar-root",true);
 		Position = new Vector2(0, 9000);
+		
+		// Load quick launch items when the taskbar is created
+		LoadQuickLaunchItems();
 	}
+	
 	public override void Tick()
 	{
 		base.Tick();
