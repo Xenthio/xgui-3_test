@@ -50,6 +50,7 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// </summary>
 	public void NavigateToVirtualPath( string virtualPath, bool sound = true )
 	{
+
 		if ( _virtualFileSystem == null )
 			return;
 
@@ -261,6 +262,7 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// </summary>
 	private void PopulateFromVirtualPath( string virtualPath )
 	{
+		SetupHeader();
 		// Get all directory contents
 		var contents = _virtualFileSystem.GetDirectoryContents( virtualPath );
 
@@ -301,22 +303,27 @@ public class VirtualFileBrowserView : FileBrowserView
 			{
 				if ( item.IconPanel is XGUIIconPanel iconPanel )
 				{
+					var size = 16;
+					if ( ViewMode == FileBrowserViewMode.Icons )
+					{
+						size = 32;
+					}
 					// Use custom icon from desktop.ini if present
 					if ( isDirectory )
 					{
 						string customIcon = GetCustomFolderIconFromDesktopIni( path );
 						if ( !string.IsNullOrEmpty( customIcon ) )
 						{
-							iconPanel.SetFolderIcon( customIcon, 32 );
+							iconPanel.SetFolderIcon( customIcon, size );
 							break;
 						}
 						if ( string.IsNullOrEmpty( iconName ) || iconName == "folder" )
 						{
-							iconPanel.SetFolderIcon( "folder", 32 );
+							iconPanel.SetFolderIcon( "folder", size );
 						}
 						else
 						{
-							iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.Folder, 32 );
+							iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.Folder, size );
 						}
 					}
 					else
@@ -332,17 +339,17 @@ public class VirtualFileBrowserView : FileBrowserView
 						{
 							// todo, lookup icon inside of exe.
 							var filename = System.IO.Path.GetFileNameWithoutExtension( path );
-							iconPanel.SetFileIcon( $"exe_{filename}", 32 );
+							iconPanel.SetFileIcon( $"exe_{filename}", size );
 							return;
 						}
 
 						if ( string.IsNullOrEmpty( iconName ) || iconName == "file" )
 						{
-							iconPanel.SetFileIcon( extension, 32 );
+							iconPanel.SetFileIcon( extension, size );
 						}
 						else
 						{
-							iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.FileType, 32 );
+							iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.FileType, size );
 						}
 					}
 				}

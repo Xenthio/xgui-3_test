@@ -32,17 +32,18 @@
 
 		<SeperatorVertical class="seperator"></SeperatorVertical>
 
-		<!-- Open Windows Section -->
-		<div class="open-windows">
+        <!-- Open Windows Section -->
+        <div class="open-windows">
 			<div class="toolbar-drag-handle handle"></div>
 			@foreach (var win in OpenWindows)
 			{
-				<button class="window-btn" title="@win.Title" onclick="@(() => FocusWindow(win))" style="display:flex; align-items:center;">
+				var isFocused = win.WindowRef?.HasFocus == true; 
+				<button class="window-btn @(isFocused ? "focused forceinset" : "")" title="@win.Title" onclick="@(() => FocusWindow(win))" style="display:flex; align-items:center;">
 					<img class="iconpanel icon" src="@win.Icon" style="margin-right:2px;" />
 					<span>@win.Title</span>
 				</button>
 			}
-		</div>
+        </div>
 
 		<div class="spacer"></div>
 
@@ -95,6 +96,8 @@
 		public string Icon { get; set; }
 		public Window WindowRef { get; set; }
 	}
+
+	WindowInfo FocusedWindow => OpenWindows.FirstOrDefault(w => w.WindowRef?.HasFocus == true);
 
 	List<WindowInfo> OpenWindows => GetOpenWindows();
 
@@ -182,5 +185,10 @@
 		PositionStartMenuNextTick = 3;
 
 		StartMenuWindow.FocusWindow();
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(base.BuildHash(), StartMenuOpen, QuickAccessItems.Count, OpenWindows.Count, FocusedWindow);
 	}
 }
