@@ -1,5 +1,6 @@
 TaskBar {
 	&.taskbar-root {
+		padding: 0px;
 		border-left: 0px;
 		border-right: 0px;
 		border-bottom: 0px;
@@ -13,6 +14,79 @@ TaskBar {
 			.start-button {
 				min-width: 52px;
 				font-weight: bold;
+			}
+		}
+
+		.seperator {
+			margin-right: 2px;
+			margin-left: 2px;
+		}
+
+		.start-button {
+			height: 20px;
+		}
+
+		.quick-access {
+			align-items: center;
+			height: 100%;
+
+			.quick-access-btn {
+				height: 16px;
+				width: 16px;
+				margin-right: 3px;
+			}
+		}
+
+
+		.open-windows {
+			align-items: center;
+			height: 100%;
+
+			.window-btn {
+				justify-content: flex-start;
+				height: 20px;
+				width: 158px;
+				margin-right: 3px;
+			}
+		}
+
+		.handle {
+			position: relative;
+			margin: 0px;
+			margin-right: 4px;
+			left: 0px;
+		}
+
+		.spacer {
+			flex-grow: 1;
+		}
+
+		.system-tray {
+			padding-left: 1px;
+			padding-right: 1px;
+			align-items: center;
+			height: 100%;
+
+			.tray-btn {
+				background-color: transparent;
+				border: none;
+				box-shadow: none;
+				height: 16px;
+				width: 16px;
+				margin-left: 1px;
+				margin-right: 1px;
+
+				.icon {
+					min-width: 16px;
+					min-height: 16px;
+					background-position: center;
+				}
+			}
+
+			.clock {
+				margin-left: 6px;
+				top: 2px;
+				margin-right: 6px;
 			}
 		}
 	}

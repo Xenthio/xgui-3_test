@@ -1,0 +1,178 @@
+@using System.Collections.Generic;
+@using System.Linq;
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using FakeDesktop;
+@inherits Window
+@attribute [StyleSheet("BaseBrowser.razor.scss")]
+
+<root title="@WindowTitle" width="@Width" height="@Height" class="@WindowClass" hasminimise="true" hasmaximise="true">
+	<div class="window-content">
+		<toolbarcontainer>
+			<!-- Menu Toolbar -->
+			<toolbar @ref=MenuToolbar class="menu-toolbar" style="flex-shrink:0" draggable="true"></toolbar>
+
+			<!-- Command Toolbar -->
+			<toolbar @ref=CommandToolbar class="command-toolbar" style="flex-shrink:0" draggable="true"></toolbar>
+
+			<!-- Address Toolbar -->
+			<toolbar @ref=AddressToolbar class="address-toolbar" style="flex-shrink:0" draggable="true"></toolbar>
+		</toolbarcontainer>
+
+		<div class="row padding-top padding-bottom" style="overflow:hidden; flex-grow:1">
+			@ChildContent
+		</div>
+		<div class="status-bar" style="flex-shrink:0">
+			<div class="status-text">@StatusText</div>
+		</div>
+	</div>
+</root>
+
+@code {
+	[Parameter]
+	public RenderFragment ChildContent { get; set; }
+
+	[Parameter]
+	public string WindowTitle { get; set; } = "Browser";
+
+	[Parameter]
+	public string WindowClass { get; set; } = "window1";
+
+	[Parameter]
+	public int Width { get; set; } = 640;
+
+	[Parameter]
+	public int Height { get; set; } = 480;
+
+	protected Toolbar MenuToolbar;
+	protected Toolbar CommandToolbar;
+	protected Toolbar AddressToolbar;
+	protected TextEntry AddressInput;
+
+	protected string StatusText = "Ready";
+
+	protected override void OnAfterTreeRender(bool firstTime)
+	{
+		base.OnAfterTreeRender(firstTime);
+
+		if (firstTime)
+		{
+			// Setup toolbars
+			SetupMenuToolbar();
+			SetupCommandToolbar();
+			SetupAddressToolbar();
+		}
+	}
+
+	protected virtual void SetupMenuToolbar()
+	{
+		// Base menu setup
+		MenuToolbar.AddMenuItem("File", (menu) =>
+		{
+			menu.AddMenuItem("New", () => Log.Info("New Item"));
+			menu.AddMenuItem("Open", () => Log.Info("Open Item"));
+			menu.AddSeparator();
+			menu.AddMenuItem("Close", () => Close());
+		});
+
+		// Add Edit menu
+		MenuToolbar.AddMenuItem("Edit", (menu) =>
+		{
+			menu.AddMenuItem("Cut", () => Log.Info("Cut"));
+			menu.AddMenuItem("Copy", () => Log.Info("Copy"));
+			menu.AddMenuItem("Paste", () => Log.Info("Paste"));
+			menu.AddSeparator();
+			menu.AddMenuItem("Select All", () => Log.Info("Select All"));
+		});
+
+		// Add View menu - to be overridden by derived classes
+		MenuToolbar.AddMenuItem("View", (menu) =>
+		{
+			SetupViewMenu(menu);
+		});
+
+		// Add Help menu
+		MenuToolbar.AddMenuItem("Help", (menu) =>
+		{
+			menu.AddMenuItem("About", () => Log.Info("About"));
+		});
+
+		// Throbber
+		AddThrobber();
+	}
+
+	public void AddThrobber()
+	{
+		var throbber = new Image();
+		throbber.AddClass("throbber");
+		if (XGUISystem.Instance.GlobalTheme.Contains("Computer95"))
+		{
+			throbber.AddClass("toolbar-container");
+		}
+		MenuToolbar.AddChild(throbber);
+	}
+
+	protected virtual void SetupViewMenu(ContextMenu menu)
+	{
+		// To be implemented by derived classes
+	}
+
+	protected virtual void SetupCommandToolbar()
+	{
+		// Navigation buttons
+		CommandToolbar.AddButton("Back", "navigate_back", OnBackClicked);
+		CommandToolbar.AddButton("Forward", "navigate_forward", OnForwardClicked);
+		CommandToolbar.AddButton("Up", "folder_up", OnUpClicked);
+	}
+
+	protected virtual void SetupAddressToolbar()
+	{
+		// Add address label
+		var addressLabel = new Label();
+		addressLabel.Text = "Address:";
+		addressLabel.AddClass("address-label");
+		AddressToolbar.AddItem(addressLabel);
+
+		// Add address input
+		AddressInput = new TextEntry();
+		AddressInput.AddClass("address-input");
+		AddressInput.Style.FlexGrow = 1;
+		AddressInput.AddEventListener("onsubmit", OnAddressChanged);
+		AddressToolbar.AddItem(AddressInput);
+
+		// Add Go button
+		var goButton = AddressToolbar.AddButton("Go", null, () => OnAddressChanged());
+		goButton.AddClass("go-button");
+	}
+
+	protected virtual void OnBackClicked()
+	{
+		// To be implemented in derived classes
+	}
+
+	protected virtual void OnForwardClicked()
+	{
+		// To be implemented in derived classes
+	}
+
+	protected virtual void OnUpClicked()
+	{
+		// To be implemented in derived classes
+	}
+
+	protected virtual void OnAddressChanged()
+	{
+		// To be implemented in derived classes
+	}
+
+	protected async void PlaySingleClickSound()
+	{
+		var soundpath = XGUISoundSystem.GetSound("START");
+		var soundfile = SoundFile.Load(soundpath);
+		Sound.PlayFile(soundfile);
+		await GameTask.DelaySeconds(0.08f);
+		Sound.PlayFile(soundfile);
+	}
+}

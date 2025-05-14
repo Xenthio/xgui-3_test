@@ -1,3 +1,5 @@
+@using System;
+@using System.Collections.Generic;
 @using System.Linq;
 @using Sandbox;
 @using Sandbox.UI;
@@ -6,19 +8,128 @@
 @inherits Window
 
 <root class="taskbar-root" hastitlebar="false" isresizable="false" isdraggable="false">
-    <div class="window-content" style="padding:2px">
-        <button class="start-button" @ref=StartButton onclick=@OpenStartMenu> 
+	<div class="window-content" style="padding:2px; display:flex; align-items:center;">
+
+		<!-- Start Button -->
+		<button class="start-button" @ref=StartButton onclick=@OpenStartMenu> 
 			<img class="iconpanel icon" src="XGUI/Resources/95/start_icon_shaded_16.png" />
 			Start
 		</button>
-    </div> 
-</root>
+
+		<SeperatorVertical class="seperator"></SeperatorVertical>
+
+		<!-- Quick Access Section -->
+		<div class="quick-access">
+			<div class="toolbar-drag-handle handle"></div>
+
+			@foreach (var item in QuickAccessItems)
+			{
+				<button class="quick-access-btn" title="@item.Name" onclick="@(() => OpenQuickAccessItem(item))">
+					<img class="iconpanel icon" src="@item.Icon" />
+				</button>
+			}
+		</div>
+
+		<SeperatorVertical class="seperator"></SeperatorVertical>
+
+		<!-- Open Windows Section -->
+		<div class="open-windows">
+			<div class="toolbar-drag-handle handle"></div>
+			@foreach (var win in OpenWindows)
+			{
+				<button class="window-btn" title="@win.Title" onclick="@(() => FocusWindow(win))" style="display:flex; align-items:center;">
+					<img class="iconpanel icon" src="@win.Icon" style="margin-right:2px;" />
+					<span>@win.Title</span>
+				</button>
+			}
+		</div>
+
+		<div class="spacer"></div>
+
+		<SeperatorVertical class="seperator"></SeperatorVertical>
+
+		<!-- System Tray Section -->
+		<div class="system-tray layout-inset">  
+			<button class="tray-btn" title="Volume">
+				<img class="icon" src="XGUI/Resources/95/sound_16.png" />
+			</button>
+			<label class="clock">
+				@DateTime.Now.ToString("hh:mm tt")
+			</label> 
+		</div> 
+	</div> 
+</root>	
 
 @code {
 
 	Button StartButton;
 
 	bool StartMenuOpen => StartMenuWindow != null && StartMenuWindow.IsValid;
+
+	// --- Quick Access Implementation ---
+	public record QuickAccessItem(string Name, string Icon, Action OpenAction);
+
+	// Example: Add your own items or load dynamically
+	List<QuickAccessItem> QuickAccessItems = new()
+	{
+		new QuickAccessItem("Documents", "XGUI/Resources/95/folder_documents_16.png", () => OpenFolder("Documents")),
+		new QuickAccessItem("Pictures", "XGUI/Resources/95/folder_pictures_16.png", () => OpenFolder("Pictures")),
+		// Add more as needed
+	};
+
+	void OpenQuickAccessItem(QuickAccessItem item)
+	{
+		item.OpenAction?.Invoke();
+	}
+
+	static void OpenFolder(string folderName)
+	{
+		// TODO: Implement folder opening logic
+		// For example: Explorer.Open(folderName);
+	}
+
+	// --- Open Windows Implementation ---
+	public class WindowInfo
+	{
+		public string Title { get; set; }
+		public string Icon { get; set; }
+		public Window WindowRef { get; set; }
+	}
+
+	List<WindowInfo> OpenWindows => GetOpenWindows();
+
+	List<WindowInfo> GetOpenWindows()
+	{
+		var windows = new List<WindowInfo>();
+
+		foreach (var process in FakeOperatingSystem.ProcessManager.Instance.GetProcesses())
+		{
+			// NativeProcess: has OwnedWindows
+			if (process is FakeOperatingSystem.NativeProcess nativeProc)
+			{
+				foreach (var win in nativeProc.OwnedWindows)
+				{
+					if (win != null && win.IsValid && win.IsVisible)
+					{
+						windows.Add(new WindowInfo
+						{
+							Title = win.Title ?? process.ProcessName ?? "Window",
+							Icon = "XGUI/Resources/95/app_default_16.png", // Optionally use a process-specific icon
+							WindowRef = win
+						});
+					}
+				}
+			}
+			// If you add window support to other process types, handle them here.
+		}
+
+		return windows;
+	}
+
+	void FocusWindow(WindowInfo win)
+	{
+		win.WindowRef?.FocusWindow();
+	}
 
 	public TaskBar()
 	{ 
@@ -55,8 +166,6 @@
 	int PositionStartMenuNextTick = 0;
 	public void OpenStartMenu()
 	{
-
-
 		// close if already open
 		if (StartMenuWindow != null && StartMenuWindow.IsValid)
 		{
@@ -71,8 +180,6 @@
 		// this.Box.Rect.Bottom is the bottom of the taskbar
 		StartMenuWindow.Position = new Vector2(3, this.Box.Rect.Top - StartMenuWindow.Box.Rect.Height);
 		PositionStartMenuNextTick = 3;
-
-
 
 		StartMenuWindow.FocusWindow();
 	}

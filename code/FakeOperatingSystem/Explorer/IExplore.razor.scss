@@ -1,4 +1,4 @@
-Explorer {
+IExplore {
 
 	.throbber {
 		width: 40px;
@@ -8,8 +8,9 @@ Explorer {
 		background-repeat: no-repeat;
 		background-color: black;
 		background-image: url("XGUI/Resources/95/browseui_throbber.png");
-		&.toolbar-container { 
-			margin: -1px; 
+
+		&.toolbar-container {
+			margin: -1px;
 		}
 	}
 
@@ -19,5 +20,14 @@ Explorer {
 
 	.address-bar {
 		align-items: center;
+	}
+
+	LayoutBoxInset {
+		flex-grow:1;
+	}
+
+	WebPanel
+	{
+		flex-grow: 1;
 	}
 }

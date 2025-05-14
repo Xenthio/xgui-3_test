@@ -83,7 +83,7 @@ public class FakeSystemRoot
 		// Internet Explorer folder
 		string ieDir = $"{programFilesDir}/Internet Explorer";
 		FileSystem.Data.CreateDirectory( ieDir );
-		NativeProgram.CompileIntoExe( typeof( InternetExplorerProgram ), $"{ieDir}/iexplore.exe" );
+		NativeProgram.CompileIntoExe( typeof( IExploreProgram ), $"{ieDir}/Iexplore.exe" );
 
 		// Ultimate Doom for Windows 95
 		string doomDir = $"{programFilesDir}/Ultimate Doom for Windows 95";
