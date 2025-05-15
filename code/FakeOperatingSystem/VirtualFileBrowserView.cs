@@ -50,7 +50,6 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// </summary>
 	public void NavigateToVirtualPath( string virtualPath, bool sound = true )
 	{
-
 		if ( _virtualFileSystem == null )
 			return;
 
@@ -79,8 +78,11 @@ public class VirtualFileBrowserView : FileBrowserView
 		_currentContextMenu?.Delete();
 
 		// Clear existing items
-		ItemContainer.DeleteChildren();
+		ListView.Items.Clear();
 		FileItems.Clear();
+
+		// Properly clean up UI
+		ListView.UpdateItems();
 
 		// Update base class CurrentPath for proper event handling
 		if ( !string.IsNullOrEmpty( entry.RealPath ) )
@@ -262,7 +264,6 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// </summary>
 	private void PopulateFromVirtualPath( string virtualPath )
 	{
-		SetupHeader();
 		// Get all directory contents
 		var contents = _virtualFileSystem.GetDirectoryContents( virtualPath );
 
@@ -297,60 +298,60 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// </summary>
 	private void UpdateItemIcon( string path, string iconName, bool isDirectory )
 	{
-		foreach ( var item in FileItems )
+		// Find the corresponding ListView item
+		var fileItem = FileItems.FirstOrDefault( item => item.FullPath == path );
+		if ( fileItem == null )
+			return;
+
+		foreach ( var listViewItem in ListView.Items )
 		{
-			if ( item.FullPath == path )
+			if ( listViewItem.Data == fileItem && listViewItem.IconPanel != null )
 			{
-				if ( item.IconPanel is XGUIIconPanel iconPanel )
+				var iconPanel = listViewItem.IconPanel;
+				var size = ViewMode == FileBrowserViewMode.Icons ? 32 : 16;
+
+				// Use custom icon from desktop.ini if present
+				if ( isDirectory )
 				{
-					var size = 16;
-					if ( ViewMode == FileBrowserViewMode.Icons )
+					string customIcon = FileIconHelper.GetCustomFolderIconFromDesktopIni( path, _virtualFileSystem );
+					if ( !string.IsNullOrEmpty( customIcon ) )
 					{
-						size = 32;
+						iconPanel.SetFolderIcon( customIcon, size );
+						break;
 					}
-					// Use custom icon from desktop.ini if present
-					if ( isDirectory )
+					if ( string.IsNullOrEmpty( iconName ) || iconName == "folder" )
 					{
-						string customIcon = FileIconHelper.GetCustomFolderIconFromDesktopIni( path, _virtualFileSystem );
-						if ( !string.IsNullOrEmpty( customIcon ) )
-						{
-							iconPanel.SetFolderIcon( customIcon, size );
-							break;
-						}
-						if ( string.IsNullOrEmpty( iconName ) || iconName == "folder" )
-						{
-							iconPanel.SetFolderIcon( "folder", size );
-						}
-						else
-						{
-							iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.Folder, size );
-						}
+						iconPanel.SetFolderIcon( "folder", size );
 					}
 					else
 					{
-						// For files, try to determine by extension
-						string extension = System.IO.Path.GetExtension( path );
-						if ( !string.IsNullOrEmpty( extension ) && extension.StartsWith( "." ) )
-						{
-							extension = extension.Substring( 1 );
-						}
+						iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.Folder, size );
+					}
+				}
+				else
+				{
+					// For files, try to determine by extension
+					string extension = System.IO.Path.GetExtension( path );
+					if ( !string.IsNullOrEmpty( extension ) && extension.StartsWith( "." ) )
+					{
+						extension = extension.Substring( 1 );
+					}
 
-						if ( extension == "exe" )
-						{
-							// todo, lookup icon inside of exe.
-							var filename = System.IO.Path.GetFileNameWithoutExtension( path );
-							iconPanel.SetFileIcon( $"exe_{filename}", size );
-							return;
-						}
+					if ( extension == "exe" )
+					{
+						// todo, lookup icon inside of exe.
+						var filename = System.IO.Path.GetFileNameWithoutExtension( path );
+						iconPanel.SetFileIcon( $"exe_{filename}", size );
+						return;
+					}
 
-						if ( string.IsNullOrEmpty( iconName ) || iconName == "file" )
-						{
-							iconPanel.SetFileIcon( extension, size );
-						}
-						else
-						{
-							iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.FileType, size );
-						}
+					if ( string.IsNullOrEmpty( iconName ) || iconName == "file" )
+					{
+						iconPanel.SetFileIcon( extension, size );
+					}
+					else
+					{
+						iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.FileType, size );
 					}
 				}
 				break;
@@ -367,17 +368,15 @@ public class VirtualFileBrowserView : FileBrowserView
 	{
 		base.OnRightClick( e );
 
-		// Determine if the click was on empty space (not on a file/folder item)
+		// Determine if the click was on an item by checking if any ListView items are hovered
 		bool clickedOnItem = false;
-		foreach ( var item in FileItems )
+		foreach ( var item in ListView.Items )
 		{
 			if ( item.HasHovered )
 			{
 				clickedOnItem = true;
-				// You may want to show the file/folder context menu here instead
-				ShowItemContextMenu( item, e );
-				// also select item
-				SelectItem( item );
+				ShowItemContextMenu( FileItems.FirstOrDefault( fi => fi == item.Data ), e );
+				ListView.SelectItem( item );
 				break;
 			}
 		}
@@ -469,24 +468,20 @@ public class VirtualFileBrowserView : FileBrowserView
 					} );
 				}
 			}
-			else
-			{
-			}
 		}
 		);
 
 		_currentContextMenu.AddSeparator();
-
-
 		_currentContextMenu.AddMenuItem( "Properties", () => Log.Info( $"Properties for {CurrentPath}" ) );
 	}
 
 	// Optional: Show context menu for file/folder items
 	private void ShowItemContextMenu( FileItem item, MousePanelEvent e )
 	{
+		if ( item == null ) return;
+
 		_currentContextMenu?.Delete();
 		_currentContextMenu = new ContextMenu( this, ContextMenu.PositionMode.UnderMouse );
-		//menu.SetPosition( Mouse.Position.x, Mouse.Position.y );
 
 		_currentContextMenu.AddMenuItem( "Open", () =>
 		{
@@ -564,8 +559,6 @@ public class VirtualFileBrowserView : FileBrowserView
 		var fs = iniEntry.AssociatedFileSystem ?? FileSystem.Data;
 		if ( string.IsNullOrWhiteSpace( iniEntry.RealPath ) || !fs.FileExists( iniEntry?.RealPath ) )
 			return null;
-
-		//Log.Info( $"Reading desktop.ini for {iniEntry.RealPath}" );
 
 		// Read the file contents
 		string[] lines = fs.ReadAllText( iniEntry.RealPath ).Split( '\n' );
