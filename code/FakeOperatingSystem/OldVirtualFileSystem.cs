@@ -9,7 +9,7 @@ namespace FakeDesktop;
 /// <summary>
 /// A virtual file system, kinda like shell namespaces (i think)
 /// </summary>
-public class VirtualFileSystem
+public class OldVirtualFileSystem
 {
 	// Special folder constants
 	public const string DESKTOP = "Desktop";
@@ -37,9 +37,9 @@ public class VirtualFileSystem
 	// File associations for handling file types
 	private Dictionary<string, FileAssociation> _fileAssociations = new Dictionary<string, FileAssociation>( StringComparer.OrdinalIgnoreCase );
 
-	public static VirtualFileSystem Instance { get; private set; } = null!;
+	public static OldVirtualFileSystem Instance { get; private set; } = null!;
 
-	public VirtualFileSystem( BaseFileSystem realFileSystem, string rootPath )
+	public OldVirtualFileSystem( BaseFileSystem realFileSystem, string rootPath )
 	{
 		Instance = this;
 		_realFileSystem = realFileSystem;

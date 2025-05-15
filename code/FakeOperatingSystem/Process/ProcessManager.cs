@@ -58,6 +58,15 @@ public class ProcessManager
 			process = new X86PEProcess( exePath, options );
 		}
 		RegisterProcess( process );
+
+		if ( options.StandardInputOverride != null )
+		{
+			process.StandardInput = options.StandardInputOverride;
+		}
+		if ( options.StandardOutputOverride != null )
+		{
+			process.StandardOutput = options.StandardOutputOverride;
+		}
 		process.Start();
 		return process;
 	}

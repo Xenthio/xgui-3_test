@@ -1,0 +1,107 @@
+@using System.IO
+@using System.Text
+@using Sandbox
+@using Sandbox.UI
+@using XGUI
+@using FakeOperatingSystem
+@using FakeOperatingSystem.Console;
+@attribute [StyleSheet()]
+@inherits Window
+
+<root title="Command prompt"
+	  minwidth="400" minheight="300"
+	  width="600" height="400"
+	  class="console-window window1">
+
+	<div class="window-content">
+		<layoutboxinset class="console-box">
+			<label @ref="OutputLabel"
+				   class="console-area"
+				   style="flex: 1; margin-bottom: 4px; overflow-y: auto; white-space: pre-wrap;">
+				@DisplayText
+			</label>
+		</layoutboxinset>
+	</div>
+</root>
+
+@code {
+
+	int consoleWidth = 80 * 8; // Default console width
+	int consoleHeight = 25 * 12; // Default console height
+
+	private Label OutputLabel;
+
+	// Output and input buffers
+	private StringBuilder outputBuffer = new();
+
+	private ConsoleHostWriter writer;
+	private ConsoleHostReader reader;
+
+	public ConsoleHost()
+	{
+		writer = new ConsoleHostWriter(AppendOutput);
+		reader = new ConsoleHostReader();
+		this.Size = new Vector2(consoleWidth, consoleHeight);
+		
+	}
+
+	public TextWriter GetOutputWriter() => writer;
+	public TextReader GetInputReader() => reader;
+
+	// The text shown in the command line;
+	private string DisplayText => outputBuffer.ToString() + reader.CurrentLine;
+
+
+
+	public override void OnButtonTyped(ButtonEvent e)
+	{
+		base.OnButtonTyped(e);
+		//Log.Info($"Button pressed: {e.Button}");
+		if (e.Button == "enter") Submit('\n');
+		else if (e.Button == "backspace") Submit('\b');
+		else if (e.Button == "tab") Submit('\t');
+		else if (e.Button == "escape") Submit((char)27);
+		else if (e.Button == "up") Submit((char)0x1B);
+		else if (e.Button == "down") Submit((char)0x1B);
+		else if (e.Button == "left") Submit((char)0x1B);
+		else if (e.Button == "right") Submit((char)0x1B);
+		else if (e.Button == "home") Submit((char)0x1B);
+		else if (e.Button == "end") Submit((char)0x1B);
+		else if (e.Button == "pageup") Submit((char)0x1B);
+		else if (e.Button == "pagedown") Submit((char)0x1B);
+		else if (e.Button == "f1") Submit((char)0x1B);
+		else if (e.Button == "f2") Submit((char)0x1B);
+		else if (e.Button == "f3") Submit((char)0x1B);
+		else if (e.Button == "f4") Submit((char)0x1B);
+		else if (e.Button == "f5") Submit((char)0x1B);
+		else if (e.Button == "f6") Submit((char)0x1B);
+	}
+
+	public override void OnKeyTyped(char k)
+	{
+		Submit(k);
+	}
+
+	void Submit(char c)
+	{ 
+		//AppendOutput(c);
+		reader.SubmitChar(c);
+	}
+
+	// Call this from the process to write output
+	public void AppendOutput(char c)
+	{
+		if (c == '\b')
+		{
+			if (outputBuffer.Length > 0)
+				outputBuffer.Remove(outputBuffer.Length - 1, 1);
+			return;
+		}
+		outputBuffer.Append(c);
+	} 
+
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine(DisplayText);
+	}
+}

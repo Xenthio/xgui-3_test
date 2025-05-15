@@ -1,12 +1,15 @@
 // code/FakeOperatingSystem/Process/NativeProcess.cs
-using System.Collections.Generic;
+using Sandbox;
+using System;
 using System.IO;
+using System.Threading.Tasks;
 using XGUI;
 
 namespace FakeOperatingSystem;
 public class NativeProcess : BaseProcess
 {
 	public NativeProgram Program { get; }
+	private Task _executionTask;
 
 	public NativeProcess( NativeProgram program, Win32LaunchOptions options )
 	{
@@ -15,12 +18,28 @@ public class NativeProcess : BaseProcess
 		ProcessName = program.GetType().Name;
 		ProcessFileName = Path.GetFileName( program.FilePath );
 		ProcessFilePath = program.FilePath;
+		IsConsoleProcess = program.ConsoleApp;
 	}
 
 	public override void Start()
 	{
 		// Let the program create its windows and perform startup logic
-		Program.Main( this, LaunchOptions );
+		Program.StandardOutput = StandardOutput;
+		Program.StandardError = StandardError;
+		Program.StandardInput = StandardInput;
+		_executionTask = GameTask.RunInThreadAsync( () =>
+		{
+			try
+			{
+				Program.Main( this, LaunchOptions );
+			}
+			catch ( Exception ex )
+			{
+				Log.Error( $"Error in {ProcessName}: {ex.Message}" );
+				Log.Error( ex.StackTrace );
+				StandardError?.WriteLine( $"Error: {ex.Message}" );
+			}
+		} );
 	}
 
 	public override void Terminate()

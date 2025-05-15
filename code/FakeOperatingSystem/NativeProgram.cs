@@ -8,6 +8,10 @@ namespace FakeOperatingSystem;
 
 public abstract class NativeProgram
 {
+	internal System.IO.TextWriter StandardOutput;
+	internal System.IO.TextWriter StandardError;
+	internal System.IO.TextReader StandardInput;
+
 	// The hexadecimal representation of our minimal Win32 executable
 	// that displays a message box when run on a real system
 	protected static readonly string ExeTemplateHex =
@@ -91,6 +95,7 @@ public abstract class NativeProgram
 	protected static readonly byte[] ExeTemplateBytes = HexStringToByteArray( ExeTemplateHex );
 
 	public abstract string FilePath { get; }
+	public virtual bool ConsoleApp { get; } = false;
 	public abstract void Main( NativeProcess process, Win32LaunchOptions launchOptions = default );
 
 	/// <summary>
@@ -138,7 +143,7 @@ public abstract class NativeProgram
 		try
 		{
 			// Read the file from the virtual file system
-			if ( !VirtualFileSystem.Instance.PathExists( path ) )
+			if ( !OldVirtualFileSystem.Instance.PathExists( path ) )
 			{
 				Log.Warning( $"Executable not found: {path}" );
 				return null;
@@ -146,7 +151,7 @@ public abstract class NativeProgram
 
 			Log.Info( $"Opening {path}" );
 
-			var file = VirtualFileSystem.Instance.GetEntry( path );
+			var file = OldVirtualFileSystem.Instance.GetEntry( path );
 			var realPath = file?.RealPath;
 			var realFS = file?.AssociatedFileSystem ?? FileSystem.Data;
 

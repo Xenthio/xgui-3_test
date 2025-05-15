@@ -6,14 +6,14 @@ namespace FakeOperatingSystem;
 
 public class FakeOSLoader : Component
 {
-	VirtualFileSystem _virtualFileSystem;
+	OldVirtualFileSystem _virtualFileSystem;
 	ProcessManager _processManager;
 	protected override void OnStart()
 	{
 		XGUISystem.Instance.SetGlobalTheme( "/XGUI/DefaultStyles/Computer95.scss" );
 
 		// Initialize the virtual file system
-		_virtualFileSystem = new VirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
+		_virtualFileSystem = new OldVirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
 
 		// initialize program manager
 		_processManager = new ProcessManager();

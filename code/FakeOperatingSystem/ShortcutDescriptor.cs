@@ -101,7 +101,7 @@ public class ShortcutDescriptor
 	/// <summary>
 	/// Resolves the target by launching the appropriate program or navigating to the location
 	/// </summary>
-	public bool Resolve( VirtualFileSystem fileSystem )
+	public bool Resolve( OldVirtualFileSystem fileSystem )
 	{
 		try
 		{

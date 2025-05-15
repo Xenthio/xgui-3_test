@@ -14,13 +14,13 @@ namespace FakeDesktop;
 public class VirtualFileBrowserView : FileBrowserView
 {
 	// The virtual file system instance
-	private VirtualFileSystem _virtualFileSystem;
+	private OldVirtualFileSystem _virtualFileSystem;
 
 	// Track if we're using virtual mode or regular mode
 	private bool _usingVirtualMode = false;
 
 	// Current virtual path (when in virtual mode)
-	private string _currentVirtualPath = VirtualFileSystem.DESKTOP;
+	private string _currentVirtualPath = OldVirtualFileSystem.DESKTOP;
 
 	// Navigation history
 	private List<string> _navigationHistory = new();
@@ -36,13 +36,13 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// <summary>
 	/// Initialize with a virtual file system
 	/// </summary>
-	public void Initialize( VirtualFileSystem virtualFileSystem, BaseFileSystem defaultFileSystem )
+	public void Initialize( OldVirtualFileSystem virtualFileSystem, BaseFileSystem defaultFileSystem )
 	{
 		_virtualFileSystem = virtualFileSystem;
 		base.CurrentFileSystem = defaultFileSystem;
 
 		// Navigate to Desktop (root of the virtual file system)
-		NavigateToVirtualPath( VirtualFileSystem.DESKTOP, sound: false );
+		NavigateToVirtualPath( OldVirtualFileSystem.DESKTOP, sound: false );
 	}
 
 	/// <summary>
@@ -133,7 +133,7 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// </summary>
 	public void GoUp()
 	{
-		if ( string.IsNullOrEmpty( _currentVirtualPath ) || _currentVirtualPath == VirtualFileSystem.DESKTOP )
+		if ( string.IsNullOrEmpty( _currentVirtualPath ) || _currentVirtualPath == OldVirtualFileSystem.DESKTOP )
 			return;
 
 		int lastSlash = _currentVirtualPath.LastIndexOf( '/' );
@@ -145,7 +145,7 @@ public class VirtualFileBrowserView : FileBrowserView
 		else
 		{
 			// If no slashes, go to root Desktop
-			NavigateToVirtualPath( VirtualFileSystem.DESKTOP, sound: false );
+			NavigateToVirtualPath( OldVirtualFileSystem.DESKTOP, sound: false );
 		}
 	}
 
@@ -204,7 +204,7 @@ public class VirtualFileBrowserView : FileBrowserView
 				}
 
 				// Control panel applets
-				if ( entry.Type == VirtualFileSystem.EntryType.ControlPanelApplet )
+				if ( entry.Type == OldVirtualFileSystem.EntryType.ControlPanelApplet )
 				{
 					Log.Info( $"Opening Control Panel applet: {entry.Name}" );
 					// TODO: Launch appropriate control panel window
@@ -269,10 +269,10 @@ public class VirtualFileBrowserView : FileBrowserView
 
 		// Process directories first
 		foreach ( var entry in contents.Where( e =>
-			e.Type == VirtualFileSystem.EntryType.Directory ||
-			e.Type == VirtualFileSystem.EntryType.SpecialFolder ||
-			e.Type == VirtualFileSystem.EntryType.Drive ||
-			e.Type == VirtualFileSystem.EntryType.ControlPanel ) )
+			e.Type == OldVirtualFileSystem.EntryType.Directory ||
+			e.Type == OldVirtualFileSystem.EntryType.SpecialFolder ||
+			e.Type == OldVirtualFileSystem.EntryType.Drive ||
+			e.Type == OldVirtualFileSystem.EntryType.ControlPanel ) )
 		{
 			AddDirectoryToView( entry.Path, true, entry.Name );
 
@@ -282,9 +282,9 @@ public class VirtualFileBrowserView : FileBrowserView
 
 		// Then process files
 		foreach ( var entry in contents.Where( e =>
-			e.Type == VirtualFileSystem.EntryType.File ||
-			e.Type == VirtualFileSystem.EntryType.Shortcut ||
-			e.Type == VirtualFileSystem.EntryType.ControlPanelApplet ) )
+			e.Type == OldVirtualFileSystem.EntryType.File ||
+			e.Type == OldVirtualFileSystem.EntryType.Shortcut ||
+			e.Type == OldVirtualFileSystem.EntryType.ControlPanelApplet ) )
 		{
 			AddFileToView( entry.Path, true, entry.Name );
 

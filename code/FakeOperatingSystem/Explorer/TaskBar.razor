@@ -82,7 +82,7 @@
 		_quickAccessItems.Clear();
 
 		// Get the VirtualFileSystem instance
-		var virtualFileSystem = VirtualFileSystem.Instance;
+		var virtualFileSystem = OldVirtualFileSystem.Instance;
 		if (virtualFileSystem == null)
 			return;
 
@@ -105,8 +105,8 @@
 			int iconSize = 16;
 			string iconPath;
 
-			if (entry.Type == VirtualFileSystem.EntryType.Directory ||
-				entry.Type == VirtualFileSystem.EntryType.SpecialFolder)
+			if (entry.Type == OldVirtualFileSystem.EntryType.Directory ||
+				entry.Type == OldVirtualFileSystem.EntryType.SpecialFolder)
 			{
 				iconPath = FileIconHelper.GetFolderIcon(entry.Path, virtualFileSystem, iconSize);
 				_quickAccessItems.Add(new QuickAccessItem(
@@ -141,7 +141,7 @@
 		else
 		{
 			// Handle file opening based on type
-			var virtualFileSystem = VirtualFileSystem.Instance;
+			var virtualFileSystem = OldVirtualFileSystem.Instance;
 			if (virtualFileSystem == null)
 				return;
 

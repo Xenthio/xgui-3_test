@@ -69,7 +69,7 @@ public class FileAssociation
 	/// <summary>
 	/// Execute the default action for this file type on the given file
 	/// </summary>
-	public bool Execute( string filePath, VirtualFileSystem fileSystem )
+	public bool Execute( string filePath, OldVirtualFileSystem fileSystem )
 	{
 		return ExecuteAction( "open", filePath, fileSystem );
 	}
@@ -77,7 +77,7 @@ public class FileAssociation
 	/// <summary>
 	/// Execute a specific action for this file type on the given file
 	/// </summary>
-	public bool ExecuteAction( string verb, string filePath, VirtualFileSystem fileSystem )
+	public bool ExecuteAction( string verb, string filePath, OldVirtualFileSystem fileSystem )
 	{
 		if ( !Actions.TryGetValue( verb, out var action ) )
 		{
@@ -119,7 +119,7 @@ public class FileAction
 	/// <summary>
 	/// Execute this action on the given file
 	/// </summary>
-	public bool Execute( string filePath, VirtualFileSystem fileSystem )
+	public bool Execute( string filePath, OldVirtualFileSystem fileSystem )
 	{
 		// Resolve program path based on provided program name
 		string programPath = fileSystem.ResolveProgramPath( Program );

@@ -145,6 +145,12 @@ public class FakeSystemRoot
 
 		// taskmgr (system application)
 		NativeProgram.CompileIntoExe( typeof( TaskMgrProgram ), $"{windowsDir}/System32/taskmgr.exe" );
+
+		// conhost (system application)
+		NativeProgram.CompileIntoExe( typeof( ConsoleHostProgram ), $"{windowsDir}/System32/conhost.exe" );
+
+		// cmd (system application)
+		NativeProgram.CompileIntoExe( typeof( CommandProgram ), $"{windowsDir}/System32/cmd.exe" );
 	}
 
 	public static void CreateDefaultDesktopItems()

@@ -23,13 +23,13 @@ public class X86PEProcess : BaseProcess
 	public override void Start()
 	{
 		// lookup in virtual file system 
-		if ( !VirtualFileSystem.Instance.PathExists( ProcessFilePath ) )
+		if ( !OldVirtualFileSystem.Instance.PathExists( ProcessFilePath ) )
 		{
 			Log.Warning( $"Executable not found: {ProcessFilePath}" );
 			Manager.TerminateProcess( this );
 			return;
 		}
-		var file = VirtualFileSystem.Instance.GetEntry( ProcessFilePath );
+		var file = OldVirtualFileSystem.Instance.GetEntry( ProcessFilePath );
 
 		byte[] fileBytes = file.AssociatedFileSystem.ReadAllBytes( file.RealPath ).ToArray();
 		if ( !_interpreter.LoadExecutable( fileBytes, ProcessFilePath ) )

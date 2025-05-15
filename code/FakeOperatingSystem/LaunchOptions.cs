@@ -1,5 +1,6 @@
 // code/FakeOperatingSystem/Process/Win32LaunchOptions.cs
 using System.Collections.Generic;
+using System.IO;
 
 namespace FakeOperatingSystem;
 
@@ -72,6 +73,16 @@ public class Win32LaunchOptions
 	/// Optional session ID.
 	/// </summary>
 	public int? SessionId { get; set; }
+
+	/// <summary>
+	/// Output steam
+	/// </summary>
+	public TextWriter StandardOutputOverride { get; set; } = null;
+
+	/// <summary>
+	/// Input stream
+	/// </summary>
+	public TextReader StandardInputOverride { get; set; } = null;
 }
 
 /// <summary>

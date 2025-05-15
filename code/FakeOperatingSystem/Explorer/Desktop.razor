@@ -24,7 +24,7 @@
             FakeSystemRoot.TryCreateSystemRoot();
 
             // Initialize browser view with virtual file system
-            BrowserView.Initialize(VirtualFileSystem.Instance, FileSystem.Data);
+            BrowserView.Initialize(OldVirtualFileSystem.Instance, FileSystem.Data);
 
             // Intercept directory opening to launch Explorer instead of navigating 
             BrowserView.OpenDirectoryEnabled = false;
@@ -34,16 +34,16 @@
             BrowserView.ViewMode = FileBrowserViewMode.Icons;
 
             // Navigate to Desktop - this will stay fixed
-            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP, sound: false);
+            BrowserView.NavigateToVirtualPath(OldVirtualFileSystem.DESKTOP, sound: false);
         }
     }
 
     private void HandleDirectoryOpened(string path)
     {
         // Prevent navigation for the desktop view itself
-        var entry = VirtualFileSystem.Instance.GetEntry(path);
+        var entry = OldVirtualFileSystem.Instance.GetEntry(path);
 
-        if (entry != null && path != VirtualFileSystem.DESKTOP)
+        if (entry != null && path != OldVirtualFileSystem.DESKTOP)
         {
             Log.Info($"Desktop: Opening directory in Explorer: {path}");
 
@@ -52,7 +52,7 @@
 
             // Prevent the desktop from navigating away
             // by navigating back to the desktop
-            BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP, sound:false);
+            BrowserView.NavigateToVirtualPath(OldVirtualFileSystem.DESKTOP, sound:false);
         }
     } 
 

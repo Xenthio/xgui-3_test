@@ -56,7 +56,7 @@
 			FakeSystemRoot.TryCreateSystemRoot();
 
 			// Set up the file browser
-			BrowserView.Initialize(VirtualFileSystem.Instance, FileSystem.Data);
+			BrowserView.Initialize(OldVirtualFileSystem.Instance, FileSystem.Data);
 
 			// The tree will still use the regular file system
 			BrowserTree.CurrentFileSystem = FileSystem.Data;
@@ -83,7 +83,7 @@
 
 				// window title of open folder name
 				Title = $"{System.IO.Path.GetFileName(path)}";
-				var icon = FileIconHelper.GetFolderIcon(path, VirtualFileSystem.Instance, 16);
+				var icon = FileIconHelper.GetFolderIcon(path, OldVirtualFileSystem.Instance, 16);
 				TitleBar.TitleIcon.Style.SetBackgroundImage(icon);
 			};
 
@@ -95,7 +95,7 @@
 			else
 			{
 				// Default to Desktop if no path specified
-				BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP, sound: false);
+				BrowserView.NavigateToVirtualPath(OldVirtualFileSystem.DESKTOP, sound: false);
 			}
 
 			// Set default view mode
@@ -115,23 +115,23 @@
 			return "";
 
 		// Get the entry to check its type
-		var entry = VirtualFileSystem.Instance.GetEntry(virtualPath);
+		var entry = OldVirtualFileSystem.Instance.GetEntry(virtualPath);
 		if (entry == null)
 			return virtualPath;
 
 		// Transform the path based on where we are in the virtual filesystem
-		if (virtualPath == VirtualFileSystem.DESKTOP)
+		if (virtualPath == OldVirtualFileSystem.DESKTOP)
 		{
 			return "Desktop";
 		}
-		else if (virtualPath == $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}")
+		else if (virtualPath == $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}")
 		{
 			return "My Computer";
 		}
-		else if (virtualPath.StartsWith($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/"))
+		else if (virtualPath.StartsWith($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/"))
 		{
 			// Handle paths inside My Computer
-			string relativePath = virtualPath.Substring(($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/").Length);
+			string relativePath = virtualPath.Substring(($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/").Length);
 
 			// Check if we're in a drive
 			if (relativePath.Contains('/'))
@@ -153,10 +153,10 @@
 				return relativePath;
 			}
 		}
-		else if (virtualPath.StartsWith($"{VirtualFileSystem.DESKTOP}/"))
+		else if (virtualPath.StartsWith($"{OldVirtualFileSystem.DESKTOP}/"))
 		{
 			// Handle paths directly under Desktop
-			return virtualPath.Substring(($"{VirtualFileSystem.DESKTOP}/").Length);
+			return virtualPath.Substring(($"{OldVirtualFileSystem.DESKTOP}/").Length);
 		}
 
 		// Default case - return the original path
@@ -182,9 +182,9 @@
 			menu.AddMenuItem("Forward", () => BrowserView.GoForward());
 			menu.AddMenuItem("Up", () => BrowserView.GoUp());
 			menu.AddSeparator();
-			menu.AddMenuItem("Desktop", () => BrowserView.NavigateToVirtualPath(VirtualFileSystem.DESKTOP));
-			menu.AddMenuItem("My Computer", () => BrowserView.NavigateToVirtualPath($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}"));
-			menu.AddMenuItem("My Documents", () => BrowserView.NavigateToVirtualPath($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_DOCUMENTS}"));
+			menu.AddMenuItem("Desktop", () => BrowserView.NavigateToVirtualPath(OldVirtualFileSystem.DESKTOP));
+			menu.AddMenuItem("My Computer", () => BrowserView.NavigateToVirtualPath($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}"));
+			menu.AddMenuItem("My Documents", () => BrowserView.NavigateToVirtualPath($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_DOCUMENTS}"));
 		});
 	}
 
@@ -276,16 +276,16 @@
 	{
 		// Check for simple cases first
 		if (input.Equals("Desktop", StringComparison.OrdinalIgnoreCase))
-			return VirtualFileSystem.DESKTOP;
+			return OldVirtualFileSystem.DESKTOP;
 
 		if (input.Equals("My Computer", StringComparison.OrdinalIgnoreCase))
-			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}";
+			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}";
 
 		if (input.Equals("My Documents", StringComparison.OrdinalIgnoreCase))
-			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_DOCUMENTS}";
+			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_DOCUMENTS}";
 
 		if (input.Equals("Recycle Bin", StringComparison.OrdinalIgnoreCase))
-			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.RECYCLE_BIN}";
+			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.RECYCLE_BIN}";
 
 		// Check if input starts with a drive letter
 		if (input.Length >= 2 && input[1] == ':')
@@ -294,23 +294,23 @@
 			string pathAfterDrive = input.Length > 2 ? input.Substring(2) : "";
 
 			// Drive path in My Computer
-			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{driveLetter}{pathAfterDrive}";
+			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/{driveLetter}{pathAfterDrive}";
 		}
 
 		// Check if it's a special folder in My Computer
-		if (VirtualFileSystem.Instance.GetEntry($"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{input}") != null)
+		if (OldVirtualFileSystem.Instance.GetEntry($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/{input}") != null)
 		{
-			return $"{VirtualFileSystem.DESKTOP}/{VirtualFileSystem.MY_COMPUTER}/{input}";
+			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/{input}";
 		}
 
 		// Check if it's a direct child of Desktop
-		if (VirtualFileSystem.Instance.GetEntry($"{VirtualFileSystem.DESKTOP}/{input}") != null)
+		if (OldVirtualFileSystem.Instance.GetEntry($"{OldVirtualFileSystem.DESKTOP}/{input}") != null)
 		{
-			return $"{VirtualFileSystem.DESKTOP}/{input}";
+			return $"{OldVirtualFileSystem.DESKTOP}/{input}";
 		}
 
 		// If it's a full virtual path already, use it directly
-		if (VirtualFileSystem.Instance.GetEntry(input) != null)
+		if (OldVirtualFileSystem.Instance.GetEntry(input) != null)
 		{
 			return input;
 		}

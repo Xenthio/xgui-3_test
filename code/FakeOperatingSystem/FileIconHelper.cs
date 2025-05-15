@@ -13,7 +13,7 @@ namespace FakeDesktop
 		/// <summary>
 		/// Gets the appropriate icon for a file based on its extension or type
 		/// </summary>
-		public static string GetFileIcon( string path, VirtualFileSystem virtualFileSystem, int size = 16 )
+		public static string GetFileIcon( string path, OldVirtualFileSystem virtualFileSystem, int size = 16 )
 		{
 			if ( string.IsNullOrEmpty( path ) )
 				return GetGenericFileIcon( size );
@@ -66,7 +66,7 @@ namespace FakeDesktop
 		/// <summary>
 		/// Gets the appropriate icon for a folder
 		/// </summary>
-		public static string GetFolderIcon( string path, VirtualFileSystem virtualFileSystem, int size = 16 )
+		public static string GetFolderIcon( string path, OldVirtualFileSystem virtualFileSystem, int size = 16 )
 		{
 			if ( string.IsNullOrEmpty( path ) )
 				return GetGenericFolderIcon( size );
@@ -110,7 +110,7 @@ namespace FakeDesktop
 		/// <summary>
 		/// Gets a custom folder icon from a desktop.ini file if present
 		/// </summary>
-		public static string GetCustomFolderIconFromDesktopIni( string virtualPath, VirtualFileSystem virtualFileSystem )
+		public static string GetCustomFolderIconFromDesktopIni( string virtualPath, OldVirtualFileSystem virtualFileSystem )
 		{
 			// Build the path to the desktop.ini file
 			string iniVirtualPath = virtualPath + "/desktop.ini";
