@@ -1,4 +1,5 @@
 @using System;
+@using FakeOperatingSystem.OSFileSystem
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
@@ -223,9 +224,9 @@
 
         try
         {
-            if (FileSystem.Data.FileExists(path))
+            if (VirtualFileSystem.Instance.FileExists(path))
             {
-                string content = FileSystem.Data.ReadAllText(path);
+                string content = VirtualFileSystem.Instance.ReadAllText(path);
                 TextContent = content;
                 if (TextArea != null)
                     TextArea.Text = content;

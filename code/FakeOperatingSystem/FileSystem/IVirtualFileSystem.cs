@@ -36,5 +36,8 @@ namespace FakeOperatingSystem.OSFileSystem
 		string GetDirectoryName( string path );
 		string GetFileNameWithoutExtension( string path );
 		string GetExtension( string path );
+
+		// Misc
+		long FileSize( string path );
 	}
 }

@@ -43,10 +43,23 @@ public class ProcessManager
 	/// <summary>
 	/// Opens an executable, deciding if it's a NativeProcess or X86PEProcess.
 	/// </summary>
-	public BaseProcess OpenExecutable( string exePath, Win32LaunchOptions options )
+	public BaseProcess OpenExecutable( string exePath, Win32LaunchOptions options, bool shellLaunch = false )
 	{
 		// Try to load as a NativeProgram (fake exe)
 		var nativeProgram = NativeProgram.ReadFromExe( exePath );
+		if ( nativeProgram.ConsoleApp && shellLaunch )
+		{
+			// If it's a console app, we need to create a console host
+			var conProcess = OpenExecutable( "C:/Windows/System32/conhost.exe", new Win32LaunchOptions
+			{
+				Arguments = $"{exePath}",
+				ParentProcessId = options.ParentProcessId,
+				StandardOutputOverride = options.StandardOutputOverride,
+				StandardInputOverride = options.StandardInputOverride,
+			} );
+			return conProcess;
+		}
+
 		BaseProcess process;
 		if ( nativeProgram != null )
 		{

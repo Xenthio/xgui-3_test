@@ -32,6 +32,10 @@ public class NativeProcess : BaseProcess
 			try
 			{
 				Program.Main( this, LaunchOptions );
+				if ( Program.ConsoleApp )
+				{
+					ProcessManager.Instance.TerminateProcess( this );
+				}
 			}
 			catch ( Exception ex )
 			{

@@ -1,5 +1,5 @@
-﻿using FakeDesktop;
-using FakeOperatingSystem;
+﻿using FakeOperatingSystem;
+using FakeOperatingSystem.OSFileSystem;
 using Sandbox;
 using System;
 
@@ -13,12 +13,16 @@ public class CommandProgram : NativeProgram
 
 	public override void Main( NativeProcess process, Win32LaunchOptions launchOptions = null )
 	{
-		string workingDir = launchOptions?.WorkingDirectory ?? "C:/";
-		StandardOutput.WriteLine( "FakeOS Command Prompt [Type 'help' for commands]" );
+		string workingDir = String.IsNullOrWhiteSpace( launchOptions?.WorkingDirectory ) ? @"C:\" : launchOptions.WorkingDirectory;
+		StandardOutput.WriteLine( "" );
+		StandardOutput.WriteLine( "" );
+		StandardOutput.WriteLine( "XGUI-3 FakeOS" );
+		StandardOutput.WriteLine( "   FakeOS Command Prompt [Type 'help' for commands]" );
+		StandardOutput.WriteLine( "" );
 
 		while ( true )
 		{
-			StandardOutput.Write( $"{workingDir}> " );
+			StandardOutput.Write( $"{workingDir}>" );
 			var line = StandardInput.ReadLine();
 			if ( line == null )
 				break;
@@ -61,10 +65,10 @@ public class CommandProgram : NativeProgram
 					else
 					{
 						string newDir = ResolvePath( workingDir, args );
-						var entry = OldVirtualFileSystem.Instance.GetEntry( newDir );
-						if ( entry != null && entry.Type == OldVirtualFileSystem.EntryType.Directory )
+						var entry = VirtualFileSystem.Instance.DirectoryExists( newDir );
+						if ( VirtualFileSystem.Instance.DirectoryExists( newDir ) )
 						{
-							workingDir = entry.Path;
+							workingDir = newDir;
 						}
 						else
 						{
@@ -75,17 +79,17 @@ public class CommandProgram : NativeProgram
 
 				case "dir":
 					{
-						var entry = OldVirtualFileSystem.Instance.GetEntry( workingDir );
-						var realFS = entry?.AssociatedFileSystem ?? FileSystem.Data;
-						if ( entry != null && entry.Type == OldVirtualFileSystem.EntryType.Directory )
+						if ( VirtualFileSystem.Instance.DirectoryExists( workingDir ) )
 						{
-							foreach ( var child in realFS.FindDirectory( entry.RealPath ) )
+							foreach ( var child in VirtualFileSystem.Instance.GetDirectories( workingDir ) )
 							{
-								StandardOutput.WriteLine( $"<DIR> {child}" );
+								var dirName = VirtualFileSystem.Instance.GetFileName( child );
+								StandardOutput.WriteLine( $"<DIR> {dirName}" );
 							}
-							foreach ( var child in realFS.FindFile( entry.RealPath ) )
+							foreach ( var child in VirtualFileSystem.Instance.GetFiles( workingDir ) )
 							{
-								StandardOutput.WriteLine( $"{realFS.FileSize( child ),8} {child}" );
+								var fileName = VirtualFileSystem.Instance.GetFileName( child );
+								StandardOutput.WriteLine( $"{VirtualFileSystem.Instance.FileSize( child ),8} {fileName}" );
 							}
 						}
 						else
@@ -99,8 +103,7 @@ public class CommandProgram : NativeProgram
 					// Try to launch as a program
 					string exeName = command.EndsWith( ".exe" ) ? command : command + ".exe";
 					string exePath = $"C:/Windows/System32/{exeName}";
-					var progEntry = OldVirtualFileSystem.Instance.GetEntry( exePath );
-					if ( progEntry != null && progEntry.Type != OldVirtualFileSystem.EntryType.Directory )
+					if ( VirtualFileSystem.Instance.FileExists( exePath ) )
 					{
 						try
 						{
@@ -112,7 +115,17 @@ public class CommandProgram : NativeProgram
 								StandardOutputOverride = StandardOutput,
 								StandardInputOverride = StandardInput
 							};
-							ProcessManager.Instance.OpenExecutable( exePath, childOptions );
+							var newProcess = ProcessManager.Instance.OpenExecutable( exePath, childOptions );
+							if ( newProcess.IsConsoleProcess )
+							{
+								// wait for the console process to finish
+								while ( newProcess.Status == ProcessStatus.Running )
+								{
+									// cant use system.threading here
+									//System.Threading.Thread.Sleep( 100 );
+									GameTask.Delay( 100 ).Wait();
+								}
+							}
 						}
 						catch ( Exception ex )
 						{
@@ -121,7 +134,7 @@ public class CommandProgram : NativeProgram
 					}
 					else
 					{
-						StandardOutput.WriteLine( $"'{command}' is not recognized as an internal or external command, operable program or batch file." );
+						StandardOutput.WriteLine( $"'{command}' is not recognized as an internal or external command,\n operable program or batch file." );
 					}
 					break;
 			}
@@ -133,8 +146,13 @@ public class CommandProgram : NativeProgram
 	{
 		if ( input.StartsWith( "/" ) || input.StartsWith( "\\" ) || input.Contains( ":" ) )
 			return input.Replace( '\\', '/' );
-		if ( currentDir.EndsWith( "/" ) )
+		if ( currentDir.EndsWith( "/" ) || currentDir.EndsWith( "\\" ) )
 			return currentDir + input;
 		return currentDir + "/" + input;
+	}
+
+	private string FormatDir( string dir )
+	{
+		return dir.Replace( '/', '\\' );
 	}
 }

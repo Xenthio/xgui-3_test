@@ -23,6 +23,8 @@ public class FakeOSLoader : Component
 
 		ShellNamespace = new ShellNamespace( VirtualFileSystem );
 
+		FileAssociationManager.Initialize( VirtualFileSystem );
+
 		// initialize program manager
 		_processManager = new ProcessManager();
 

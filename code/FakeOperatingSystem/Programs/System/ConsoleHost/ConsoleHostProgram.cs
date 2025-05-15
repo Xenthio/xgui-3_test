@@ -23,7 +23,23 @@ public class ConsoleHostProgram : NativeProgram
 
 			MainChildProcess = ProcessManager.Instance.OpenExecutable( "C:/Windows/System32/cmd.exe", cmdOptions );
 		}
-		// else: handle launching other programs as needed
+		else
+		{
+			var toOpen = launchOptions.Arguments;
+			var cmdOptions = new Win32LaunchOptions
+			{
+				Arguments = launchOptions.Arguments,
+				ParentProcessId = process.ProcessId,
+				StandardOutputOverride = consoleHost.GetOutputWriter(),
+				StandardInputOverride = consoleHost.GetInputReader(),
+			};
+
+			MainChildProcess = ProcessManager.Instance.OpenExecutable( toOpen, cmdOptions );
+		}
+		consoleHost.OnCloseAction += () =>
+		{
+			OnClose();
+		};
 	}
 
 	public void OnClose()

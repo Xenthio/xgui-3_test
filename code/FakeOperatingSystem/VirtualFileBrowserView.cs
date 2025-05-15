@@ -1,9 +1,7 @@
-﻿using FakeOperatingSystem;
-using FakeOperatingSystem.OSFileSystem;
+﻿using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.Shell;
 using Sandbox;
 using Sandbox.UI;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -197,15 +195,6 @@ public class VirtualFileBrowserView : FileBrowserView
 
 			if ( shellItem != null )
 			{
-				// Handle shortcut files
-				if ( Path.GetExtension( shellItem.Name ).Equals( ".lnk", StringComparison.OrdinalIgnoreCase ) )
-				{
-					Log.Info( $"Opening shortcut: {shellItem.Name}" );
-					// Use FileAssociationManager to handle shortcuts
-					FileAssociationManager.Instance.OpenFile( shellItem.RealPath );
-					return;
-				}
-
 				// Handle control panel applets
 				if ( shellItem.Type == ShellFolderType.ControlPanelApplet )
 				{
@@ -214,20 +203,8 @@ public class VirtualFileBrowserView : FileBrowserView
 					return;
 				}
 
-				// For executables, launch directly
-				if ( shellItem.Name.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
-				{
-					Log.Info( $"Launching executable: {shellItem.Name}" );
-					var launchOptions = new Win32LaunchOptions
-					{
-						WorkingDirectory = Path.GetDirectoryName( shellItem.RealPath )
-					};
-					ProcessManager.Instance?.OpenExecutable( shellItem.RealPath, launchOptions );
-					return;
-				}
-
-				// For other files, use file associations
-				FileAssociationManager.Instance.OpenFile( shellItem.RealPath );
+				// Shell execute for other files
+				Shell.ShellExecute( shellItem.RealPath );
 			}
 		}
 	}
@@ -301,7 +278,7 @@ public class VirtualFileBrowserView : FileBrowserView
 				// Use custom icon from desktop.ini if present
 				if ( isDirectory )
 				{
-					string customIcon = FileIconHelper.GetCustomFolderIconFromDesktopIni( path, _vfs );
+					string customIcon = FileIconHelper.GetCustomFolderIconFromDesktopIni( realPath, _vfs );
 					if ( !string.IsNullOrEmpty( customIcon ) )
 					{
 						iconPanel.SetFolderIcon( customIcon, size );

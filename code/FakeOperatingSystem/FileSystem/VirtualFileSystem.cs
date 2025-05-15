@@ -56,42 +56,6 @@ public class VirtualFileSystem : IVirtualFileSystem
 		path = path.Replace( '\\', '/' );
 
 		// Handle shell namespace paths first
-		if ( path.Contains( "/Desktop/" ) || path.Contains( "/My Computer/" ) )
-		{
-			// Extract the mount point part (e.g., "C:")
-			if ( path.Contains( "/My Computer/" ) )
-			{
-				int mountStartIndex = path.IndexOf( "/My Computer/" ) + "/My Computer/".Length;
-				int nextSlashIndex = path.IndexOf( '/', mountStartIndex );
-
-				string mountPoint;
-				string remainingPath = "";
-
-				if ( nextSlashIndex > 0 )
-				{
-					mountPoint = path.Substring( mountStartIndex, nextSlashIndex - mountStartIndex );
-					remainingPath = path.Substring( nextSlashIndex );
-				}
-				else
-				{
-					mountPoint = path.Substring( mountStartIndex );
-				}
-
-				// Check if this is a valid mount point
-				if ( _mountPoints.TryGetValue( mountPoint, out var mount ) )
-				{
-					// Construct the proper path with the mount point
-					string fullPath = Path.Combine( mount.RealPath, remainingPath.TrimStart( '/' ) ).Replace( '\\', '/' );
-
-					return new PathResolution
-					{
-						MountPoint = mount,
-						RealPath = fullPath,
-						FileSystem = mount.FileSystem ?? _defaultFileSystem
-					};
-				}
-			}
-		}
 
 		// Find the mount point
 		foreach ( var mount in _mountPoints.Keys.OrderByDescending( k => k.Length ) )
@@ -182,35 +146,32 @@ public class VirtualFileSystem : IVirtualFileSystem
 		var resolution = ResolveMountPoint( path );
 		var files = resolution.FileSystem.FindFile( resolution.RealPath );
 
-		// Convert back to virtual paths if needed
 		if ( resolution.MountPoint != null )
 		{
 			string mountPrefix = resolution.MountPoint.Name;
+			string baseVirtualPath = path.TrimEnd( '/' );
+
 			return files.Select( f =>
 			{
-				// Normalize paths for comparison
+				// Normalize
 				string normalizedRealPath = resolution.RealPath.TrimEnd( '/' );
 				string normalizedFile = f.TrimEnd( '/' );
 
-				// Calculate relative path safely
+				string relativePath = "";
 				if ( normalizedFile.StartsWith( normalizedRealPath, StringComparison.OrdinalIgnoreCase ) )
 				{
-					string relativePath = "";
-					if ( normalizedFile.Length > normalizedRealPath.Length )
-					{
-						int startIndex = normalizedRealPath.Length;
-						if ( normalizedFile.Length > startIndex && normalizedFile[startIndex] == '/' )
-							startIndex++;
-
-						relativePath = normalizedFile.Substring( startIndex );
-					}
-					return $"{mountPrefix}/{relativePath.TrimStart( '/' )}";
+					int startIndex = normalizedRealPath.Length;
+					if ( normalizedFile.Length > startIndex && normalizedFile[startIndex] == '/' )
+						startIndex++;
+					relativePath = normalizedFile.Substring( startIndex );
 				}
 				else
 				{
-					// If not in the path, return just the filename
-					return $"{mountPrefix}/{Path.GetFileName( f )}";
+					relativePath = Path.GetFileName( f );
 				}
+
+				// Always return full virtual path
+				return $"{baseVirtualPath}/{relativePath.TrimStart( '/' )}";
 			} );
 		}
 
@@ -222,37 +183,31 @@ public class VirtualFileSystem : IVirtualFileSystem
 		var resolution = ResolveMountPoint( path );
 		var dirs = resolution.FileSystem.FindDirectory( resolution.RealPath );
 
-		// Convert back to virtual paths if needed
 		if ( resolution.MountPoint != null )
 		{
 			string mountPrefix = resolution.MountPoint.Name;
+			string baseVirtualPath = path.TrimEnd( '/' );
+
 			return dirs.Select( d =>
 			{
-				// Ensure both paths end with the same delimiter for correct comparison
 				string normalizedRealPath = resolution.RealPath.TrimEnd( '/' );
 				string normalizedDir = d.TrimEnd( '/' );
 
-				// Make sure we only calculate the relative path if the directory is actually a subdirectory
+				string relativePath = "";
 				if ( normalizedDir.StartsWith( normalizedRealPath, StringComparison.OrdinalIgnoreCase ) )
 				{
-					// Calculate the relative path safely
-					string relativePath = "";
-					if ( normalizedDir.Length > normalizedRealPath.Length )
-					{
-						// +1 to skip the path separator if present
-						int startIndex = normalizedRealPath.Length;
-						if ( normalizedDir.Length > startIndex && normalizedDir[startIndex] == '/' )
-							startIndex++;
-
-						relativePath = normalizedDir.Substring( startIndex );
-					}
-					return $"{mountPrefix}/{relativePath.TrimStart( '/' )}";
+					int startIndex = normalizedRealPath.Length;
+					if ( normalizedDir.Length > startIndex && normalizedDir[startIndex] == '/' )
+						startIndex++;
+					relativePath = normalizedDir.Substring( startIndex );
 				}
 				else
 				{
-					// If not a subdirectory, return just the filename
-					return $"{mountPrefix}/{Path.GetFileName( d )}";
+					relativePath = Path.GetFileName( d );
 				}
+
+				// Always return full virtual path
+				return $"{baseVirtualPath}/{relativePath.TrimStart( '/' )}";
 			} );
 		}
 
@@ -310,6 +265,12 @@ public class VirtualFileSystem : IVirtualFileSystem
 	public string GetExtension( string path )
 	{
 		return Path.GetExtension( path );
+	}
+
+	public long FileSize( string path )
+	{
+		var resolution = ResolveMountPoint( path );
+		return resolution.FileSystem.FileSize( resolution.RealPath );
 	}
 }
 

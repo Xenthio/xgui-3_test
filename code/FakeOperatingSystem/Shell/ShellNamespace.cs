@@ -216,32 +216,47 @@ public class ShellNamespace
 		if ( string.IsNullOrEmpty( path ) )
 			return _shellFolders[DESKTOP];
 
-		// Normalize path
 		path = NormalizePath( path );
 
 		if ( _shellFolders.TryGetValue( path, out var folder ) )
 			return folder;
 
-		// If not a registered shell folder, try to resolve as a real folder
-		foreach ( var registeredFolder in _shellFolders.Values )
+		// Look for a drive entry whose Path is a prefix of the requested path
+		foreach ( var drive in _shellFolders.Values.Where( f => f.Type == ShellFolderType.Drive ) )
 		{
-			if ( registeredFolder.RealPath != null && path.StartsWith( registeredFolder.Path ) )
+			// Ensure trailing slash for correct prefix matching
+			string drivePrefix = drive.Path.EndsWith( "/" ) ? drive.Path : drive.Path + "/";
+			if ( path.StartsWith( drivePrefix, StringComparison.OrdinalIgnoreCase ) )
 			{
-				string relativePath = path.Substring( registeredFolder.Path.Length ).TrimStart( '/' );
-				string fullRealPath = $"{registeredFolder.RealPath}/{relativePath}";
+				// Get the subpath after the drive
+				string subPath = path.Substring( drivePrefix.Length );
+				string vfsPath = string.IsNullOrEmpty( subPath ) ? drive.RealPath : $"{drive.RealPath}/{subPath}";
 
-				if ( _vfs.DirectoryExists( fullRealPath ) )
+				if ( _vfs.DirectoryExists( vfsPath ) )
 				{
 					return new ShellFolder
 					{
-						Name = Path.GetFileName( path ),
+						Name = Path.GetFileName( vfsPath ),
 						Path = path,
-						RealPath = fullRealPath,
+						RealPath = vfsPath,
 						Type = ShellFolderType.Directory,
 						IconName = "folder"
 					};
 				}
 			}
+		}
+
+		// Fallback: treat as a VFS path directly
+		if ( _vfs.DirectoryExists( path ) )
+		{
+			return new ShellFolder
+			{
+				Name = Path.GetFileName( path ),
+				Path = path,
+				RealPath = path,
+				Type = ShellFolderType.Directory,
+				IconName = "folder"
+			};
 		}
 
 		return null;

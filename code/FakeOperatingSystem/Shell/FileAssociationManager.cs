@@ -34,16 +34,16 @@ public class FileAssociationManager
 	private void RegisterDefaultAssociations()
 	{
 		// Text files// Text files
-		var txtAssociation = new FileAssociation( ".txt", "Text Document", "txt", "notepad.exe", shouldShowInShellCreateNew: true );
+		var txtAssociation = new FileAssociation( ".txt", "Text Document", "txt", "C:/Windows/notepad.exe", shouldShowInShellCreateNew: true );
 		RegisterAssociation( txtAssociation );
 
 		// HTML files
-		var htmlAssociation = new FileAssociation( ".html", "HTML Document", "html", "iexplore.exe" );
+		var htmlAssociation = new FileAssociation( ".html", "HTML Document", "html", "C:/Program Files/Internet Explorer/iexplore.exe" );
 		htmlAssociation.AddAction( "edit", "Edit", "notepad.exe" );
 		RegisterAssociation( htmlAssociation );
 
 		// WAD files (for Doom)
-		var wadAssociation = new FileAssociation( ".wad", "Doom WAD File", "wad", "doom95.exe" );
+		var wadAssociation = new FileAssociation( ".wad", "Doom WAD File", "wad", "C:/Program Files/Ultimate Doom for Windows 95/doom95.exe" );
 		RegisterAssociation( wadAssociation );
 
 		// Shortcuts
@@ -52,7 +52,7 @@ public class FileAssociationManager
 		RegisterAssociation( lnkAssociation );
 
 		// Ini files
-		var iniAssociation = new FileAssociation( ".ini", "INI File", "ini", "notepad.exe" );
+		var iniAssociation = new FileAssociation( ".ini", "INI File", "ini", "C:/Windows/notepad.exe" );
 		iniAssociation.AddAction( "edit", "Edit", "notepad.exe" );
 		RegisterAssociation( iniAssociation );
 	}
@@ -87,14 +87,13 @@ public class FileAssociationManager
 
 	public bool OpenFile( string filePath )
 	{
+		Log.Info( $"Opening file: {filePath}" );
 		string extension = _vfs.GetExtension( filePath );
 		var association = GetAssociation( extension );
 
 		if ( association != null && !string.IsNullOrEmpty( association.DefaultProgram ) )
 		{
-			// Here you would launch the program with the file
-			// For example, using your ProcessManager
-			// ProcessManager.Instance.OpenExecutable(association.DefaultProgram, new Win32LaunchOptions { Arguments = filePath });
+			ProcessManager.Instance.OpenExecutable( association.DefaultProgram, new Win32LaunchOptions { Arguments = filePath } );
 			return true;
 		}
 
