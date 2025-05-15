@@ -6,7 +6,6 @@ using XGUI;
 namespace FakeOperatingSystem;
 public class NativeProcess : BaseProcess
 {
-	public List<Window> OwnedWindows { get; } = new();
 	public NativeProgram Program { get; }
 
 	public NativeProcess( NativeProgram program, Win32LaunchOptions options )

@@ -12,7 +12,9 @@
 <root title="Task Manager"
 	  minwidth="400" minheight="400"
 	  width="404" height="447"
-	  class="notepad-window">
+	  class="taskmanager-window window1"
+	  hasminimise="true"
+	  hasmaximise="true">
 
 	<div class="window-content">
 
@@ -29,7 +31,7 @@
 		<tabcontrol style="flex-grow: 1; margin-top:2px;">
 			<tab tabName="applications" slot="tab" tabtext="Applications" style="flex-direction:column;">
 				<div style="flex-direction:column; flex-grow:1;">
-					<processlist style="flex-direction:column; flex-grow:1;"></processlist>
+					<tasklist style="flex-direction:column; flex-grow:1;"></tasklist>
 				</div>
 			</tab>
 			<tab tabName="processes" slot="tab" tabtext="Processes" style="flex-direction:column;">

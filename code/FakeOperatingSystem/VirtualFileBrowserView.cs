@@ -495,7 +495,39 @@ public class VirtualFileBrowserView : FileBrowserView
 			}
 			_currentContextMenu?.Delete();
 		} );
-		_currentContextMenu.AddMenuItem( "Rename", () => Log.Info( $"Rename {item.FullPath}" ) );
+
+		_currentContextMenu.AddMenuItem( "Rename", () =>
+		{
+			// Find the ListViewItem for this FileItem
+			var listViewItem = ListView.Items.FirstOrDefault( i => i.Data == item );
+			if ( listViewItem != null )
+			{
+				listViewItem.BeginRename( newName =>
+				{
+					if ( !string.IsNullOrWhiteSpace( newName ) && newName != item.Name )
+					{
+						// Perform rename in the file system
+						var entry = _virtualFileSystem.GetEntry( item.FullPath );
+						var fs = entry.AssociatedFileSystem ?? FileSystem.Data;
+						string newPath = System.IO.Path.Combine( System.IO.Path.GetDirectoryName( entry.RealPath ), newName );
+
+						if ( item.IsDirectory )
+						{
+							if ( fs.DirectoryExists( entry.RealPath ) )
+								MoveDirectory( fs, entry.RealPath, newPath );
+						}
+						else
+						{
+							if ( fs.FileExists( entry.RealPath ) )
+								MoveFile( fs, entry.RealPath, newPath );
+						}
+						Refresh();
+					}
+				} );
+			}
+			_currentContextMenu?.Delete();
+		} );
+
 		_currentContextMenu.AddMenuItem( "Delete", () =>
 		{
 			if ( item.IsDirectory )
@@ -531,6 +563,66 @@ public class VirtualFileBrowserView : FileBrowserView
 
 		_currentContextMenu.AddSeparator();
 		_currentContextMenu.AddMenuItem( "Properties", () => Log.Info( $"Properties for {item.FullPath}" ) );
+	}
+
+	// Add these methods to VirtualFileBrowserView
+
+	public void MoveFile( BaseFileSystem fs, string oldPath, string newPath )
+	{
+		if ( !fs.FileExists( oldPath ) )
+		{
+			Log.Warning( $"File not found for moving: {oldPath}" );
+			return;
+		}
+
+		// Read file content
+		var content = fs.ReadAllBytes( oldPath );
+		// Write to new location
+		var stream = fs.OpenWrite( newPath );
+		stream.Write( content.ToArray(), 0, content.Length );
+		// Delete original
+		fs.DeleteFile( oldPath );
+	}
+
+	public void MoveDirectory( BaseFileSystem fs, string oldPath, string newPath )
+	{
+		if ( !fs.DirectoryExists( oldPath ) )
+		{
+			Log.Warning( $"Directory not found for moving: {oldPath}" );
+			return;
+		}
+
+		// Recursively copy all files and subdirectories
+		CopyDirectoryRecursive( fs, oldPath, newPath );
+
+		// Delete the original directory
+		fs.DeleteDirectory( oldPath );
+	}
+
+	private void CopyDirectoryRecursive( BaseFileSystem fs, string sourceDir, string destDir )
+	{
+		if ( !fs.DirectoryExists( destDir ) )
+			fs.CreateDirectory( destDir );
+
+		// Copy files
+		foreach ( var file in fs.FindFile( sourceDir ) )
+		{
+			var fileName = System.IO.Path.GetFileName( file );
+			var sourceFile = System.IO.Path.Combine( sourceDir, fileName );
+			var destFile = System.IO.Path.Combine( destDir, fileName );
+			var content = fs.ReadAllBytes( sourceFile );
+			var stream = fs.OpenWrite( destFile );
+			stream.Write( content.ToArray(), 0, content.Length );
+		}
+
+		// Copy subdirectories
+		foreach ( var dir in fs.FindDirectory( sourceDir ) )
+		{
+			var dirName = System.IO.Path.GetFileName( dir );
+			var sourceSubDir = System.IO.Path.Combine( sourceDir, dirName );
+			var destSubDir = System.IO.Path.Combine( destDir, dirName );
+			CopyDirectoryRecursive( fs, sourceSubDir, destSubDir );
+		}
 	}
 
 	/// <summary>
