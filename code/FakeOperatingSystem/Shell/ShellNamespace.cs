@@ -19,8 +19,11 @@ public class ShellNamespace
 	public const string MY_COMPUTER = "My Computer";
 	public const string MY_DOCUMENTS = "My Documents";
 	public const string RECYCLE_BIN = "Recycle Bin";
-	public const string CONTROL_PANEL = "Control Panel";
 	public const string NETWORK_NEIGHBORHOOD = "Network Neighborhood";
+	public const string CONTROL_PANEL = "Control Panel";
+	public const string PRINTERS = "Printers";
+	public const string DIAL_UP_NETWORKING = "Dial-Up Networking";
+	public const string SCHEDULED_TASKS = "Scheduled Tasks";
 
 	// The core VFS for file operations
 	private IVirtualFileSystem _vfs;
@@ -133,6 +136,36 @@ public class ShellNamespace
 			Path = $"{DESKTOP}/{MY_COMPUTER}/{CONTROL_PANEL}",
 			Type = ShellFolderType.ControlPanel,
 			IconName = "controlpanel",
+			IsVirtual = true
+		} );
+
+		// Printers
+		RegisterShellFolder( new ShellFolder
+		{
+			Name = "Printers",
+			Path = $"{DESKTOP}/{MY_COMPUTER}/{PRINTERS}",
+			Type = ShellFolderType.ControlPanel,
+			IconName = "printer",
+			IsVirtual = true
+		} );
+
+		// Dial-Up Networking
+		RegisterShellFolder( new ShellFolder
+		{
+			Name = "Dial-Up Networking",
+			Path = $"{DESKTOP}/{MY_COMPUTER}/{DIAL_UP_NETWORKING}",
+			Type = ShellFolderType.ControlPanel,
+			IconName = "dialup",
+			IsVirtual = true
+		} );
+
+		// Scheduled Tasks
+		RegisterShellFolder( new ShellFolder
+		{
+			Name = SCHEDULED_TASKS,
+			Path = $"{DESKTOP}/{MY_COMPUTER}/{SCHEDULED_TASKS}",
+			Type = ShellFolderType.ControlPanel,
+			IconName = "tasks",
 			IsVirtual = true
 		} );
 

@@ -1,4 +1,6 @@
 ﻿using FakeDesktop;
+using FakeOperatingSystem.OSFileSystem;
+using FakeOperatingSystem.Shell;
 using Sandbox;
 using XGUI;
 
@@ -6,14 +8,20 @@ namespace FakeOperatingSystem;
 
 public class FakeOSLoader : Component
 {
-	OldVirtualFileSystem _virtualFileSystem;
+	OldVirtualFileSystem _oldVirtualFileSystem;
+	public VirtualFileSystem VirtualFileSystem;
+	public ShellNamespace ShellNamespace;
 	ProcessManager _processManager;
 	protected override void OnStart()
 	{
 		XGUISystem.Instance.SetGlobalTheme( "/XGUI/DefaultStyles/Computer95.scss" );
 
 		// Initialize the virtual file system
-		_virtualFileSystem = new OldVirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
+		_oldVirtualFileSystem = new OldVirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
+		VirtualFileSystem = new VirtualFileSystem( FileSystem.Data );
+
+
+		ShellNamespace = new ShellNamespace( VirtualFileSystem );
 
 		// initialize program manager
 		_processManager = new ProcessManager();

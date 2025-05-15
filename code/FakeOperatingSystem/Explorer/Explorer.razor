@@ -1,6 +1,8 @@
 @using System.Collections.Generic;
 @using System.Linq;
 @using System;
+@using FakeOperatingSystem.OSFileSystem
+@using FakeOperatingSystem.Shell
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
@@ -56,7 +58,7 @@
 			FakeSystemRoot.TryCreateSystemRoot();
 
 			// Set up the file browser
-			BrowserView.Initialize(OldVirtualFileSystem.Instance, FileSystem.Data);
+			BrowserView.Initialize(VirtualFileSystem.Instance, ShellNamespace.Instance, FileSystem.Data);
 
 			// The tree will still use the regular file system
 			BrowserTree.CurrentFileSystem = FileSystem.Data;
@@ -90,12 +92,12 @@
 			// Initialize with the provided path or default to Desktop
 			if (!string.IsNullOrEmpty(InitialPath))
 			{
-				BrowserView.NavigateToVirtualPath(InitialPath, sound: false);
+				BrowserView.NavigateToShellPath(InitialPath, sound: false);
 			}
 			else
 			{
 				// Default to Desktop if no path specified
-				BrowserView.NavigateToVirtualPath(OldVirtualFileSystem.DESKTOP, sound: false);
+				BrowserView.NavigateToShellPath(ShellNamespace.DESKTOP, sound: false);
 			}
 
 			// Set default view mode
@@ -182,9 +184,9 @@
 			menu.AddMenuItem("Forward", () => BrowserView.GoForward());
 			menu.AddMenuItem("Up", () => BrowserView.GoUp());
 			menu.AddSeparator();
-			menu.AddMenuItem("Desktop", () => BrowserView.NavigateToVirtualPath(OldVirtualFileSystem.DESKTOP));
-			menu.AddMenuItem("My Computer", () => BrowserView.NavigateToVirtualPath($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}"));
-			menu.AddMenuItem("My Documents", () => BrowserView.NavigateToVirtualPath($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_DOCUMENTS}"));
+			menu.AddMenuItem("Desktop", () => BrowserView.NavigateToShellPath(ShellNamespace.DESKTOP));
+			menu.AddMenuItem("My Computer", () => BrowserView.NavigateToShellPath($"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}"));
+			menu.AddMenuItem("My Documents", () => BrowserView.NavigateToShellPath($"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_DOCUMENTS}"));
 		});
 	}
 
@@ -250,7 +252,7 @@
 		string virtualPath = ParseAddressInput(displayPath);
 		if (!string.IsNullOrEmpty(virtualPath))
 		{
-			BrowserView.NavigateToVirtualPath(virtualPath);
+			BrowserView.NavigateToShellPath(virtualPath);
 		}
 	}
 

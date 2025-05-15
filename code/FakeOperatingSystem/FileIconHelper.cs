@@ -1,3 +1,4 @@
+using FakeOperatingSystem.OSFileSystem;
 using Sandbox;
 using System;
 using System.IO;
@@ -105,6 +106,62 @@ namespace FakeDesktop
 		public static string GetGenericFolderIcon( int size = 16 )
 		{
 			return XGUIIconSystem.GetIcon( "folder", XGUIIconSystem.IconType.Folder, size );
+		}
+
+		/// <summary>
+		/// Gets a custom folder icon from a desktop.ini file if present
+		/// </summary>
+		public static string GetCustomFolderIconFromDesktopIni( string path, IVirtualFileSystem vfs )
+		{
+			if ( vfs == null )
+				return null;
+
+			if ( path == null )
+				return null;
+
+			// Build the path to the desktop.ini file
+			string iniPath = Path.Combine( path, "desktop.ini" );
+
+
+			// Check if the file exists in the VFS
+			if ( !vfs.FileExists( iniPath ) )
+				return null;
+
+			try
+			{
+				// Read the file contents using the VFS
+				string iniContent = vfs.ReadAllText( iniPath );
+				string[] lines = iniContent.Split( '\n' );
+
+				// Parse the desktop.ini file
+				bool inSection = false;
+				foreach ( var rawLine in lines )
+				{
+					string line = rawLine.Trim();
+					if ( line.StartsWith( "[.XGUIInfo]", StringComparison.OrdinalIgnoreCase ) )
+					{
+						inSection = true;
+						continue;
+					}
+
+					if ( inSection )
+					{
+						if ( line.StartsWith( "[" ) && line.EndsWith( "]" ) )
+							break; // New section, stop
+
+						if ( line.StartsWith( "Icon=", StringComparison.OrdinalIgnoreCase ) )
+						{
+							return line.Substring( "Icon=".Length ).Trim();
+						}
+					}
+				}
+			}
+			catch ( Exception ex )
+			{
+				Log.Warning( $"Error reading desktop.ini file: {ex.Message}" );
+			}
+
+			return null;
 		}
 
 		/// <summary>

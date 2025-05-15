@@ -9,6 +9,7 @@ namespace FakeDesktop;
 /// <summary>
 /// A virtual file system, kinda like shell namespaces (i think)
 /// </summary>
+[Obsolete]
 public class OldVirtualFileSystem
 {
 	// Special folder constants
