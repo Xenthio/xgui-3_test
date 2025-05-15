@@ -272,6 +272,17 @@ public class VirtualFileSystem : IVirtualFileSystem
 		var resolution = ResolveMountPoint( path );
 		return resolution.FileSystem.FileSize( resolution.RealPath );
 	}
+
+	public IEnumerable<string> FindFile( string sourceDir )
+	{
+		var resolution = ResolveMountPoint( sourceDir );
+		return resolution.FileSystem.FindFile( resolution.RealPath );
+	}
+	public IEnumerable<string> FindDirectory( string sourceDir )
+	{
+		var resolution = ResolveMountPoint( sourceDir );
+		return resolution.FileSystem.FindDirectory( resolution.RealPath );
+	}
 }
 
 /// <summary>

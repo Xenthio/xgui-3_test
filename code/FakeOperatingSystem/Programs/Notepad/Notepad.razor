@@ -257,23 +257,23 @@
             // For now, save to a default path if not already set
             if (string.IsNullOrEmpty(path))
             {
-                path = "FakeSystemRoot/My Documents/Untitled.txt";
+                path = "C:/My Documents/Untitled.txt";
             }
         }
 
         try
         {
             string directory = Path.GetDirectoryName(path);
-            if (!FileSystem.Data.DirectoryExists(directory))
+            if (!VirtualFileSystem.Instance.DirectoryExists(directory))
             {
-                FileSystem.Data.CreateDirectory(directory);
+                VirtualFileSystem.Instance.CreateDirectory(directory);
             }
 
             // Make sure we have the latest text from the control
             if (TextArea != null)
                 TextContent = TextArea.Text;
 
-            FileSystem.Data.WriteAllText(path, TextContent);
+            VirtualFileSystem.Instance.WriteAllText(path, TextContent);
             CurrentFilePath = path;
             HasUnsavedChanges = false;
             UpdateTitle();

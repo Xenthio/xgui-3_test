@@ -39,5 +39,7 @@ namespace FakeOperatingSystem.OSFileSystem
 
 		// Misc
 		long FileSize( string path );
+		IEnumerable<string> FindFile( string sourceDir );
+		IEnumerable<string> FindDirectory( string sourceDir );
 	}
 }

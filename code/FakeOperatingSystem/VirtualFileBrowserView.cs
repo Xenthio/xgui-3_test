@@ -490,7 +490,7 @@ public class VirtualFileBrowserView : FileBrowserView
 								if ( _vfs.DirectoryExists( shellItem.RealPath ) )
 								{
 									// Use the existing move method
-									MoveDirectory( FileSystem.Data, shellItem.RealPath, newPath );
+									MoveDirectory( shellItem.RealPath, newPath );
 								}
 							}
 							else
@@ -498,7 +498,7 @@ public class VirtualFileBrowserView : FileBrowserView
 								if ( _vfs.FileExists( shellItem.RealPath ) )
 								{
 									// Use the existing move method
-									MoveFile( FileSystem.Data, shellItem.RealPath, newPath );
+									MoveFile( shellItem.RealPath, newPath );
 								}
 							}
 
@@ -544,61 +544,60 @@ public class VirtualFileBrowserView : FileBrowserView
 
 	// Add these methods to VirtualFileBrowserView
 
-	public void MoveFile( BaseFileSystem fs, string oldPath, string newPath )
+	public void MoveFile( string oldPath, string newPath )
 	{
-		if ( !fs.FileExists( oldPath ) )
+		if ( !_vfs.FileExists( oldPath ) )
 		{
 			Log.Warning( $"File not found for moving: {oldPath}" );
 			return;
 		}
 
 		// Read file content
-		var content = fs.ReadAllBytes( oldPath );
+		var content = _vfs.ReadAllBytes( oldPath );
 		// Write to new location
-		var stream = fs.OpenWrite( newPath );
+		var stream = _vfs.OpenWrite( newPath );
 		stream.Write( content.ToArray(), 0, content.Length );
 		// Delete original
-		fs.DeleteFile( oldPath );
+		_vfs.DeleteFile( oldPath );
 	}
 
-	public void MoveDirectory( BaseFileSystem fs, string oldPath, string newPath )
+	public void MoveDirectory( string oldPath, string newPath )
 	{
-		if ( !fs.DirectoryExists( oldPath ) )
+		if ( !_vfs.DirectoryExists( oldPath ) )
 		{
 			Log.Warning( $"Directory not found for moving: {oldPath}" );
 			return;
 		}
 
 		// Recursively copy all files and subdirectories
-		CopyDirectoryRecursive( fs, oldPath, newPath );
+		CopyDirectoryRecursive( oldPath, newPath );
 
 		// Delete the original directory
-		fs.DeleteDirectory( oldPath );
+		_vfs.DeleteDirectory( oldPath );
 	}
 
-	private void CopyDirectoryRecursive( BaseFileSystem fs, string sourceDir, string destDir )
+	private void CopyDirectoryRecursive( string sourceDir, string destDir )
 	{
-		if ( !fs.DirectoryExists( destDir ) )
-			fs.CreateDirectory( destDir );
+		if ( !_vfs.DirectoryExists( destDir ) )
+			_vfs.CreateDirectory( destDir );
 
 		// Copy files
-		foreach ( var file in fs.FindFile( sourceDir ) )
+		foreach ( var file in _vfs.FindFile( sourceDir ) )
 		{
 			var fileName = System.IO.Path.GetFileName( file );
 			var sourceFile = System.IO.Path.Combine( sourceDir, fileName );
 			var destFile = System.IO.Path.Combine( destDir, fileName );
-			var content = fs.ReadAllBytes( sourceFile );
-			var stream = fs.OpenWrite( destFile );
-			stream.Write( content.ToArray(), 0, content.Length );
+			var content = _vfs.ReadAllBytes( sourceFile );
+			_vfs.WriteAllBytes( destFile, content );
 		}
 
 		// Copy subdirectories
-		foreach ( var dir in fs.FindDirectory( sourceDir ) )
+		foreach ( var dir in _vfs.FindDirectory( sourceDir ) )
 		{
 			var dirName = System.IO.Path.GetFileName( dir );
 			var sourceSubDir = System.IO.Path.Combine( sourceDir, dirName );
 			var destSubDir = System.IO.Path.Combine( destDir, dirName );
-			CopyDirectoryRecursive( fs, sourceSubDir, destSubDir );
+			CopyDirectoryRecursive( sourceSubDir, destSubDir );
 		}
 	}
 
