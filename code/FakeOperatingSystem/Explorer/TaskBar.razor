@@ -39,8 +39,8 @@
 			<div class="toolbar-drag-handle handle"></div>
 			@foreach (var win in OpenWindows)
 			{
-				var isFocused = win.WindowRef?.HasFocus == true; 
-				<button class="window-btn @(isFocused ? "focused forceinset" : "")" title="@win.Title" onclick="@(() => FocusWindow(win))" style="display:flex; align-items:center;">
+				var isFocused = win.WindowRef?.HasFocus == true;
+				<button class="window-btn @(isFocused ? "focused forceinset" : "")" title="@win.Title" onclick="@(() => RestoreOrFocusWindow(win))" style="display:flex; align-items:center;">
 					<img class="iconpanel icon" src="@win.Icon" style="margin-right:2px;" />
 					<span>@win.Title</span>
 				</button>
@@ -73,22 +73,22 @@
 	public record QuickAccessItem(string Name, string Path, string Icon, bool IsDirectory);
 
 	private List<QuickAccessItem> _quickAccessItems = new();
-	
+
 	public List<QuickAccessItem> QuickAccessItems => _quickAccessItems;
 
 	// Method to load quick launch items from the virtual file system
 	private void LoadQuickLaunchItems()
 	{
 		_quickAccessItems.Clear();
-		
+
 		// Get the VirtualFileSystem instance
 		var virtualFileSystem = VirtualFileSystem.Instance;
 		if (virtualFileSystem == null)
 			return;
-			
+
 		// Path to Quick Launch folder
 		string quickLaunchPath = @"C:\Windows\Application Data\Microsoft\Internet Explorer\Quick Launch";
-		
+
 		// Check if the folder exists
 		var quickLaunchEntry = virtualFileSystem.GetEntry(quickLaunchPath);
 		if (quickLaunchEntry == null)
@@ -97,14 +97,14 @@
 		Log.Info("Loading Quick Access Items");
 		// Get folder contents
 		var contents = virtualFileSystem.GetDirectoryContents(quickLaunchPath);
-		
+
 		// Add each item to the quick launch items
 		foreach (var entry in contents)
 		{
 			Log.Info($"Adding Quick Access Item: {entry.Name} ({entry.Type})");
 			int iconSize = 16;
 			string iconPath;
-			
+
 			if (entry.Type == VirtualFileSystem.EntryType.Directory ||
 				entry.Type == VirtualFileSystem.EntryType.SpecialFolder)
 			{
@@ -128,7 +128,7 @@
 			}
 		}
 	}
-	
+
 	// Method to open quick access item
 	private void OpenQuickAccessItem(QuickAccessItem item)
 	{
@@ -144,11 +144,11 @@
 			var virtualFileSystem = VirtualFileSystem.Instance;
 			if (virtualFileSystem == null)
 				return;
-				
+
 			var entry = virtualFileSystem.GetEntry(item.Path);
 			if (entry == null)
 				return;
-				
+
 			// Handle shortcuts
 			if (entry.Name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
 			{
@@ -156,7 +156,7 @@
 				virtualFileSystem.ResolveShortcut(entry.RealPath);
 				return;
 			}
-			
+
 			// Handle executables
 			if (entry.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
 			{
@@ -169,7 +169,7 @@
 				ProcessManager.Instance?.OpenExecutable(entry.Path, launchOptions);
 				return;
 			}
-			
+
 			// For other files, use file associations
 			virtualFileSystem.OpenFile(entry.RealPath);
 		}
@@ -198,7 +198,7 @@
 			{
 				foreach (var win in nativeProc.OwnedWindows)
 				{
-					if (win != null && win.IsValid && win.IsVisible)
+					if (win != null && win.IsValid && (win.IsVisible || win.IsMinimised))
 					{
 						windows.Add(new WindowInfo
 						{
@@ -215,20 +215,39 @@
 		return windows;
 	}
 
-	void FocusWindow(WindowInfo win)
+	void RestoreOrFocusWindow(WindowInfo win)
 	{
-		win.WindowRef?.FocusWindow();
+		if (win.WindowRef?.IsMinimised == true)
+		{
+			win.WindowRef.Minimise(); // This will restore and show the window
+		}
+		else
+		{
+			win.WindowRef?.FocusWindow();
+		}
 	}
 
 	public TaskBar()
 	{ 
 		SetClass("taskbar-root",true);
 		Position = new Vector2(0, 9000);
-		
+
 		// Load quick launch items when the taskbar is created
 		LoadQuickLaunchItems();
+
+		Window.OnMinimised += OnAnyWindowMinimised;
+		Window.OnRestored += OnAnyWindowRestored;
 	}
-	
+
+	private void OnAnyWindowMinimised(Window window)
+	{
+		window.Style.Display = DisplayMode.None;
+	}
+	private void OnAnyWindowRestored(Window window)
+	{
+		window.Style.Display = DisplayMode.Flex;
+	}
+
 	public override void Tick()
 	{
 		base.Tick();
