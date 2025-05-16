@@ -1,10 +1,11 @@
-@using System.IO
+﻿@using System.IO
 @using System.Text
 @using Sandbox
 @using Sandbox.UI
 @using XGUI
 @using FakeOperatingSystem
 @using FakeOperatingSystem.Console;
+@using global::System.Text
 @attribute [StyleSheet()]
 @inherits Window
 
@@ -17,13 +18,15 @@
 
 	<div class="window-content">
 		<layoutboxinset class="console-box">
-			<label @ref="OutputLabel"
-				   class="console-area"
-				   style="flex: 1; margin-bottom: 4px; overflow-y: auto; white-space: pre-wrap;">
-				@DisplayText
-			</label>
+			<div class="console-area" @ref="ScrollArea">
+				<label @ref="OutputLabel">
+					@DisplayText
+				</label>
+			</div>
 		</layoutboxinset>
 	</div>
+	@{
+	}
 </root>
 
 @code {
@@ -32,6 +35,7 @@
 	int consoleHeight = 25 * 12; // Default console height
 
 	private Label OutputLabel;
+	private Panel ScrollArea;
 
 	// Output and input buffers
 	private StringBuilder outputBuffer = new();
@@ -44,15 +48,30 @@
 		writer = new ConsoleHostWriter(AppendOutput);
 		reader = new ConsoleHostReader();
 		this.Size = new Vector2(consoleWidth, consoleHeight);
-		
 	}
 
 	public TextWriter GetOutputWriter() => writer;
 	public TextReader GetInputReader() => reader;
 
 	// The text shown in the command line;
-	private string DisplayText => outputBuffer.ToString() + reader.CurrentLine;
+	private string DisplayText => (outputBuffer?.ToString() ?? "") + (reader?.CurrentLine ?? "") + Cursor;
 
+	private string Cursor = " ";
+	public TimeSince TimeSinceBlink;
+	public TimeSince TimeSinceScrollUpdate;
+
+	string prevText = "";
+	public override void Tick()
+	{
+		base.Tick();
+		if (TimeSinceBlink > 0.5f)
+		{
+			Cursor = Cursor == " " ? "_" : " ";
+			TimeSinceBlink = 0;
+		}
+
+		ScrollArea.PreferScrollToBottom = true;
+	}
 
 
 	public override void OnButtonTyped(ButtonEvent e)
@@ -80,7 +99,7 @@
 	}
 
 	public override void OnKeyTyped(char k)
-	{
+	{ 
 		Submit(k);
 	}
 
@@ -88,19 +107,142 @@
 	{ 
 		//AppendOutput(c);
 		reader.SubmitChar(c);
+		ScrollArea?.TryScrollToBottom();
 	}
 
-	// Call this from the process to write output
+	private enum EscapeSequenceState { None, GotEscape, GotCSI, GotOSC }
+	private EscapeSequenceState currentEscapeState = EscapeSequenceState.None;
+	private StringBuilder csiParameterBuffer = new StringBuilder();
+	private StringBuilder oscStringBuffer = new StringBuilder();
+
 	public void AppendOutput(char c)
 	{
+		// Handle special characters first that are not part of multi-char escape sequences
 		if (c == '\b')
 		{
 			if (outputBuffer.Length > 0)
 				outputBuffer.Remove(outputBuffer.Length - 1, 1);
+			return; // Processed, do not append
+		}
+
+		if (c == 0x1B) // ESC
+		{
+			currentEscapeState = EscapeSequenceState.GotEscape;
+			csiParameterBuffer.Clear(); // Prepare for new sequence parameters
+			return; // ESC itself is not appended
+		}
+		else if (c == 00)
+		{
 			return;
 		}
-		outputBuffer.Append(c);
-	} 
+		else if (c == '\t')
+		{
+			outputBuffer.Append("   ");
+			return;
+		}
+		else if (c == '\v')
+		{	
+			outputBuffer.Append("\n");
+			return;
+		}
+		else if (c == '\u001A') // Ctrl+Z (SUB)
+		{
+			return;
+		}
+		else if (c == '\u000E')
+		{
+			return;
+		}
+
+		// If we are in the middle of an escape sequence, pass char to handler
+		if (currentEscapeState != EscapeSequenceState.None)
+		{
+			DoEscape(c);
+			// DoEscape will handle 'c' and reset currentEscapeState when sequence is complete or invalid.
+			// Characters like '[', '2', 'J', 'H' (when part of a sequence) should not be appended.
+		}
+		else // Not an ESC, not part of an escape sequence, not backspace
+		{
+			outputBuffer.Append(c); // Append normal characters
+		}
+	}
+
+	public void DoEscape(char c)
+	{
+		switch (currentEscapeState)
+		{
+			case EscapeSequenceState.GotEscape:
+				if (c == '[') // Start of CSI (Control Sequence Introducer)
+				{
+					currentEscapeState = EscapeSequenceState.GotCSI;
+				}
+				else if (c == ']') // Start of OSC (Operating System Command)
+				{
+					currentEscapeState = EscapeSequenceState.GotOSC;
+					oscStringBuffer.Clear();
+				}
+				else
+				{
+					// Non-CSI, Non-OSC escape sequence, or unsupported sequence.
+					currentEscapeState = EscapeSequenceState.None;
+				}
+				break;
+
+			case EscapeSequenceState.GotCSI:
+				if (char.IsDigit(c) || c == ';') // Accumulate parameters
+				{
+					csiParameterBuffer.Append(c);
+				}
+				else // This character 'c' is the command character (e.g., 'J', 'H')
+				{
+					string paramsStr = csiParameterBuffer.ToString();
+					switch (c)
+					{
+						case 'J': // Erase in Display (ED)
+							if (paramsStr == "2") // ESC [ 2 J
+							{
+								outputBuffer.Clear();
+							}
+							break;
+						case 'H': // Cursor Position (CUP)
+							if (string.IsNullOrEmpty(paramsStr) || paramsStr == ";")
+							{
+								outputBuffer.Clear();
+							}
+							break;
+					}
+					currentEscapeState = EscapeSequenceState.None;
+					csiParameterBuffer.Clear();
+				}
+				break;
+
+			case EscapeSequenceState.GotOSC:
+				if (c == '\u0007') // BEL character, string terminator for OSC
+				{
+					string oscCommand = oscStringBuffer.ToString();
+					if (oscCommand.StartsWith("0;"))
+					{
+						Title = oscCommand.Substring(2); // Set the window title
+					}
+					// Other OSC commands (e.g., 1; for icon name, 2; for title) could be handled here.
+					currentEscapeState = EscapeSequenceState.None;
+					oscStringBuffer.Clear();
+				}
+				else if (c == 0x1B) // ESC can also terminate OSC string (though BEL is more common)
+				{
+					// Potentially start of a new escape sequence, or just an early termination.
+					// For simplicity, we'll just terminate the current OSC.
+					currentEscapeState = EscapeSequenceState.None; // Or GotEscape if next char is '[' or ']'
+					oscStringBuffer.Clear();
+					// If the char that broke this was ESC, it will be processed by AppendOutput in the next call
+				}
+				else
+				{
+					oscStringBuffer.Append(c); // Accumulate OSC string content
+				}
+				break;
+		}
+	}
 
 	protected override int BuildHash()
 	{

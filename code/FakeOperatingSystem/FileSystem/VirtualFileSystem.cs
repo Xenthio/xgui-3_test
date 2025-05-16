@@ -273,6 +273,12 @@ public class VirtualFileSystem : IVirtualFileSystem
 		return resolution.FileSystem.FileSize( resolution.RealPath );
 	}
 
+	public long ModifiedDate( string path )
+	{
+		//stub
+		return DateTime.UtcNow.ToFileTimeUtc();
+	}
+
 	public IEnumerable<string> FindFile( string sourceDir )
 	{
 		var resolution = ResolveMountPoint( sourceDir );
@@ -282,6 +288,61 @@ public class VirtualFileSystem : IVirtualFileSystem
 	{
 		var resolution = ResolveMountPoint( sourceDir );
 		return resolution.FileSystem.FindDirectory( resolution.RealPath );
+	}
+
+	public long RecursiveDirectorySize( string path )
+	{
+		var resolution = ResolveMountPoint( path );
+		long totalSize = 0;
+		// Get all files in the directory
+		var files = resolution.FileSystem.FindFile( resolution.RealPath );
+		foreach ( var file in files )
+		{
+			totalSize += resolution.FileSystem.FileSize( Path.Combine( path, file ) );
+		}
+		// Get all subdirectories and their sizes
+		var directories = resolution.FileSystem.FindDirectory( resolution.RealPath );
+		foreach ( var dir in directories )
+		{
+			totalSize += RecursiveDirectorySize( Path.Combine( path, dir ) );
+		}
+		return totalSize;
+	}
+
+	public long GetFreeSpace( string path )
+	{
+		// stub, lets take away used space (RecursiveDirectorySize) from 24gb
+		var resolution = ResolveMountPoint( path );
+		long totalSize = 24 * 1024 * 1024 * 1024L; // 24 GB
+		long usedSpace = RecursiveDirectorySize( resolution.RealPath );
+		return totalSize - usedSpace;
+	}
+
+	public bool CopyFile( string source, string destination )
+	{
+		var resolution = ResolveMountPoint( source );
+		var destResolution = ResolveMountPoint( destination );
+		var srcContents = resolution.FileSystem.ReadAllBytes( resolution.RealPath ).ToArray();
+		if ( srcContents != null )
+		{
+			var stream = destResolution.FileSystem.OpenWrite( destResolution.RealPath );
+			stream.Write( srcContents, 0, srcContents.Length );
+			stream.Close();
+			return true;
+		}
+		return false;
+	}
+
+	public bool MoveFile( string source, string destination )
+	{
+		var resolution = ResolveMountPoint( source );
+		var destResolution = ResolveMountPoint( destination );
+		if ( CopyFile( source, destination ) )
+		{
+			DeleteFile( source );
+			return true;
+		}
+		return false;
 	}
 }
 
@@ -294,6 +355,11 @@ public class MountPoint
 	/// The name of the mount point (e.g., "C:", "FS:A:")
 	/// </summary>
 	public string Name { get; set; }
+
+	/// <summary>
+	/// The label of the mount point (e.g., "C:", "FS:A:")
+	/// </summary>
+	public string Label { get; set; }
 
 	/// <summary>
 	/// The real path this mount point maps to

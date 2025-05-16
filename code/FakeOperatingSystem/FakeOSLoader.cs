@@ -8,12 +8,17 @@ namespace FakeOperatingSystem;
 
 public class FakeOSLoader : Component
 {
+	public static int VersionNumber = 0;
+	public static string VersionString = "XGUI-3 FakeOS v0.0 (no versioning)";
+
+	public static FakeOSLoader Instance;
 	OldVirtualFileSystem _oldVirtualFileSystem;
 	public VirtualFileSystem VirtualFileSystem;
 	public ShellNamespace ShellNamespace;
 	ProcessManager _processManager;
 	protected override void OnStart()
 	{
+		Instance = this;
 		XGUISystem.Instance.SetGlobalTheme( "/XGUI/DefaultStyles/Computer95.scss" );
 
 		// Initialize the virtual file system
