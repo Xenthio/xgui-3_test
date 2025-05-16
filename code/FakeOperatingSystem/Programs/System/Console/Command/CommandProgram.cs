@@ -501,7 +501,7 @@ public class CommandProgram : NativeProgram
 							var time = VirtualFileSystem.Instance.ModifiedDate( childFile );
 							var dateTime = DateTime.FromFileTime( time );
 							var formattedDate = dateTime.ToString( "dd/MM/yyyy  hh:mm tt" );
-							StandardOutput.WriteLine( $"{formattedDate,-20} {fileSize.ToString( "N0" ),16} {fileName}" );
+							StandardOutput.WriteLine( $"{formattedDate,-20} {fileSize.ToString( "N0" ),17} {fileName}" );
 						}
 						StandardOutput.WriteLine( $"{fileCount.ToString( "N0" ),16} File(s){totalFileSize.ToString( "N0" ),15} bytes" );
 						StandardOutput.WriteLine( $"{dirCount.ToString( "N0" ),16} Dir(s) {VirtualFileSystem.Instance.GetFreeSpace( dirPath ).ToString( "N0" ),15} bytes free" );
