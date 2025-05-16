@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 
 namespace FakeOperatingSystem.Utils;
@@ -104,6 +105,38 @@ public static class DOSEncodingHelper
 		'\u2261', '\u00B1', '\u2265', '\u2264', '\u2320', '\u2321', '\u00F7', '\u2248',
 		'\u00B0', '\u2219', '\u00B7', '\u221A', '\u207F', '\u00B2', '\u25A0', '\u00A0'
 	};
+	private static readonly Dictionary<char, byte> Cp437ReverseMap;
+
+	static DOSEncodingHelper()
+	{
+		Cp437ReverseMap = new Dictionary<char, byte>( Cp437Map.Length );
+		for ( int i = 0; i < Cp437Map.Length; i++ )
+		{
+			// Handle potential duplicate characters in the map by prioritizing the first occurrence (lower byte value).
+			// Standard CP437 doesn't have duplicates, but this is a safeguard.
+			if ( !Cp437ReverseMap.ContainsKey( Cp437Map[i] ) )
+			{
+				Cp437ReverseMap[Cp437Map[i]] = (byte)i;
+			}
+		}
+
+		// Special handling for control characters that might be represented differently in strings
+		// than their direct CP437 visual glyphs (if any were mapped above for 0x00-0x1F, 0x7F).
+		// This ensures common C# escape sequences for control chars map to their correct byte values.
+		Cp437ReverseMap['\a'] = 0x07; // Bell
+		Cp437ReverseMap['\b'] = 0x08; // Backspace
+		Cp437ReverseMap['\t'] = 0x09; // Tab
+									  // For newline, decide if '\n' should map to LF (0x0A) or CRLF (0x0D, 0x0A).
+									  // Typically, for byte streams, you'd handle CR and LF separately if they appear.
+									  // If the string contains '\n', we'll map it to LF (0x0A).
+									  // If it contains '\r\n', each will be mapped: '\r' to 0x0D, '\n' to 0x0A.
+		Cp437ReverseMap['\n'] = 0x0A; // Line Feed
+		Cp437ReverseMap['\v'] = 0x0B; // Vertical Tab
+		Cp437ReverseMap['\f'] = 0x0C; // Form Feed
+		Cp437ReverseMap['\r'] = 0x0D; // Carriage Return
+									  // Note: Cp437Map already has entries for 0x0E, 0x0F, 0x1A, 0x1B, etc.
+									  // If a string contains '\u000E', it will use the existing map.
+	}
 
 	/// <summary>
 	/// Converts a byte array to a string using CP850 (DOS Latin 1) encoding.
@@ -143,6 +176,34 @@ public static class DOSEncodingHelper
 			sb.Append( Cp437Map[b] );
 		}
 		return sb.ToString();
+	}
+	/// <summary>
+	/// Converts a string to a byte array using CP437 (Original IBM PC / DOS) encoding.
+	/// Characters not found in CP437 will be replaced with the CP437 '?' character (byte 0x3F).
+	/// </summary>
+	/// <param name="text">The string to convert.</param>
+	/// <returns>The encoded byte array.</returns>
+	public static byte[] GetBytesCp437( string text )
+	{
+		if ( string.IsNullOrEmpty( text ) )
+		{
+			return System.Array.Empty<byte>();
+		}
+
+		List<byte> byteList = new List<byte>( text.Length );
+		foreach ( char c in text )
+		{
+			if ( Cp437ReverseMap.TryGetValue( c, out byte byteValue ) )
+			{
+				byteList.Add( byteValue );
+			}
+			else
+			{
+				// Character not found in CP437, use '?' (0x3F) as a fallback.
+				byteList.Add( 0x3F );
+			}
+		}
+		return byteList.ToArray();
 	}
 	public static string GetStringCp437KeepControl( byte[] bytes )
 	{

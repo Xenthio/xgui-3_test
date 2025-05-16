@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace FakeOperatingSystem.OSFileSystem;
 
@@ -130,7 +131,7 @@ public class VirtualFileSystem : IVirtualFileSystem
 	{
 		var resolution = ResolveMountPoint( path );
 
-		resolution.FileSystem.OpenWrite( path ).Write( contents, 0, contents.Length );
+		resolution.FileSystem.OpenWrite( resolution.RealPath ).Write( contents, 0, contents.Length );
 
 		//resolution.FileSystem.WriteAllBytes( resolution.RealPath, contents );
 	}
@@ -393,6 +394,175 @@ public class VirtualFileSystem : IVirtualFileSystem
 			return true;
 		}
 		return false;
+	}
+
+	public bool CopyDirectory( string source, string destination )
+	{
+		var resolution = ResolveMountPoint( source );
+		var destResolution = ResolveMountPoint( destination );
+		if ( !DirectoryExists( destination ) )
+		{
+			CreateDirectory( destination );
+		}
+		foreach ( var file in GetFiles( source ) )
+		{
+			CopyFile( file, Path.Combine( destination, GetFileName( file ) ) );
+		}
+		foreach ( var dir in GetDirectories( source ) )
+		{
+			CopyDirectory( dir, Path.Combine( destination, GetFileName( dir ) ) );
+		}
+		return true;
+	}
+
+	public bool MoveDirectory( string source, string destination )
+	{
+		var resolution = ResolveMountPoint( source );
+		var destResolution = ResolveMountPoint( destination );
+		if ( CopyDirectory( source, destination ) )
+		{
+			DeleteDirectory( source );
+			return true;
+		}
+		return false;
+	}
+
+	// E.G. "C:/foo/bar" -> "C:/"
+	public string GetPathRoot( string path )
+	{
+		var resolution = ResolveMountPoint( path );
+		if ( resolution.MountPoint != null )
+		{
+			return resolution.MountPoint.Name + "/";
+		}
+		else
+		{
+			return Path.GetPathRoot( path )?.Replace( '\\', '/' );
+		}
+	}
+
+	public string GetFullPath( string path )
+	{
+		if ( string.IsNullOrWhiteSpace( path ) )
+		{
+			return path;
+		}
+
+		path = path.Replace( '\\', '/' );
+
+		string driveOrMountPrefix = "";
+		string pathAfterPrefix = path;
+
+		// Find the longest matching mount point prefix
+		var bestMatchMount = _mountPoints.Keys
+			.Where( key => path.StartsWith( key, StringComparison.OrdinalIgnoreCase ) )
+			.OrderByDescending( key => key.Length )
+			.FirstOrDefault();
+
+		if ( bestMatchMount != null )
+		{
+			driveOrMountPrefix = path.Substring( 0, bestMatchMount.Length );
+			pathAfterPrefix = path.Substring( bestMatchMount.Length );
+		}
+		else if ( path.StartsWith( "/" ) )
+		{
+			// Path starts with '/' but not a known mount prefix (e.g., "/foo/bar")
+			// driveOrMountPrefix remains empty, pathAfterPrefix is the full path.
+		}
+		// Else: path is like "foo/bar" (purely relative without even a leading slash).
+		// GetFullPath assumes the input is already 'rooted' in the virtual sense.
+		// If CommandProgram.ResolvePath feeds it, this case should be handled as it prepends currentDir.
+
+		// Ensure pathAfterPrefix starts with a '/' if there's a drive/mount prefix
+		// and pathAfterPrefix is not empty and doesn't already start with '/'.
+		// e.g., "C:foo" -> pathAfterPrefix becomes "/foo"
+		if ( !string.IsNullOrEmpty( driveOrMountPrefix ) &&
+			!string.IsNullOrEmpty( pathAfterPrefix ) &&
+			pathAfterPrefix[0] != '/' )
+		{
+			pathAfterPrefix = "/" + pathAfterPrefix;
+		}
+
+		var segments = new List<string>();
+		// Only split if pathAfterPrefix is not just "/" or empty.
+		// If pathAfterPrefix is "/" or "", segments list will remain empty.
+		if ( !string.IsNullOrEmpty( pathAfterPrefix ) && pathAfterPrefix != "/" )
+		{
+			segments.AddRange( pathAfterPrefix.Split( new[] { '/' }, StringSplitOptions.RemoveEmptyEntries ) );
+		}
+
+
+		var processedSegments = new List<string>();
+		foreach ( var segment in segments )
+		{
+			if ( segment == ".." )
+			{
+				if ( processedSegments.Count > 0 )
+				{
+					processedSegments.RemoveAt( processedSegments.Count - 1 );
+				}
+				// If processedSegments is empty, ".." at the root level is ignored.
+			}
+			else if ( segment == "." )
+			{
+				// Ignore current directory segment.
+			}
+			else
+			{
+				processedSegments.Add( segment );
+			}
+		}
+
+		StringBuilder fullPath = new StringBuilder( driveOrMountPrefix );
+		if ( processedSegments.Count == 0 )
+		{
+			// Path resolves to the root of the drive/mount or the general root "/"
+			// Ensure it ends with a single slash.
+			if ( string.IsNullOrEmpty( driveOrMountPrefix ) && pathAfterPrefix.StartsWith( "/" ) )
+			{
+				// Input was like "/" or "/foo/.."
+				fullPath.Append( '/' );
+			}
+			else if ( !string.IsNullOrEmpty( driveOrMountPrefix ) )
+			{
+				// Input was like "C:" or "C:/foo/.."
+				fullPath.Append( '/' );
+			}
+			// If driveOrMountPrefix is empty and pathAfterPrefix was also empty or not starting with '/',
+			// it implies a relative path that resolved to empty, which is unusual for GetFullPath.
+			// However, given inputs are expected to be rooted, this state should mean root.
+			// If input was "foo/.." (purely relative, resolving to root of relative context),
+			// and driveOrMountPrefix is empty, fullPath is currently empty.
+			// This case should ideally not be hit if inputs are always virtually absolute.
+			// If it does, it means current dir, which GetFullPath usually doesn't return as just "/".
+			// For safety, if fullPath is still empty, and original path was not empty, make it "." or "/"?
+			// Let's stick to the logic that it forms an absolute path. If it's empty, it means root.
+			if ( fullPath.Length == 0 && !string.IsNullOrEmpty( path ) ) fullPath.Append( '/' );
+
+
+		}
+		else
+		{
+			foreach ( var segment in processedSegments )
+			{
+				fullPath.Append( '/' );
+				fullPath.Append( segment );
+			}
+		}
+
+		// Handle case where input was just a drive letter like "C:" which should be "C:/"
+		// Or if input was "/" which should be "/"
+		if ( fullPath.Length == 0 && !string.IsNullOrEmpty( driveOrMountPrefix ) )
+		{
+			return driveOrMountPrefix + "/";
+		}
+		if ( fullPath.Length == 0 && path == "/" )
+		{
+			return "/";
+		}
+
+
+		return fullPath.ToString();
 	}
 }
 

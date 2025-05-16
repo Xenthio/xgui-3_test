@@ -96,6 +96,7 @@
 		else if (e.Button == "f4") Submit((char)0x1B);
 		else if (e.Button == "f5") Submit((char)0x1B);
 		else if (e.Button == "f6") Submit((char)0x1B);
+		else if (e.HasCtrl && e.Button == "z") Submit((char)0x1A);
 	}
 
 	public override void OnKeyTyped(char k)
