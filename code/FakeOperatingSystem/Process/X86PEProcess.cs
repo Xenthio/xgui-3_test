@@ -1,6 +1,7 @@
 // code/FakeOperatingSystem/Process/X86PEProcess.cs
 using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86;
+using FakeOperatingSystem.OSFileSystem;
 using Sandbox;
 using System.IO;
 using System.Threading.Tasks;
@@ -23,15 +24,14 @@ public class X86PEProcess : BaseProcess
 	public override void Start()
 	{
 		// lookup in virtual file system 
-		if ( !OldVirtualFileSystem.Instance.PathExists( ProcessFilePath ) )
+		if ( !VirtualFileSystem.Instance.FileExists( ProcessFilePath ) )
 		{
 			Log.Warning( $"Executable not found: {ProcessFilePath}" );
 			Manager.TerminateProcess( this );
 			return;
 		}
-		var file = OldVirtualFileSystem.Instance.GetEntry( ProcessFilePath );
 
-		byte[] fileBytes = file.AssociatedFileSystem.ReadAllBytes( file.RealPath ).ToArray();
+		byte[] fileBytes = VirtualFileSystem.Instance.ReadAllBytes( ProcessFilePath );
 		if ( !_interpreter.LoadExecutable( fileBytes, ProcessFilePath ) )
 		{
 			Log.Warning( $"Failed to load PE executable: {ProcessFilePath}" );
