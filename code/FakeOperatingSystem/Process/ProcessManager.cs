@@ -47,7 +47,7 @@ public class ProcessManager
 	{
 		// Try to load as a NativeProgram (fake exe)
 		var nativeProgram = NativeProgram.ReadFromExe( exePath );
-		if ( nativeProgram.ConsoleApp && shellLaunch )
+		if ( nativeProgram != null && nativeProgram.ConsoleApp && shellLaunch )
 		{
 			// If it's a console app, we need to create a console host
 			var conProcess = OpenExecutable( "C:/Windows/System32/conhost.exe", new Win32LaunchOptions
