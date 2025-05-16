@@ -1,4 +1,5 @@
 using FakeDesktop;
+using FakeOperatingSystem.OSFileSystem;
 using Sandbox;
 using System;
 using System.IO;
@@ -143,7 +144,7 @@ public abstract class NativeProgram
 		try
 		{
 			// Read the file from the virtual file system
-			if ( !OldVirtualFileSystem.Instance.PathExists( path ) )
+			if ( !VirtualFileSystem.Instance.FileExists( path ) )
 			{
 				Log.Warning( $"Executable not found: {path}" );
 				return null;
@@ -151,11 +152,8 @@ public abstract class NativeProgram
 
 			Log.Info( $"Opening {path}" );
 
-			var file = OldVirtualFileSystem.Instance.GetEntry( path );
-			var realPath = file?.RealPath;
-			var realFS = file?.AssociatedFileSystem ?? FileSystem.Data;
 
-			byte[] fileBytes = realFS.ReadAllBytes( realPath ).ToArray();
+			byte[] fileBytes = VirtualFileSystem.Instance.ReadAllBytes( path );
 
 			if ( fileBytes.Length <= ExeTemplateBytes.Length )
 			{
