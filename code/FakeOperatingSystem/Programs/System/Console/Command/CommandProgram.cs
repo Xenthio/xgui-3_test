@@ -189,7 +189,7 @@ public class CommandProgram : NativeProgram
 							var dateTime = DateTime.FromFileTime( time );
 							var formattedDate = dateTime.ToString( "dd/MM/yyyy  hh:mm tt" );
 
-							StandardOutput.WriteLine( $"{formattedDate,8}{"<DIR>",8} {"",8} {dirName}" );
+							StandardOutput.WriteLine( $"{formattedDate,8} {"<DIR>",8} {"",8} {dirName}" );
 						}
 						foreach ( var child in VirtualFileSystem.Instance.GetFiles( cd ) )
 						{
@@ -200,14 +200,14 @@ public class CommandProgram : NativeProgram
 							var dateTime = DateTime.FromFileTime( time );
 							var formattedDate = dateTime.ToString( "dd/MM/yyyy  hh:mm tt" );
 
-							StandardOutput.WriteLine( $"{formattedDate,8} {VirtualFileSystem.Instance.FileSize( child ).ToString( "N0" ),16} {fileName}" );
+							StandardOutput.WriteLine( $"{formattedDate,8} {VirtualFileSystem.Instance.FileSize( child ).ToString( "N0" ),16 + 1} {fileName}" );
 						}
 						// 25 File( s )     54,260,514 bytes
 						// 76 Dir( s )  22,052,622,336 bytes free
 						var files = VirtualFileSystem.Instance.GetFiles( cd );
 						var directories = VirtualFileSystem.Instance.GetDirectories( cd );
-						StandardOutput.WriteLine( $"{files.Count().ToString( "N0" ),15} File(s) {files.Sum( f => VirtualFileSystem.Instance.FileSize( f ) ).ToString( "N0" ),14} bytes" );
-						StandardOutput.WriteLine( $"{directories.Count().ToString( "N0" ),15} Dir(s)  {VirtualFileSystem.Instance.GetFreeSpace( cd ).ToString( "N0" ),14} bytes free" );
+						StandardOutput.WriteLine( $"{files.Count().ToString( "N0" ),16} File(s){files.Sum( f => VirtualFileSystem.Instance.FileSize( f ) ).ToString( "N0" ),15} bytes" );
+						StandardOutput.WriteLine( $"{directories.Count().ToString( "N0" ),16} Dir(s) {VirtualFileSystem.Instance.GetFreeSpace( cd ).ToString( "N0" ),15} bytes free" );
 
 					}
 					else

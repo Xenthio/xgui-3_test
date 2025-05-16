@@ -181,37 +181,81 @@ public class VirtualFileSystem : IVirtualFileSystem
 	public IEnumerable<string> GetDirectories( string path )
 	{
 		var resolution = ResolveMountPoint( path );
-		var dirs = resolution.FileSystem.FindDirectory( resolution.RealPath );
+		var underlyingSystemDirs = resolution.FileSystem.FindDirectory( resolution.RealPath );
 
+		string baseVirtualPath = path.TrimEnd( '/' );
+		// Ensure baseVirtualPath is consistently formatted for concatenation,
+		// e.g., "C:" or "C:/Users". Appending "/." or "/.." will work correctly.
+
+		var finalResults = new List<string>();
+
+		// Add "." (current directory)
+		// Path will be like "C:/CurrentFolder/."
+		finalResults.Add( baseVirtualPath + "/." );
+
+		// Add ".." (parent directory)
+		// Only add if not at a root directory (e.g., "C:").
+		// GetDirectoryName("C:") returns null.
+		// GetDirectoryName("C:/Users") returns "C:/".
+		if ( GetDirectoryName( baseVirtualPath ) != null )
+		{
+			finalResults.Add( baseVirtualPath + "/.." );
+		}
+
+		// Process actual child directories using the original logic
+		IEnumerable<string> actualChildVirtualPaths;
 		if ( resolution.MountPoint != null )
 		{
-			string mountPrefix = resolution.MountPoint.Name;
-			string baseVirtualPath = path.TrimEnd( '/' );
-
-			return dirs.Select( d =>
+			actualChildVirtualPaths = underlyingSystemDirs.Select( d_underlying =>
 			{
-				string normalizedRealPath = resolution.RealPath.TrimEnd( '/' );
-				string normalizedDir = d.TrimEnd( '/' );
+				string normalizedRealPath = resolution.RealPath.TrimEnd( '/' ); // e.g., "FakeSystemRoot/Users"
+				string normalizedDirFromSystem = d_underlying.Replace( '\\', '/' ).TrimEnd( '/' ); // e.g., "FakeSystemRoot/Users/Alice" or "Alice"
 
-				string relativePath = "";
-				if ( normalizedDir.StartsWith( normalizedRealPath, StringComparison.OrdinalIgnoreCase ) )
+				string relativeNameSegment;
+				if ( normalizedDirFromSystem.StartsWith( normalizedRealPath + "/", StringComparison.OrdinalIgnoreCase ) )
 				{
-					int startIndex = normalizedRealPath.Length;
-					if ( normalizedDir.Length > startIndex && normalizedDir[startIndex] == '/' )
-						startIndex++;
-					relativePath = normalizedDir.Substring( startIndex );
+					// Full path from underlying system, extract relative part
+					relativeNameSegment = normalizedDirFromSystem.Substring( normalizedRealPath.Length ).TrimStart( '/' );
+				}
+				else if ( normalizedDirFromSystem.Equals( normalizedRealPath, StringComparison.OrdinalIgnoreCase ) )
+				{
+					// This is the directory itself, not a child.
+					return null;
+				}
+				else if ( !normalizedDirFromSystem.Contains( "/" ) )
+				{
+					// Simple name (relative to normalizedRealPath)
+					relativeNameSegment = normalizedDirFromSystem;
 				}
 				else
 				{
-					relativePath = Path.GetFileName( d );
+					// Some other path format, take the last part as the name.
+					relativeNameSegment = GetFileName( normalizedDirFromSystem );
 				}
 
-				// Always return full virtual path
-				return $"{baseVirtualPath}/{relativePath.TrimStart( '/' )}";
+				// Skip if the name segment is empty, or represents "." or ".." to avoid duplicates
+				if ( string.IsNullOrWhiteSpace( relativeNameSegment ) || relativeNameSegment == "." || relativeNameSegment == ".." )
+				{
+					return null;
+				}
+
+				// Construct full virtual path: e.g., "C:/Users" + "/" + "Alice"
+				return baseVirtualPath + "/" + relativeNameSegment.TrimStart( '/' );
+			} ).Where( p => p != null );
+		}
+		else
+		{
+			// No mount point, paths are direct from the default file system.
+			// Filter out any "." or ".." that might come from the underlying system.
+			actualChildVirtualPaths = underlyingSystemDirs.Where( d =>
+			{
+				var name = GetFileName( d ); // VFS GetFileName uses Path.GetFileName
+				return name != "." && name != "..";
 			} );
 		}
 
-		return dirs;
+		finalResults.AddRange( actualChildVirtualPaths );
+		return finalResults;
 	}
 
 	public void CreateDirectory( string path )
@@ -240,6 +284,9 @@ public class VirtualFileSystem : IVirtualFileSystem
 
 			foreach ( var dir in GetDirectories( path ) )
 			{
+				// Ensure we don't try to delete "." or ".." which are now part of GetDirectories
+				var dirName = GetFileName( dir );
+				if ( dirName == "." || dirName == ".." ) continue;
 				DeleteDirectory( dir, true );
 			}
 		}
@@ -301,9 +348,12 @@ public class VirtualFileSystem : IVirtualFileSystem
 			totalSize += resolution.FileSystem.FileSize( Path.Combine( path, file ) );
 		}
 		// Get all subdirectories and their sizes
-		var directories = resolution.FileSystem.FindDirectory( resolution.RealPath );
+		var directories = resolution.FileSystem.FindDirectory( resolution.RealPath ); // Original FindDirectory for raw list
 		foreach ( var dir in directories )
 		{
+			// Ensure we don't recurse into "." or ".." if underlying system returns them
+			var dirName = GetFileName( dir );
+			if ( dirName == "." || dirName == ".." ) continue;
 			totalSize += RecursiveDirectorySize( Path.Combine( path, dir ) );
 		}
 		return totalSize;
@@ -314,7 +364,7 @@ public class VirtualFileSystem : IVirtualFileSystem
 		// stub, lets take away used space (RecursiveDirectorySize) from 24gb
 		var resolution = ResolveMountPoint( path );
 		long totalSize = 24 * 1024 * 1024 * 1024L; // 24 GB
-		long usedSpace = RecursiveDirectorySize( resolution.RealPath );
+		long usedSpace = RecursiveDirectorySize( resolution.RealPath ); // Use RealPath for underlying calculation
 		return totalSize - usedSpace;
 	}
 

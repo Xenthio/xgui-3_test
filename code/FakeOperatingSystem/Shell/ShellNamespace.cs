@@ -296,6 +296,10 @@ public class ShellNamespace
 			// Add directories
 			foreach ( var dir in _vfs.GetDirectories( folder.RealPath ) )
 			{
+				// DO NOT ADD "." AND ".." DIRECTORIES
+				if ( Path.GetFileName( dir ) == "." || Path.GetFileName( dir ) == ".." )
+					continue;
+
 				string dirName = Path.GetFileName( dir );
 
 				// Skip if this directory is already added as a special folder
