@@ -6,7 +6,7 @@ public class EditProgram : NativeProgram
 	public override bool ConsoleApp => true;
 
 	/*
-	   File Edit  Search View  Options Help                                        
+	   File  Edit  Search  View  Options  Help                                     
 	┌───────────────────────────────── UNTITLED1 ─────────────────────────────────┐
 	│                                                                             ↑
 	│                                                                             █
@@ -35,5 +35,7 @@ public class EditProgram : NativeProgram
 
 	public override void Main( NativeProcess process, Win32LaunchOptions launchOptions = null )
 	{
+		StandardOutput.Write( "blah" );
+		StandardInput.Read();
 	}
 }
