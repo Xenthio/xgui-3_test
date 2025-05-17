@@ -33,7 +33,8 @@ internal class ConsoleHost : Window
 		ActiveConsolePanel = ConsoleBox.AddChild<ConsolePanel>();
 		ActiveConsolePanel.Initialize( writer, reader, SetWindowTitle );
 
-
+		ActiveConsolePanel.Style.Width = consoleWidth;
+		ActiveConsolePanel.Style.Height = consoleHeight;
 
 		Title = "Command Prompt";
 	}
@@ -44,34 +45,6 @@ internal class ConsoleHost : Window
 		base.OnAfterTreeRender( firstTime );
 		if ( !initialised && ActiveConsolePanel != null )
 		{
-			// Set window width and height so that ActiveConsolePanel is the console size 
-			if ( ActiveConsolePanel.Box.Rect.Width > 0 && ActiveConsolePanel.Box.Rect.Height > 0 )
-			{
-				float currentWindowWidth = Box.Rect.Width;
-				float currentWindowHeight = Box.Rect.Height;
-
-				float currentConsolePanelWidth = ActiveConsolePanel.Box.Rect.Width;
-				float currentConsolePanelHeight = ActiveConsolePanel.Box.Rect.Height;
-
-				float chromeWidth = currentWindowWidth - currentConsolePanelWidth;
-				float chromeHeight = currentWindowHeight - currentConsolePanelHeight;
-
-				Size = new Vector2( consoleWidth + chromeWidth, consoleHeight + chromeHeight );
-				// Optional: Set MinSize if the window should not be resizable below this calculated size
-				// MinSize = Size; 
-			}
-			else
-			{
-				// Fallback or log if ActiveConsolePanel hasn't been sized yet.
-				// This might happen if OnAfterTreeRender is called before the child panel has its final dimensions.
-				// For now, we'll assume it's sized, but a more robust solution might re-evaluate later.
-				Log.Warning( $"ConsoleHost: ActiveConsolePanel dimensions are not yet available for precise sizing. ({ActiveConsolePanel.Box.Rect.Width}x{ActiveConsolePanel.Box.Rect.Height})" );
-				// As a less precise fallback, one might use the initial commented-out values,
-				// but that wouldn't account for chrome accurately.
-				// Size = new Vector2(consoleWidth + 20, consoleHeight + 40); // Example fallback with estimated chrome
-			}
-
-
 			Log.Info( "ConsoleHost: Initializing ConsolePanel" );
 			initialised = true;
 		}
