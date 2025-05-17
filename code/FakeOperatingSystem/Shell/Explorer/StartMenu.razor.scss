@@ -32,7 +32,11 @@ StartMenu {
 
 				.ContextMenu {
 					border: none;
-					box-shadow: none;
+
+					> &::before {
+						border: 0px;
+					}
+
 					padding: 0px;
 				}
 
@@ -44,13 +48,16 @@ StartMenu {
 					height: 32px;
 					cursor: default;
 					border: 0px;
-					box-shadow: none;
+
+					> &::before {
+						border: 0px;
+					}
 
 					.ItemIcon {
 						margin-left: 8px;
 						margin-right: 10px;
 						width: 24px;
-						height: 24px; 
+						height: 24px;
 					}
 				}
 

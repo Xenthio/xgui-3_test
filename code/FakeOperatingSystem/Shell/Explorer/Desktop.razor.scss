@@ -1,11 +1,16 @@
 Desktop {
 	.listview {
 		border: none;
-		box-shadow: none;
+
+		> &::before {
+			border: 0px;
+		}
+
 		background-color: transparent;
 		color: white;
 	}
+
 	.listview-icon-container {
-		flex-direction:column;
+		flex-direction: column;
 	}
 }

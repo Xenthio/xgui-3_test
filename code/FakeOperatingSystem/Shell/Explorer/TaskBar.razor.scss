@@ -33,7 +33,11 @@ TaskBar {
 			.quick-access-btn {
 				background-color: transparent;
 				border: none;
-				box-shadow: none;
+
+				> &::before {
+					border: 0px;
+				}
+
 				height: 16px;
 				width: 16px;
 				margin-right: 6px;
@@ -91,7 +95,11 @@ TaskBar {
 			.tray-btn {
 				background-color: transparent;
 				border: none;
-				box-shadow: none;
+
+				> &::before {
+					border: 0px;
+				}
+
 				height: 16px;
 				width: 16px;
 				margin-left: 1px;
