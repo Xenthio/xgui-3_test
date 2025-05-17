@@ -151,6 +151,9 @@ public class FakeSystemRoot
 
 		// cmd (system application)
 		NativeProgram.CompileIntoExe( typeof( CommandProgram ), $"{windowsDir}/System32/cmd.exe" );
+
+		// edit (system application)
+		NativeProgram.CompileIntoExe( typeof( EditProgram ), $"{windowsDir}/System32/edit.exe" );
 	}
 
 	public static void CreateDefaultDesktopItems()

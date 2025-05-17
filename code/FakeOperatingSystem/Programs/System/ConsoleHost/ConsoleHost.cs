@@ -7,8 +7,8 @@ using XGUI;
 internal class ConsoleHost : Window
 {
 
-	int consoleWidth = 80 * 8; // Default console width
-	int consoleHeight = 25 * 12; // Default console height
+	int consoleWidth = 80 * 9; // Default console width
+	int consoleHeight = 25 * 16; // Default console height
 
 	private ConsolePanel ActiveConsolePanel;
 
@@ -22,9 +22,9 @@ internal class ConsoleHost : Window
 	{
 		SetClass( "console-window", true );
 		reader = new ConsoleHostReader();
-		writer = new ConsoleHostWriter( AppendOutput );
+		writer = new ConsoleHostWriter( AppendOutput );/*
 		Size.x = consoleWidth;
-		Size.y = consoleHeight;
+		Size.y = consoleHeight;*/
 
 		WindowContent = Add.Panel( "window-content" );
 		ConsoleBox = WindowContent.AddChild<LayoutBoxInset>();
@@ -32,6 +32,9 @@ internal class ConsoleHost : Window
 
 		ActiveConsolePanel = ConsoleBox.AddChild<ConsolePanel>();
 		ActiveConsolePanel.Initialize( writer, reader, SetWindowTitle );
+
+		ActiveConsolePanel.Style.Width = consoleWidth;
+		ActiveConsolePanel.Style.Height = consoleHeight;
 
 		Title = "Command Prompt";
 	}
@@ -45,7 +48,6 @@ internal class ConsoleHost : Window
 			Log.Info( "ConsoleHost: Initializing ConsolePanel" );
 			initialised = true;
 		}
-		ActiveConsolePanel.Focus();
 	}
 
 	private void AppendOutput( char c )
@@ -66,7 +68,6 @@ internal class ConsoleHost : Window
 		base.Tick();
 		if ( ActiveConsolePanel != null )
 		{
-			ActiveConsolePanel.Focus();
 			ActiveConsolePanel.AcceptsFocus = true;
 		}
 	}
