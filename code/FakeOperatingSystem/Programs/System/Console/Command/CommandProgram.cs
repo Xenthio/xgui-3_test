@@ -311,7 +311,7 @@ public class CommandProgram : NativeProgram
 				continue;
 			}
 
-			if ( EchoEnabled ) StandardOutput.WriteLine( line );
+			//if ( EchoEnabled ) StandardOutput.WriteLine( line );
 
 			var commandLine = line.Trim();
 			if ( string.IsNullOrEmpty( commandLine ) )
