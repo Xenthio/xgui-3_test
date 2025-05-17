@@ -2,7 +2,8 @@ Desktop {
 	.listview {
 		border: none;
 
-		> &::before {
+
+		&::before {
 			border: 0px;
 		}
 

@@ -28,9 +28,9 @@
             // Initialize browser view with virtual file system
             BrowserView.Initialize(VirtualFileSystem.Instance, ShellNamespace.Instance, FileSystem.Data);
 
-            // Intercept directory opening to launch Explorer instead of navigating 
+            // Intercept directory opening to launch Explorer instead of navigating
             BrowserView.OpenDirectoryEnabled = false;
-            BrowserView.OnDirectoryOpened += HandleDirectoryOpened; 
+            BrowserView.OnDirectoryOpened += HandleDirectoryOpened;
 
             // Set default view mode
             BrowserView.ViewMode = FileBrowserViewMode.Icons;
@@ -56,14 +56,14 @@
             // by navigating back to the desktop
             BrowserView.NavigateToShellPath(ShellNamespace.DESKTOP, sound: false);
         }
-    } 
+    }
 
     private void LaunchExplorerWithPath(string virtualPath)
     {
         // Launch the Explorer application with the specified virtual path
         ProcessManager.Instance.OpenExecutable("C:\\Windows\\explorer.exe", new Win32LaunchOptions()
         {
-			Arguments = $"{virtualPath}",
+            Arguments = $"{virtualPath}",
         });
     }
 }
