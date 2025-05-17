@@ -415,7 +415,7 @@ public class EditProgram : NativeProgram
 				scrollChar = '█';
 			}
 			screen.Append( scrollChar ); // Append the determined scrollbar character (or space)
-			screen.Append( "\n" );     // Append a newline
+			screen.Append( "\n" );     // Append the right border character and then a newline
 		}
 
 		// 4. Bottom Border
