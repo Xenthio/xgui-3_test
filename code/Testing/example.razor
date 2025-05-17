@@ -1,0 +1,27 @@
+@using System;
+@using FakeOperatingSystem.OSFileSystem
+@using FakeOperatingSystem.Shell
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using FakeDesktop;
+@using FakeOperatingSystem;
+@attribute [StyleSheet]
+@inherits Window
+
+<root>
+	<div class="window-content">
+		<div class="coolbox">
+			<div>Child A</div>
+			<div>Child B</div>
+		</div>
+	</div>
+</root>
+
+@code {
+
+	public override void Tick()
+	{
+		base.Tick(); 
+	}
+}

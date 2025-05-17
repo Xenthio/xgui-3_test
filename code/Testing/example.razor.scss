@@ -1,0 +1,25 @@
+.coolbox {
+	// this was part of the attempt to replicate the other mentioned issue, but it doesn't work
+	/*> &::before {
+		background-color: grey;
+		width: 48px;
+		height: 48px;
+	}*/
+
+	&::before {
+		background-color: blue;
+		width: 48px;
+		height: 48px;
+	}
+
+	background-color: red;
+
+	.label {
+		background-color: blue;
+
+		&:last-child { 
+
+			background-color: yellow;
+		}
+	}
+}
