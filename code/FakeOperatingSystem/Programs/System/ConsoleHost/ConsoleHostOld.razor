@@ -43,7 +43,7 @@
 	private ConsoleHostWriter writer;
 	private ConsoleHostReader reader;
 
-	public ConsoleHost()
+	public ConsoleHostOld()
 	{
 		writer = new ConsoleHostWriter(AppendOutput);
 		reader = new ConsoleHostReader();
@@ -73,6 +73,27 @@
 		ScrollArea.PreferScrollToBottom = true;
 	}
 
+	public int ReaderCaretPosition = 0;
+	public int CaretPosition => outputBuffer.Length + ReaderCaretPosition;
+
+	public TimeSince TimeSinceStart = 0;
+	public override bool HasContent => true;
+	public override void DrawContent(ref RenderState state)
+	{
+		var blinkRate = 0.8f;
+
+		var blink = (TimeSinceStart * blinkRate) % blinkRate < (blinkRate * 0.5f);
+		var caret = OutputLabel.GetCaretRect(CaretPosition);
+		caret.Left = MathX.FloorToInt(caret.Left); // avoid subpixel positions (blurry and ass)
+		caret.Width = 122;
+		caret.Height = 12; 
+
+		var color = OutputLabel.ComputedStyle.FontColor ?? Color.White;
+		color.a *= blink ? 1.0f : 0f;
+		
+		Graphics.DrawRoundedRectangle(caret, color);
+		Graphics.DrawRoundedRectangle(new Rect(caret.Left, caret.Top, 16, 16), color);
+	}
 
 	public override void OnButtonTyped(ButtonEvent e)
 	{
