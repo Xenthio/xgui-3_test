@@ -43,25 +43,33 @@ public class ConsoleHostReader : TextReader
 	private const char SCAN_CODE_END = (char)0x4F;
 	private const char SCAN_CODE_DELETE = (char)0x53;
 
-	// --- Internal Command History ---
+	// --- Internal Command History (for ReadLine) ---
 	private List<string> _commandHistory = new List<string>();
-	private int _currentHistoryIndex = -1; // -1 indicates not navigating, or use _commandHistory.Count
+	private int _currentHistoryIndex = -1;
 	private string _userInputBeforeHistoryNav = null;
-	private const int MAX_HISTORY_ITEMS = 50; // Max number of commands to store
-	private bool _isNavigatingHistory = false; // True if the current line is from history and not yet edited
+	private const int MAX_HISTORY_ITEMS = 50;
+	private bool _isNavigatingHistory = false;
 
 
 	public void SubmitChar( char c )
 	{
+		// Prioritize direct Read() if active
 		var currentCharReadTcs = _charReadTaskSource;
 		if ( currentCharReadTcs != null && !currentCharReadTcs.Task.IsCompleted )
 		{
 			currentCharReadTcs.SetResult( (int)c );
+			// Ensure Read() operates in a raw mode, not influenced by ReadLine's state
 			_expectingScanCode = false;
-			_isNavigatingHistory = false; // Any direct Read() char clears history navigation state
-			return;
+			_isNavigatingHistory = false;
+			return; // Character consumed by Read(), bypass ReadLine logic
 		}
 
+		// If not a direct Read(), process for ReadLine features
+		ProcessCharForReadLine( c );
+	}
+
+	private void ProcessCharForReadLine( char c )
+	{
 		if ( _expectingScanCode )
 		{
 			_expectingScanCode = false; // Consume the expectation
@@ -95,7 +103,6 @@ public class ConsoleHostReader : TextReader
 					{
 						if ( !_isNavigatingHistory || _currentHistoryIndex == -1 || _currentHistoryIndex == _commandHistory.Count )
 						{
-							// Starting navigation or was at the "new input" line
 							_userInputBeforeHistoryNav = _lineBuilder.ToString();
 							_currentHistoryIndex = _commandHistory.Count - 1;
 						}
@@ -103,8 +110,6 @@ public class ConsoleHostReader : TextReader
 						{
 							_currentHistoryIndex--;
 						}
-						// else _currentHistoryIndex is 0, stay at the oldest
-
 						_lineBuilder.Clear().Append( _commandHistory[_currentHistoryIndex] );
 						CaretPositionInLine = _lineBuilder.Length;
 						_isNavigatingHistory = true;
@@ -118,46 +123,37 @@ public class ConsoleHostReader : TextReader
 							_currentHistoryIndex++;
 							_lineBuilder.Clear().Append( _commandHistory[_currentHistoryIndex] );
 						}
-						else // Reached end of history, restore user's original input or clear
+						else
 						{
-							_currentHistoryIndex = _commandHistory.Count; // Indicate we're at the "new input" line
+							_currentHistoryIndex = _commandHistory.Count;
 							_lineBuilder.Clear().Append( _userInputBeforeHistoryNav ?? "" );
-							_isNavigatingHistory = false; // No longer strictly navigating a past item
+							_isNavigatingHistory = false;
 						}
 						CaretPositionInLine = _lineBuilder.Length;
 					}
 					break;
 				default:
-					// Unknown scan code, user is editing if they were navigating
 					_isNavigatingHistory = false;
 					break;
 			}
-			return;
+			return; // Scan code processed for ReadLine
 		}
 
 		if ( c == EXTENDED_KEY_INTRO )
 		{
 			_expectingScanCode = true;
-			return;
+			return; // Wait for the next char (the scan code) for ReadLine
 		}
 
-		// If any other key (printable, backspace, enter) is pressed,
-		// and it's not starting an extended key sequence,
-		// then the user is editing the current line.
-		if ( c != EXTENDED_KEY_INTRO )
-		{
-			_isNavigatingHistory = false;
-		}
-
+		// Any other key press means user is editing the line (for ReadLine)
+		_isNavigatingHistory = false;
 
 		if ( c == '\r' || c == '\n' )
 		{
 			string lineToSubmit = _lineBuilder.ToString();
 
-			// Add to history
 			if ( !string.IsNullOrWhiteSpace( lineToSubmit ) )
 			{
-				// Avoid adding consecutive duplicates
 				if ( _commandHistory.Count == 0 || _commandHistory.Last() != lineToSubmit )
 				{
 					_commandHistory.Add( lineToSubmit );
@@ -170,14 +166,14 @@ public class ConsoleHostReader : TextReader
 
 			_lineBuilder.Clear();
 			CaretPositionInLine = 0;
-			_currentHistoryIndex = -1; // Reset history navigation index
+			_currentHistoryIndex = -1;
 			_userInputBeforeHistoryNav = null;
-			_isNavigatingHistory = false;
+			// _isNavigatingHistory is already false here
 
 			var currentLineInputTcs = _lineInputTaskSource;
-			currentLineInputTcs.SetResult( lineToSubmit );
+			currentLineInputTcs.SetResult( lineToSubmit ); // Complete ReadLine
 		}
-		else if ( c == '\b' )
+		else if ( c == '\b' ) // Backspace for ReadLine
 		{
 			if ( CaretPositionInLine > 0 )
 			{
@@ -185,7 +181,7 @@ public class ConsoleHostReader : TextReader
 				CaretPositionInLine--;
 			}
 		}
-		else if ( !char.IsControl( c ) )
+		else if ( !char.IsControl( c ) ) // Printable char for ReadLine
 		{
 			if ( CaretPositionInLine < _lineBuilder.Length )
 			{
@@ -203,8 +199,9 @@ public class ConsoleHostReader : TextReader
 	{
 		var tcs = new TaskCompletionSource<int>();
 		_charReadTaskSource = tcs;
-		_expectingScanCode = false;
-		_isNavigatingHistory = false; // Reset history state for direct Read()
+		// Ensure Read() starts in a raw state, subsequent chars submitted will hit the
+		// _charReadTaskSource check in SubmitChar and bypass ReadLine logic.
+		// _expectingScanCode and _isNavigatingHistory are reset by the SubmitChar path for Read().
 
 		try
 		{
@@ -223,11 +220,10 @@ public class ConsoleHostReader : TextReader
 	public override string ReadLine()
 	{
 		_lineInputTaskSource = new TaskCompletionSource<string>();
-		// Don't reset _currentHistoryIndex here, as user might be typing a new command
-		// _userInputBeforeHistoryNav is handled by up/down arrow logic
-		// _isNavigatingHistory is reset by typing or submitting
+		// ReadLine specific state like _currentHistoryIndex, _userInputBeforeHistoryNav, 
+		// and _isNavigatingHistory are managed within ProcessCharForReadLine.
 		Task<string> task = _lineInputTaskSource.Task;
-		task.Wait();
+		task.Wait(); // Block until ProcessCharForReadLine submits a line
 
 		string line = task.Result;
 		return line;

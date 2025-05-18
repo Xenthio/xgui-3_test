@@ -14,13 +14,13 @@ public class EditProgram : NativeProgram
 	// Key Codes based on ConsoleHostReader and ConsolePanel
 	private const int KEY_NULL_INTRO = 0x00;
 
-	private const int SCAN_CODE_UP = 0x48;
-	private const int SCAN_CODE_DOWN = 0x50;
-	private const int SCAN_CODE_LEFT = 0x4B;
-	private const int SCAN_CODE_RIGHT = 0x4D;
-	private const int SCAN_CODE_HOME = 0x47;
-	private const int SCAN_CODE_END = 0x4F;
-	private const int SCAN_CODE_DELETE = 0x53;
+	private const char SCAN_CODE_UP = (char)0x48;
+	private const char SCAN_CODE_DOWN = (char)0x50;
+	private const char SCAN_CODE_LEFT = (char)0x4B;
+	private const char SCAN_CODE_RIGHT = (char)0x4D;
+	private const char SCAN_CODE_HOME = (char)0x47;
+	private const char SCAN_CODE_END = (char)0x4F;
+	private const char SCAN_CODE_DELETE = (char)0x53;
 	// Note: PageUp/PageDown are not uniquely identifiable with current ConsolePanel, they send ESC
 
 	private const int KEY_ENTER = '\n';       // ConsolePanel sends \n for enter button
@@ -54,6 +54,10 @@ public class EditProgram : NativeProgram
 	private string _statusMessage = "";
 	private DateTime _statusMessageTime;
 
+	private bool _fullRedrawNeeded = true; // True if the entire screen needs to be redrawn
+	private int _singleLineToUpdate = -1;  // Buffer index of the line to update, -1 if none or full redraw
+	private bool _statusLineNeedsUpdate = true; // True if only the status line needs an update
+
 	public override void Main( NativeProcess process, Win32LaunchOptions launchOptions = null )
 	{
 		string filePathArgument = launchOptions?.Arguments?.Trim();
@@ -68,13 +72,45 @@ public class EditProgram : NativeProgram
 			_buffer.Add( new StringBuilder() ); // Start with one empty line for new file
 		}
 		_isDirty = false; // Reset dirty flag
+		_fullRedrawNeeded = true; // Ensure initial draw
 
 		// process.StandardOutput.Write(ANSI_HIDE_CURSOR); // Attempt to hide ConsolePanel's default caret
 
 		bool running = true;
 		while ( running )
 		{
-			DrawScreen( process.StandardOutput );
+			// Check for status message timeout and clear if necessary
+			if ( !string.IsNullOrWhiteSpace( _statusMessage ) &&
+				(_statusMessageTime != default && (DateTime.UtcNow - _statusMessageTime).TotalSeconds > 5) )
+			{
+				_statusMessage = ""; // Clear timed-out message
+				_statusLineNeedsUpdate = true;
+			}
+
+			if ( _fullRedrawNeeded )
+			{
+				DrawScreen( process.StandardOutput ); // Draws everything, including status and positions cursor
+				_fullRedrawNeeded = false;
+				_singleLineToUpdate = -1;
+				_statusLineNeedsUpdate = false; // DrawScreen handles status line and cursor positioning
+			}
+			else
+			{
+				if ( _singleLineToUpdate != -1 )
+				{
+					RedrawTextLine( process.StandardOutput, _singleLineToUpdate );
+					_singleLineToUpdate = -1;
+					// After redrawing a line, the status (like Col number) might change
+					_statusLineNeedsUpdate = true;
+				}
+				if ( _statusLineNeedsUpdate )
+				{
+					UpdateStatusLineOnly( process.StandardOutput );
+					_statusLineNeedsUpdate = false;
+				}
+				PositionCursor( process.StandardOutput ); // Always ensure cursor is correctly positioned after any partial update
+			}
+
 			int keyCode = process.StandardInput.Read();
 
 			if ( keyCode == -1 ) // EOF or error
@@ -124,6 +160,7 @@ public class EditProgram : NativeProgram
 		_viewTopRow = 0;
 		_viewLeftCol = 0;
 		_isDirty = false;
+		_fullRedrawNeeded = true; // Content changed, requires full redraw
 	}
 
 	private void SaveFile( string path = null )
@@ -131,8 +168,6 @@ public class EditProgram : NativeProgram
 		string savePath = path ?? _currentFilePath;
 		if ( string.IsNullOrWhiteSpace( savePath ) || savePath.Equals( "UNTITLED1", StringComparison.OrdinalIgnoreCase ) )
 		{
-			// In a real version, we'd prompt for a filename here.
-			// This would require a sub-loop for input on the status line.
 			SetStatusMessage( "Save As: Filename needed (not implemented). Press ESC." );
 			return;
 		}
@@ -143,7 +178,12 @@ public class EditProgram : NativeProgram
 			VirtualFileSystem.Instance.WriteAllText( savePath, string.Join( "\r\n", linesToSave ) );
 			_currentFilePath = savePath;
 			_isUntitled = false;
+			bool oldIsDirty = _isDirty;
 			_isDirty = false;
+			if ( oldIsDirty && !_isDirty ) // If it was dirty and now it's not
+			{
+				_fullRedrawNeeded = true; // To update title bar (remove '*')
+			}
 			SetStatusMessage( $"File saved: {savePath}" );
 		}
 		catch ( Exception e )
@@ -154,7 +194,11 @@ public class EditProgram : NativeProgram
 
 	private bool ProcessKeyInput( NativeProcess process, int keyCode )
 	{
-		_statusMessage = ""; // Clear old status message on new input
+		// _statusMessage = ""; // Clear old status message on new input - Handled by timeout or explicit SetStatusMessage
+		bool oldIsDirty = _isDirty;
+		// Variable to track if a simple, single-line modification occurred that doesn't require full redraw
+		bool simpleSingleLineEdit = false;
+		int editedLineBufferIndex = _cursorBufferRow; // Assume current line is edited for simple cases
 
 		if ( keyCode == KEY_NULL_INTRO ) // Extended key
 		{
@@ -169,7 +213,7 @@ public class EditProgram : NativeProgram
 					break;
 				case SCAN_CODE_LEFT:
 					if ( _cursorBufferCol > 0 ) _cursorBufferCol--;
-					else if ( _cursorBufferRow > 0 ) // Wrap to end of previous line
+					else if ( _cursorBufferRow > 0 )
 					{
 						_cursorBufferRow--;
 						_cursorBufferCol = _buffer[_cursorBufferRow].Length;
@@ -177,7 +221,7 @@ public class EditProgram : NativeProgram
 					break;
 				case SCAN_CODE_RIGHT:
 					if ( _cursorBufferCol < CurrentLineLength() ) _cursorBufferCol++;
-					else if ( _cursorBufferRow < _buffer.Count - 1 ) // Wrap to start of next line
+					else if ( _cursorBufferRow < _buffer.Count - 1 )
 					{
 						_cursorBufferRow++;
 						_cursorBufferCol = 0;
@@ -194,12 +238,14 @@ public class EditProgram : NativeProgram
 					{
 						_buffer[_cursorBufferRow].Remove( _cursorBufferCol, 1 );
 						_isDirty = true;
+						simpleSingleLineEdit = true;
 					}
 					else if ( _cursorBufferRow < _buffer.Count - 1 ) // Delete at end of line, merge with next
 					{
 						_buffer[_cursorBufferRow].Append( _buffer[_cursorBufferRow + 1].ToString() );
 						_buffer.RemoveAt( _cursorBufferRow + 1 );
 						_isDirty = true;
+						_fullRedrawNeeded = true; // Structural change
 					}
 					break;
 				default: // Unknown scan code
@@ -218,6 +264,7 @@ public class EditProgram : NativeProgram
 					_cursorBufferRow++;
 					_cursorBufferCol = 0;
 					_isDirty = true;
+					_fullRedrawNeeded = true; // Structural change (split line, new line added)
 					break;
 				case KEY_BACKSPACE:
 					if ( _cursorBufferCol > 0 )
@@ -225,6 +272,7 @@ public class EditProgram : NativeProgram
 						_buffer[_cursorBufferRow].Remove( _cursorBufferCol - 1, 1 );
 						_cursorBufferCol--;
 						_isDirty = true;
+						simpleSingleLineEdit = true;
 					}
 					else if ( _cursorBufferRow > 0 ) // Backspace at start of line, merge with previous
 					{
@@ -234,34 +282,28 @@ public class EditProgram : NativeProgram
 						_cursorBufferCol = CurrentLineLength();
 						_buffer[_cursorBufferRow].Append( lineToAppend );
 						_isDirty = true;
+						_fullRedrawNeeded = true; // Structural change
 					}
 					break;
 				case KEY_TAB:
-					// Insert spaces for tab, typically 4 or 8
 					const int tabSize = 4;
 					string tabSpaces = new string( ' ', tabSize );
 					_buffer[_cursorBufferRow].Insert( _cursorBufferCol, tabSpaces );
 					_cursorBufferCol += tabSize;
 					_isDirty = true;
+					simpleSingleLineEdit = true;
 					break;
 				case KEY_ESCAPE:
-					// For now, ESC could be a way to quit if dirty (after a confirmation, not implemented yet)
-					// Or to clear a status message / cancel a mode.
-					// A simple quit for now, later could add "Save changes? Y/N"
 					if ( _isDirty )
 					{
 						SetStatusMessage( "Unsaved changes! Press ESC again to quit without saving, or F2 to Save." );
-						// This needs a state machine or a sub-loop to handle confirmation, which is complex here.
-						// For now, let's make it a direct quit if ESC is pressed again.
-						// This is a placeholder for a more robust exit confirmation.
 						int nextKey = process.StandardInput.Read();
-						if ( nextKey == KEY_ESCAPE ) return false; // Quit without saving
-						else if ( nextKey == KEY_NULL_INTRO && process.StandardInput.Read() == 0x3C ) // F2 Scan Code (placeholder)
+						if ( nextKey == KEY_ESCAPE ) return false;
+						else if ( nextKey == KEY_NULL_INTRO && process.StandardInput.Read() == 0x3C ) // F2
 						{
-							SaveFile();
-							if ( !_isDirty ) return false; // Quit if save was successful
+							SaveFile(); // SaveFile sets _fullRedrawNeeded
+							if ( !_isDirty ) return false;
 						}
-						// else, continue editing
 					}
 					else
 					{
@@ -274,12 +316,27 @@ public class EditProgram : NativeProgram
 						_buffer[_cursorBufferRow].Insert( _cursorBufferCol, (char)keyCode );
 						_cursorBufferCol++;
 						_isDirty = true;
+						simpleSingleLineEdit = true;
 					}
 					break;
 			}
 		}
+
+		if ( _isDirty && !oldIsDirty ) // If file just became dirty
+		{
+			_fullRedrawNeeded = true; // Need full redraw to update '*' in title bar
+		}
+
 		EnsureCursorInBounds();
-		ScrollToViewCursor();
+		ScrollToViewCursor(); // This can set _fullRedrawNeeded if view scrolls
+
+		if ( !_fullRedrawNeeded && simpleSingleLineEdit )
+		{
+			_singleLineToUpdate = editedLineBufferIndex;
+		}
+
+		_statusLineNeedsUpdate = true; // Always assume status might need update (e.g. cursor pos)
+
 		return true; // Continue running
 	}
 
@@ -300,32 +357,95 @@ public class EditProgram : NativeProgram
 
 	private void ScrollToViewCursor()
 	{
+		bool viewChanged = false;
 		// Adjust vertical scroll
 		if ( _cursorBufferRow < _viewTopRow )
 		{
 			_viewTopRow = _cursorBufferRow;
+			viewChanged = true;
 		}
 		if ( _cursorBufferRow >= _viewTopRow + _textDisplayHeight )
 		{
 			_viewTopRow = _cursorBufferRow - _textDisplayHeight + 1;
+			viewChanged = true;
 		}
 
 		// Adjust horizontal scroll (basic)
 		if ( _cursorBufferCol < _viewLeftCol )
 		{
 			_viewLeftCol = _cursorBufferCol;
+			viewChanged = true;
 		}
 		if ( _cursorBufferCol >= _viewLeftCol + _textDisplayWidth )
 		{
 			_viewLeftCol = _cursorBufferCol - _textDisplayWidth + 1;
+			viewChanged = true;
 		}
 		_viewLeftCol = Math.Max( 0, _viewLeftCol );
+
+		if ( viewChanged )
+		{
+			_fullRedrawNeeded = true;
+		}
 	}
 
 	private void SetStatusMessage( string message )
 	{
 		_statusMessage = message;
 		_statusMessageTime = DateTime.UtcNow;
+		_statusLineNeedsUpdate = true; // Ensure status line updates when a message is set
+	}
+
+	private void RedrawTextLine( TextWriter output, int bufferLineIndexToRedraw )
+	{
+		// Check if the line to redraw is visible
+		if ( bufferLineIndexToRedraw < _viewTopRow || bufferLineIndexToRedraw >= _viewTopRow + _textDisplayHeight )
+		{
+			return; // Line is not visible
+		}
+
+		int screenRowForText = (bufferLineIndexToRedraw - _viewTopRow) + 3; // 1-based console row for the text line
+		output.Write( $"\x1B[{screenRowForText};2H" ); // Move to start of text content area (col 2 for left border '│')
+
+		string line = _buffer[bufferLineIndexToRedraw].ToString();
+		string visiblePart = "";
+		if ( _viewLeftCol < line.Length )
+		{
+			visiblePart = line.Substring( _viewLeftCol, Math.Min( line.Length - _viewLeftCol, _textDisplayWidth ) );
+		}
+
+		output.Write( visiblePart.PadRight( _textDisplayWidth ) ); // Pad with spaces to fill the width
+	}
+
+	private void UpdateStatusLineOnly( TextWriter output )
+	{
+		int statusConsoleRow = 1 + 1 + _textDisplayHeight + 1 + 1; // Menu, TopBorder, Text, BottomBorder, StatusLine
+		output.Write( $"\x1B[{statusConsoleRow};1H" ); // Move to start of status line
+
+		string status = _statusMessage;
+		if ( string.IsNullOrWhiteSpace( status ) || ((DateTime.UtcNow - _statusMessageTime).TotalSeconds > 5 && _statusMessageTime != default) )
+		{
+			if ( !string.IsNullOrWhiteSpace( _statusMessage ) && (DateTime.UtcNow - _statusMessageTime).TotalSeconds > 5 )
+			{
+				_statusMessage = ""; // Clear the timed-out message
+			}
+			status = $"Ln {_cursorBufferRow + 1}, Col {_cursorBufferCol + 1}";
+		}
+		output.Write( status.PadRight( _textDisplayWidth + 2 ) ); // Pad to cover full width
+	}
+
+	private void PositionCursor( TextWriter output )
+	{
+		int relativeViewRow = _cursorBufferRow - _viewTopRow;
+		int relativeViewCol = _cursorBufferCol - _viewLeftCol;
+
+		relativeViewRow = Math.Max( 0, Math.Min( relativeViewRow, _textDisplayHeight - 1 ) );
+		relativeViewCol = Math.Max( 0, Math.Min( relativeViewCol, _textDisplayWidth - 1 ) );
+
+		int targetConsoleRow = relativeViewRow + 3; // Menu line is 1, Top border is 2. Text area starts at console row 3.
+		int targetConsoleCol = relativeViewCol + 2; // Left border char is col 1. Text area starts at console col 2.
+
+		output.Write( $"\x1B[{targetConsoleRow};{targetConsoleCol}H" );
 	}
 
 	private void DrawScreen( TextWriter output )
@@ -355,7 +475,7 @@ public class EditProgram : NativeProgram
 		screen.Append( "┐\n" );
 
 		// 3. Text Area
-		for ( int i = 0; i < _textDisplayHeight; i++ )
+		for ( int i = 0; i < _textDisplayHeight; i++ ) // i is 0-based screen row within text area
 		{
 			screen.Append( "│" ); // Left border
 			int bufferLineIndex = _viewTopRow + i;
@@ -368,22 +488,10 @@ public class EditProgram : NativeProgram
 					visiblePart = line.Substring( _viewLeftCol );
 				}
 
-				for ( int j = 0; j < _textDisplayWidth; j++ )
+				for ( int j = 0; j < _textDisplayWidth; j++ ) // j is 0-based screen column within text area
 				{
 					int charIndexInVisiblePart = j;
-					// Check if this is the cursor position
-					if ( bufferLineIndex == _cursorBufferRow && (_viewLeftCol + j) == _cursorBufferCol )
-					{
-						// Simulate cursor: Use a block or underscore, or simply skip drawing the char
-						// For simplicity, let's use a placeholder. A real cursor would involve inverse video or special char.
-						// If we had SGR support: screen.Append("\x1B[7m"); // Inverse
-						if ( charIndexInVisiblePart < visiblePart.Length )
-							screen.Append( visiblePart[charIndexInVisiblePart] ); // Draw char under cursor for now
-						else
-							screen.Append( ' ' ); // Cursor at end of line or empty space
-												  // if (had SGR: screen.Append("\x1B[0m"); // Reset inverse
-					}
-					else if ( charIndexInVisiblePart < visiblePart.Length )
+					if ( charIndexInVisiblePart < visiblePart.Length )
 					{
 						screen.Append( visiblePart[charIndexInVisiblePart] );
 					}
@@ -398,24 +506,24 @@ public class EditProgram : NativeProgram
 				screen.Append( new string( ' ', _textDisplayWidth ) ); // Empty line
 			}
 			// Scrollbar (simplified)
-			char scrollChar = ' '; // Default to empty if no scrollbar part applies
-			if ( i == 0 ) // Current display line is the top-most
+			char scrollChar = ' ';
+			if ( i == 0 )
 			{
-				if ( _viewTopRow > 0 ) // If there's content above the current view
+				if ( _viewTopRow > 0 )
 					scrollChar = '↑';
 			}
-			else if ( i == _textDisplayHeight - 1 ) // Current display line is the bottom-most
+			else if ( i == _textDisplayHeight - 1 )
 			{
-				if ( _viewTopRow + _textDisplayHeight < _buffer.Count ) // If there's content below the current view
+				if ( _viewTopRow + _textDisplayHeight < _buffer.Count )
 					scrollChar = '↓';
 			}
-			else // Current display line is in the middle (between top and bottom)
+			else
 			{
-				// This makes the body of the scrollbar solid if scrolling is possible
-				scrollChar = '█';
+				if ( _buffer.Count > _textDisplayHeight ) // Only show scrollbar body if actual content exceeds display height
+					scrollChar = '█';
 			}
-			screen.Append( scrollChar ); // Append the determined scrollbar character (or space)
-			screen.Append( "\n" );     // Append a newline
+			screen.Append( scrollChar );
+			screen.Append( "\n" );
 		}
 
 		// 4. Bottom Border
@@ -425,12 +533,30 @@ public class EditProgram : NativeProgram
 
 		// 5. Status Line
 		string status = _statusMessage;
-		if ( string.IsNullOrWhiteSpace( status ) && (DateTime.UtcNow - _statusMessageTime).TotalSeconds > 5 )
+		if ( string.IsNullOrWhiteSpace( status ) || (DateTime.UtcNow - _statusMessageTime).TotalSeconds > 5 )
 		{
 			status = $"Ln {_cursorBufferRow + 1}, Col {_cursorBufferCol + 1}";
 		}
 		screen.Append( status.PadRight( _textDisplayWidth + 2 ) );
 		screen.Append( "\n" );
+
+		// 6. Position ConsolePanel's cursor
+		// Calculate editor cursor's position in 0-based view-relative coordinates
+		int relativeViewRow = _cursorBufferRow - _viewTopRow;
+		int relativeViewCol = _cursorBufferCol - _viewLeftCol;
+
+		// Clamp to be within the visible text area, just in case ScrollToViewCursor wasn't perfect
+		// or if cursor is at the very end of a line that might be equal to _textDisplayWidth
+		relativeViewRow = Math.Max( 0, Math.Min( relativeViewRow, _textDisplayHeight - 1 ) );
+		relativeViewCol = Math.Max( 0, Math.Min( relativeViewCol, _textDisplayWidth - 1 ) ); // Allow cursor at end of line up to width-1
+
+		// Convert to 1-based console screen coordinates
+		// Menu line is 1, Top border is 2. Text area starts at console row 3.
+		// Left border char is col 1. Text area starts at console col 2.
+		int targetConsoleRow = relativeViewRow + 3;
+		int targetConsoleCol = relativeViewCol + 2;
+
+		screen.Append( $"\x1B[{targetConsoleRow};{targetConsoleCol}H" );
 
 		output.Write( screen.ToString() );
 	}
