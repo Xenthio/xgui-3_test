@@ -33,9 +33,6 @@ internal class ConsoleHost : Window
 		ActiveConsolePanel = ConsoleBox.AddChild<ConsolePanel>();
 		ActiveConsolePanel.Initialize( writer, reader, SetWindowTitle );
 
-		ActiveConsolePanel.Style.Width = consoleWidth;
-		ActiveConsolePanel.Style.Height = consoleHeight;
-
 		Title = "Command Prompt";
 	}
 
@@ -44,7 +41,22 @@ internal class ConsoleHost : Window
 	{
 		base.OnAfterTreeRender( firstTime );
 		if ( !initialised && ActiveConsolePanel != null )
-		{
+		{// Set window width and height so that ActiveConsolePanel is the console size 
+			float currentWindowWidth = Box.Rect.Width;
+			float currentWindowHeight = Box.Rect.Height;
+
+			float currentConsolePanelWidth = ActiveConsolePanel.Box.Rect.Width;
+			float currentConsolePanelHeight = ActiveConsolePanel.Box.Rect.Height;
+
+			float chromeWidth = currentWindowWidth - currentConsolePanelWidth;
+			float chromeHeight = currentWindowHeight - currentConsolePanelHeight;
+
+			Size = new Vector2( consoleWidth + chromeWidth, consoleHeight + chromeHeight );
+
+			Style.Width = Size.x;
+			Style.Height = Size.y;
+			// Optional: Set MinSize if the window should not be resizable below this calculated size
+			// MinSize = Size; 
 			Log.Info( "ConsoleHost: Initializing ConsolePanel" );
 			initialised = true;
 		}

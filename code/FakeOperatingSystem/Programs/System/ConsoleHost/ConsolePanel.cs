@@ -33,6 +33,8 @@ public partial class ConsolePanel : Panel
 	private int inputStartRow = 0;
 	private int inputStartColumn = 0;
 
+	private int characterWidth = 9;
+	private int characterHeight = 16;
 
 	// public int ReaderCaretPosition => reader?.CaretPositionInLine ?? 0; // Kept for reference, direct usage might change
 	// public int CaretPosition => new StringInfo( outputBuffer.ToString() ).LengthInTextElements + ReaderCaretPosition; // Replaced by grid logic
@@ -136,9 +138,11 @@ public partial class ConsolePanel : Panel
 
 	void UpdateOutputDisplay()
 	{
-		var fullDisplayText = new StringBuilder();
+		// Step 1: Prepare all lines based on the screenGrid and reader state
+		List<string> potentialLines = new List<string>( GridRows );
 		for ( int r = 0; r < GridRows; r++ )
 		{
+			string currentLineText;
 			if ( reader != null && r == inputStartRow )
 			{
 				// Construct the input line: part from screenGrid, then reader.CurrentLine, then padding
@@ -151,6 +155,7 @@ public partial class ConsolePanel : Panel
 
 				lineBuilder.Append( reader.CurrentLine ?? "" );
 
+				// Pad or truncate to GridColumns before trimming
 				if ( lineBuilder.Length < GridColumns )
 				{
 					lineBuilder.Append( new string( ' ', GridColumns - lineBuilder.Length ) );
@@ -159,17 +164,40 @@ public partial class ConsolePanel : Panel
 				{
 					lineBuilder.Length = GridColumns; // Truncate if too long
 				}
-				fullDisplayText.Append( lineBuilder.ToString() );
+				currentLineText = lineBuilder.ToString().TrimEnd();
 			}
 			else
 			{
-				fullDisplayText.Append( screenGrid[r].ToString() );
+				currentLineText = screenGrid[r].ToString().TrimEnd();
 			}
-			if ( r < GridRows - 1 )
+			potentialLines.Add( currentLineText );
+		}
+
+		// Step 2: Find the index of the last non-empty line
+		int lastNonEmptyLineIndex = -1;
+		for ( int i = potentialLines.Count - 1; i >= 0; i-- )
+		{
+			if ( !string.IsNullOrWhiteSpace( potentialLines[i] ) )
 			{
-				fullDisplayText.Append( '\n' );
+				lastNonEmptyLineIndex = i;
+				break;
 			}
 		}
+
+		// Step 3: Build the fullDisplayText string using only lines up to the last non-empty one
+		var fullDisplayText = new StringBuilder();
+		if ( lastNonEmptyLineIndex != -1 ) // Proceed only if there's at least one non-empty line
+		{
+			for ( int r = 0; r <= lastNonEmptyLineIndex; r++ )
+			{
+				fullDisplayText.Append( potentialLines[r] );
+				if ( r < lastNonEmptyLineIndex ) // Add newline only if it's not the very last line to be displayed
+				{
+					fullDisplayText.Append( '\n' );
+				}
+			}
+		}
+
 		SetText( fullDisplayText.ToString() );
 	}
 
@@ -189,33 +217,52 @@ public partial class ConsolePanel : Panel
 
 	private int GetLinearCaretIndexForDrawing()
 	{
-		if ( OutputLabel == null ) return 0;
+		if ( OutputLabel == null || string.IsNullOrEmpty( OutputLabel.Text ) ) return 0;
 
-		int linearIndex = 0;
-		int targetRow = caretRow;
-		int targetCol = caretColumn;
+		// Split the displayed text into lines. OutputLabel.Text contains '\n'.
+		string[] renderedLines = OutputLabel.Text.Split( '\n' );
+
+		int logicalCaretRow;
+		int logicalCaretColumn;
 
 		if ( reader != null )
 		{
-			targetRow = inputStartRow; // The line where input is happening
-									   // The column is reader.CaretPositionInLine relative to inputStartColumn
-			targetCol = inputStartColumn + reader.CaretPositionInLine;
+			logicalCaretRow = inputStartRow;
+			// Caret column is relative to the start of the input area on the grid,
+			// plus the caret position within the reader's current line.
+			logicalCaretColumn = inputStartColumn + reader.CaretPositionInLine;
 		}
-
-		targetRow = Math.Clamp( targetRow, 0, GridRows - 1 );
-		targetCol = Math.Clamp( targetCol, 0, GridColumns - 1 );
-
-
-		for ( int i = 0; i < targetRow; i++ )
+		else
 		{
-			linearIndex += GridColumns + 1; // +1 for implicit newline if OutputLabel.Text has them
+			// In direct output mode, caretRow and caretColumn track the cursor position on the grid.
+			logicalCaretRow = caretRow;
+			logicalCaretColumn = caretColumn;
 		}
-		linearIndex += targetCol;
 
-		// Ensure the index is within the bounds of the actual text in OutputLabel
-		var textLength = OutputLabel.Text?.Length ?? 0;
-		if ( textLength == 0 ) return 0;
-		return Math.Clamp( linearIndex, 0, textLength - 1 );
+		// Clamp the logical row to the actual number of rendered lines.
+		// renderedLines.Length will be at least 1 if OutputLabel.Text is not empty.
+		logicalCaretRow = Math.Clamp( logicalCaretRow, 0, renderedLines.Length - 1 );
+
+		int linearIndex = 0;
+		// Sum the lengths of all lines before the target caret row.
+		// Add 1 for each newline character.
+		for ( int i = 0; i < logicalCaretRow; i++ )
+		{
+			linearIndex += renderedLines[i].Length + 1; // +1 for the '\n'
+		}
+
+		// Get the actual content of the line where the caret is.
+		string targetLineContent = renderedLines[logicalCaretRow];
+
+		// Clamp the logical column to the actual length of the trimmed target line.
+		// This ensures the caret doesn't go beyond the visible content of the line.
+		int actualCaretColumnOnLine = Math.Clamp( logicalCaretColumn, 0, targetLineContent.Length );
+
+		linearIndex += actualCaretColumnOnLine;
+
+		// Clamp the final linear index to be within the bounds of OutputLabel.Text.
+		// OutputLabel.GetCaretRect typically expects an index from 0 to Text.Length.
+		return Math.Clamp( linearIndex, 0, OutputLabel.Text.Length );
 	}
 
 	public override void DrawContent( ref RenderState state )
@@ -234,6 +281,9 @@ public partial class ConsolePanel : Panel
 		int linearCaretDrawIndex = GetLinearCaretIndexForDrawing();
 
 		var caretRect = OutputLabel.GetCaretRect( linearCaretDrawIndex );
+
+
+
 		caretRect.Left = MathX.FloorToInt( caretRect.Left );
 		caretRect.Width = 9; // Or derive from font
 		var charHeight = (OutputLabel.ComputedStyle.FontSize?.Value ?? 16);
