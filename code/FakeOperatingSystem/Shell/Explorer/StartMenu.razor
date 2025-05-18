@@ -3,6 +3,7 @@
 @using Sandbox.UI;
 @using XGUI;
 @using FakeOperatingSystem;
+@using FakeOperatingSystem.Shell;
 @attribute [StyleSheet("StartMenu.razor.scss")]
 @inherits Window
 
@@ -181,6 +182,7 @@
 			submenu.AddClass("Large");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
 
+		activeMenu.AddMenuItem("Command Prompt", () => ExecuteAndClose("C:\\Windows\\System32\\cmd.exe"), iconurl: XGUIIconSystem.GetFileIcon("exe_cmd", 16));
 		activeMenu.AddMenuItem("Windows Explorer", () => OpenExeAndClose("C:\\Windows\\explorer.exe"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
 
 
@@ -350,6 +352,17 @@
 	public void OpenExeAndClose(string path)
 	{
 		OpenExe(path);
+		Delete();
+	}
+
+	public void Execute(string path)
+	{
+		Shell.ShellExecute(path);
+	}
+
+	public void ExecuteAndClose(string path)
+	{
+		Execute(path);
 		Delete();
 	}
 

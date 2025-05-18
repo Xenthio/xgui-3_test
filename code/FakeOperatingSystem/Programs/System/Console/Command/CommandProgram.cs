@@ -294,12 +294,54 @@ public class CommandProgram : NativeProgram
 		if ( !String.IsNullOrWhiteSpace( launchOptions?.WorkingDirectory ) )
 			cd = launchOptions.WorkingDirectory;
 		this.process = process;
+
+		if ( launchOptions != null && !string.IsNullOrWhiteSpace( launchOptions.Arguments ) )
+		{
+			Log.Info( launchOptions.Arguments );
+			string fullCommandInput = launchOptions.Arguments;
+			bool terminateAfter = true; // Default: execute command and exit (like /C or direct command)
+			string commandToExecute = fullCommandInput;
+
+			// Check for /C or /K switches, which are standard for cmd.exe
+			string tempCommand = fullCommandInput.TrimStart();
+			if ( tempCommand.StartsWith( "/C ", StringComparison.OrdinalIgnoreCase ) )
+			{
+				commandToExecute = tempCommand.Substring( 3 ).TrimStart();
+				terminateAfter = true;
+			}
+			else if ( tempCommand.StartsWith( "/K ", StringComparison.OrdinalIgnoreCase ) )
+			{
+				commandToExecute = tempCommand.Substring( 3 ).TrimStart();
+				terminateAfter = false;
+			}
+			// If no /C or /K, commandToExecute remains fullCommandInput, 
+			// and terminateAfter remains true (execute and exit).
+
+			if ( !string.IsNullOrWhiteSpace( commandToExecute ) )
+			{
+				var parts = commandToExecute.Split( new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries );
+				string programName = parts[0];
+				string programArgs = parts.Length > 1 ? parts[1] : "";
+
+				// LaunchProgram will handle if programName is a .bat, .cmd, .exe, .com or internal command.
+				// It calls ExecuteBatchFile internally if a batch file is identified.
+				LaunchProgram( programName, programArgs, false ); // isStartCommand = false for direct execution semantics
+
+				if ( terminateAfter )
+				{
+					return; // Exit CommandProgram after execution
+				}
+				// If !terminateAfter (i.e., /K was used or similar), fall through to the interactive loop.
+			}
+		}
+
 		StandardOutput.WriteLine( "" );
 		StandardOutput.WriteLine( "" );
 		StandardOutput.WriteLine( $"{FakeOSLoader.VersionString}" );
 		StandardOutput.WriteLine( "   FakeOS Command Prompt [Type 'help' for commands]" );
 		StandardOutput.WriteLine( "" );
 
+		// Interactive loop
 		while ( true )
 		{
 			if ( EchoEnabled ) StandardOutput.Write( GetFormattedPrompt() );
@@ -811,74 +853,202 @@ public class CommandProgram : NativeProgram
 		}
 	}
 
+	private void ExecuteBatchFile( string batchFilePath, string allBatchArgs )
+	{
+		var originalEchoState = EchoEnabled; // Save current echo state
+		if ( !VirtualFileSystem.Instance.FileExists( batchFilePath ) )
+		{
+			StandardOutput.WriteLine( $"Batch file not found: {batchFilePath}" );
+			return;
+		}
+
+		byte[] batchFileBytes = VirtualFileSystem.Instance.ReadAllBytes( batchFilePath );
+		// Assuming DOSEncodingHelper.GetStringCp437 can handle null/empty if ReadAllBytes returns that.
+		// Or, add a null check for batchFileBytes.
+		if ( batchFileBytes == null )
+		{
+			StandardOutput.WriteLine( $"Batch file is empty or could not be read: {batchFilePath}" );
+			return;
+		}
+		string batchContent = DOSEncodingHelper.GetStringCp437KeepControl( batchFileBytes );
+		string[] lines = batchContent.Split( new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None );
+
+		List<string> argList = new List<string>();
+		if ( !string.IsNullOrWhiteSpace( allBatchArgs ) )
+		{
+			// Simple space splitting. Does not handle quoted arguments within allBatchArgs robustly.
+			argList.AddRange( allBatchArgs.Split( new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries ) );
+		}
+
+		bool localEchoOffForLine;
+
+		foreach ( string rawLine in lines )
+		{
+			string currentLine = rawLine.TrimStart(); // Trim leading whitespace
+
+			// Skip genuinely empty lines (after TrimStart, could still be all whitespace if not using Trim())
+			if ( string.IsNullOrWhiteSpace( currentLine ) )
+			{
+				// If echo is on, cmd.exe echoes blank lines from a batch file.
+				if ( EchoEnabled ) StandardOutput.WriteLine( GetFormattedPrompt() ); // Echoes prompt then newline
+				continue;
+			}
+
+			localEchoOffForLine = false;
+			if ( currentLine.StartsWith( "@" ) )
+			{
+				localEchoOffForLine = true;
+				currentLine = currentLine.Substring( 1 );
+			}
+
+			// Handle comments (REM and ::)
+			// Note: TrimStart was used, so "  REM comment" is now "REM comment"
+			string upperLineForCommentCheck = currentLine.Trim().ToUpperInvariant(); // Trim for accurate REM/:: check
+			if ( upperLineForCommentCheck.StartsWith( "REM " ) || upperLineForCommentCheck == "REM" || currentLine.TrimStart().StartsWith( "::" ) )
+			{
+				if ( EchoEnabled && !localEchoOffForLine )
+				{
+					StandardOutput.WriteLine( GetFormattedPrompt() + rawLine.TrimEnd() ); // Echo original line (or trimmed original)
+				}
+				continue;
+			}
+
+			string processedLine = currentLine;
+			processedLine = processedLine.Replace( "%0", batchFilePath ); // %0 is the batch file name
+			processedLine = processedLine.Replace( "%*", allBatchArgs ?? "" ); // %* is all arguments as a single string
+
+			for ( int i = 0; i < 9; i++ ) // %1 to %9
+			{
+				if ( i < argList.Count )
+				{
+					processedLine = processedLine.Replace( $"%{i + 1}", argList[i] );
+				}
+				else
+				{
+					processedLine = processedLine.Replace( $"%{i + 1}", "" ); // Unprovided args are empty strings
+				}
+			}
+
+			if ( EchoEnabled && !localEchoOffForLine )
+			{
+				StandardOutput.WriteLine( GetFormattedPrompt() + processedLine.TrimEnd() );
+			}
+
+			var parts = processedLine.Trim().Split( new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries );
+			var command = parts.Length > 0 ? parts[0] : "";
+			var commandArgs = parts.Length > 1 ? parts[1] : "";
+
+			if ( string.IsNullOrEmpty( command ) ) continue;
+
+			// If the command is "exit" (and not "exit /b" which isn't fully supported yet to only exit batch),
+			// TerminateProcess will be called, and this loop should effectively stop.
+			ParseCommand( command, commandArgs );
+			// StandardOutput.WriteLine(""); // This is usually handled by the main loop or ParseCommand itself.
+			// Adding it here might cause double newlines.
+		}
+		// Restore original echo state after batch execution
+		EchoEnabled = originalEchoState;
+	}
+
 	private void LaunchProgram( string programName, string programArgs, bool isStartCommand )
 	{
-		// Try to launch as a program
-		// 1. Check current directory (if path not specified)
-		// 2. Check C:/Windows/System32/
-		// 3. Check PATH environment variable (not implemented here)
+		string originalCommandName = programName; // For error messages
 
-		string exeName = programName;
-		if ( !exeName.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) &&
-			!exeName.EndsWith( ".com", StringComparison.OrdinalIgnoreCase ) && // .com also common
-			!exeName.EndsWith( ".bat", StringComparison.OrdinalIgnoreCase ) )   // .bat for batch files
+		List<string> filesToTry = new List<string>();
+		bool specificExtensionProvided = programName.Contains( "." );
+
+		if ( specificExtensionProvided )
 		{
-			exeName += ".exe"; // Default to .exe
+			// If user types "myprog.exe" or "script.bat", try that directly.
+			filesToTry.Add( programName );
+		}
+		else
+		{
+			// No extension provided, try common ones in typical PATHEXT order.
+			// e.g., if user types "myprog", try "myprog.COM", "myprog.EXE", "myprog.BAT", "myprog.CMD".
+			filesToTry.Add( programName + ".COM" );
+			filesToTry.Add( programName + ".EXE" );
+			filesToTry.Add( programName + ".BAT" );
+			filesToTry.Add( programName + ".CMD" );
+			// Optionally, try the name as-is if it might be an executable without a common extension (less typical for Windows).
+			// filesToTry.Add(programName); 
 		}
 
-		string exePath = ResolvePath( cd, exeName ); // Check current directory first
+		string foundPath = null;
+		bool isBatchFile = false;
 
-		if ( !VirtualFileSystem.Instance.FileExists( exePath ) )
+		// Search Locations: 1. Current Directory, 2. System Directory
+		List<string> searchDirs = new List<string> { cd, "C:/Windows/System32/" };
+
+		foreach ( string fileToAttempt in filesToTry )
 		{
-			// If not in CWD, check System32 (or a simplified PATH)
-			exePath = ResolvePath( "C:/Windows/System32/", VirtualFileSystem.Instance.GetFileName( exeName ) ); // Use GetFileName to avoid issues if exeName was already a path
-		}
-
-		// Could add more search paths here (e.g. from a PATH variable)
-
-		if ( VirtualFileSystem.Instance.FileExists( exePath ) )
-		{
-			try
+			foreach ( string dir in searchDirs )
 			{
-				var childOptions = new Win32LaunchOptions
+				string candidatePath = ResolvePath( dir, fileToAttempt );
+				if ( VirtualFileSystem.Instance.FileExists( candidatePath ) )
 				{
-					Arguments = programArgs,
-					WorkingDirectory = cd, // Or the directory of the exe? cmd.exe uses current dir.
-					ParentProcessId = process.ProcessId,
-					StandardOutputOverride = StandardOutput, // Inherit stdio
-					StandardInputOverride = StandardInput
-				};
-
-				// If 'start' command and it's a GUI app, it might run asynchronously.
-				// If it's a console app, 'start' might open a new console window (not simulated here yet).
-				// For now, 'isStartCommand' doesn't change behavior much beyond this conceptual point.
-
-				var newProcess = ProcessManager.Instance.OpenExecutable( exePath, childOptions );
-				if ( newProcess.IsConsoleProcess )
-				{
-					// If not 'start' or if 'start /wait', then wait.
-					// Real 'start' for console apps often opens a new window and doesn't wait unless /B or /WAIT.
-					// For simplicity here, if it's a console app, we wait.
-					// To make 'start' truly asynchronous for console apps, we'd need to not wait.
-					if ( !isStartCommand || (programArgs != null && programArgs.ToUpperInvariant().Contains( "/WAIT" )) ) // very basic /WAIT
+					foundPath = candidatePath;
+					if ( foundPath.EndsWith( ".BAT", StringComparison.OrdinalIgnoreCase ) ||
+						foundPath.EndsWith( ".CMD", StringComparison.OrdinalIgnoreCase ) )
 					{
-						while ( newProcess.Status == ProcessStatus.Running )
-						{
-							GameTask.Delay( 100 ).Wait(); // Yield execution
-						}
+						isBatchFile = true;
 					}
-					// else: if 'start' and console app, it runs "in background" (newProcess starts, we don't wait)
+					goto ProgramFound; // Exit both loops
 				}
-				// For GUI apps, OpenExecutable would typically not block, newProcess starts, and we continue.
 			}
-			catch ( Exception ex )
+		}
+
+		ProgramFound:
+		if ( foundPath != null )
+		{
+			if ( isBatchFile )
 			{
-				StandardOutput.WriteLine( $"Failed to launch '{programName}': {ex.Message}" );
+				ExecuteBatchFile( foundPath, programArgs );
+			}
+			else // Assumed to be an executable (.EXE, .COM, etc.)
+			{
+				try
+				{
+					var childOptions = new Win32LaunchOptions
+					{
+						Arguments = programArgs,
+						WorkingDirectory = cd,
+						ParentProcessId = process.ProcessId,
+						StandardOutputOverride = StandardOutput,
+						StandardInputOverride = StandardInput
+					};
+
+					var newProcess = ProcessManager.Instance.OpenExecutable( foundPath, childOptions );
+					if ( newProcess != null )
+					{
+						if ( newProcess.IsConsoleProcess )
+						{
+							// If 'start' command, it runs async unless /WAIT.
+							// If direct command, it runs sync.
+							if ( !isStartCommand || (programArgs != null && programArgs.ToUpperInvariant().Contains( "/WAIT" )) )
+							{
+								while ( newProcess.Status == ProcessStatus.Running )
+								{
+									GameTask.Delay( 100 ).Wait(); // Yield execution, wait for process to complete
+								}
+							}
+						}
+						// For GUI apps, OpenExecutable typically doesn't block.
+					}
+					else
+					{
+						StandardOutput.WriteLine( $"Failed to launch '{originalCommandName}'. The system could not start the process." );
+					}
+				}
+				catch ( Exception ex )
+				{
+					StandardOutput.WriteLine( $"Failed to launch '{originalCommandName}': {ex.Message}" );
+				}
 			}
 		}
 		else
 		{
-			StandardOutput.WriteLine( $"'{programName}' is not recognized as an internal or external command,\noperable program or batch file." );
+			StandardOutput.WriteLine( $"'{originalCommandName}' is not recognized as an internal or external command,\noperable program or batch file." );
 		}
 	}
 
@@ -916,7 +1086,7 @@ public class CommandProgram : NativeProgram
 		}
 
 		// Relative path
-		string combinedPath = Path.Combine( currentDir, input );
+		string combinedPath = Path.Combine( currentDir, input ); // System.IO.Path.Combine
 		return VirtualFileSystem.Instance.GetFullPath( combinedPath );
 	}
 

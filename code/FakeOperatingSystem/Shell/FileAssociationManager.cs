@@ -55,6 +55,12 @@ public class FileAssociationManager
 		var iniAssociation = new FileAssociation( ".ini", "INI File", "ini", "C:/Windows/notepad.exe" );
 		iniAssociation.AddAction( "edit", "Edit", "notepad.exe" );
 		RegisterAssociation( iniAssociation );
+
+		// BAT files
+		var batAssociation = new FileAssociation( ".bat", "Batch File", "bat", "C:/Windows/system32/cmd.exe" );
+		batAssociation.AddAction( "open", "Open", "C:/Windows/system32/cmd.exe", "/C %1" );
+		batAssociation.AddAction( "edit", "Edit", "notepad.exe" );
+		RegisterAssociation( batAssociation );
 	}
 
 	public void RegisterAssociation( FileAssociation association )
@@ -93,7 +99,8 @@ public class FileAssociationManager
 
 		if ( association != null && !string.IsNullOrEmpty( association.DefaultProgram ) )
 		{
-			ProcessManager.Instance.OpenExecutable( association.DefaultProgram, new Win32LaunchOptions { Arguments = filePath } );
+			association.Execute( filePath );
+			//ProcessManager.Instance.OpenExecutable( association.DefaultProgram, new Win32LaunchOptions { Arguments = filePath } );
 			return true;
 		}
 

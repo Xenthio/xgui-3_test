@@ -120,6 +120,8 @@ public class FileAction
 	/// </summary>
 	public bool Execute( string filePath )
 	{
+		var args = Arguments.Replace( "%1", filePath );
+		ProcessManager.Instance.OpenExecutable( Program, new Win32LaunchOptions { Arguments = args } );
 		return true;
 	}
 }
