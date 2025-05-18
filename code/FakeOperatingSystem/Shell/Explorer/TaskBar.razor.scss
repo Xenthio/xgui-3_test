@@ -1,9 +1,17 @@
 TaskBar {
 	&.taskbar-root {
 		padding: 0px;
+		padding-top: 1px;
 		border-left: 0px;
 		border-right: 0px;
 		border-bottom: 0px;
+
+		&::before {
+			border-left: 0px;
+			border-right: 0px;
+			border-bottom: 0px;
+		}
+
 		position: absolute;
 		width: 100%;
 		align-self: flex-end;
@@ -23,7 +31,7 @@ TaskBar {
 		}
 
 		.start-button {
-			height: 20px;
+			height: 22px;
 		}
 
 		.quick-access {
@@ -65,7 +73,7 @@ TaskBar {
 
 			.window-btn {
 				justify-content: flex-start;
-				height: 20px;
+				height: 22px;
 				width: 158px;
 				margin-right: 3px;
 
