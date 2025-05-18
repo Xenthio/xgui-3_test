@@ -1,0 +1,36 @@
+@using System;
+@using FakeOperatingSystem.OSFileSystem
+@using FakeOperatingSystem.Shell
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using FakeDesktop;
+@using FakeOperatingSystem;
+@attribute [StyleSheet]
+@inherits Window
+
+<root>
+	<div class="window-content">
+		<scrollpanel>
+			<div>Child A</div>
+			<div>Child B</div>
+			<div>Child C</div>
+			<div>Child D</div>
+			<div>Child E</div>
+			<div>Child F</div>
+			<div>Child G</div>
+			<div>Child H</div>
+			<div>Child I</div>
+			<div>Child J</div>
+			<div>Child K</div>
+		</scrollpanel>
+	</div>
+</root>
+
+@code {
+
+	public override void Tick()
+	{
+		base.Tick();
+	}
+}
