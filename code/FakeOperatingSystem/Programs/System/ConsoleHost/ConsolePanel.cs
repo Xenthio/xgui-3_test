@@ -35,6 +35,8 @@ public partial class ConsolePanel : Panel
 
 	private int characterWidth = 9;
 	private int characterHeight = 16;
+	private bool prevCharCausedLineWrap = false;
+
 
 	// public int ReaderCaretPosition => reader?.CaretPositionInLine ?? 0; // Kept for reference, direct usage might change
 	// public int CaretPosition => new StringInfo( outputBuffer.ToString() ).LengthInTextElements + ReaderCaretPosition; // Replaced by grid logic
@@ -66,6 +68,7 @@ public partial class ConsolePanel : Panel
 		caretColumn = 0;
 		inputStartRow = 0;
 		inputStartColumn = 0;
+		prevCharCausedLineWrap = false;
 	}
 
 	public void Initialize( ConsoleHostWriter writer, ConsoleHostReader reader, Action<string> setTitleAction )
@@ -126,6 +129,11 @@ public partial class ConsolePanel : Panel
 				caretRow = GridRows - 1;
 				ScrollGridUp();
 			}
+			prevCharCausedLineWrap = true; // This AdvanceCaret call caused a line wrap
+		}
+		else
+		{
+			prevCharCausedLineWrap = false; // This AdvanceCaret call did NOT cause a line wrap
 		}
 	}
 
@@ -285,8 +293,8 @@ public partial class ConsolePanel : Panel
 
 
 		caretRect.Left = MathX.FloorToInt( caretRect.Left );
-		caretRect.Width = 9; // Or derive from font
-		var charHeight = (OutputLabel.ComputedStyle.FontSize?.Value ?? 16);
+		caretRect.Width = characterWidth;
+		var charHeight = (OutputLabel.ComputedStyle.FontSize?.Value ?? characterHeight);
 		var caretHeight = charHeight / 4;
 
 		caretRect.Top = MathX.FloorToInt( caretRect.Top + charHeight - caretHeight );
@@ -356,6 +364,7 @@ public partial class ConsolePanel : Panel
 			}
 			inputStartRow = caretRow;
 			inputStartColumn = 0; // New input always starts at column 0 of the new line
+			prevCharCausedLineWrap = false; // Explicit newline submission resets this.
 		}
 
 		UpdateOutputDisplay();
@@ -396,11 +405,6 @@ public partial class ConsolePanel : Panel
 	{
 		if ( currentEscapeState == EscapeSequenceState.None && c != 0x1B )
 		{
-			// If reader is null, programs like 'edit' write directly.
-			// The caret (caretRow, caretColumn) is the current writing position on the grid.
-			// If reader is active, this is output from the running command (e.g. echo)
-			// and should also update caretRow/Column and inputStartRow/Column.
-
 			if ( c == '\b' )
 			{
 				if ( caretColumn > 0 )
@@ -409,6 +413,7 @@ public partial class ConsolePanel : Panel
 					screenGrid[caretRow][caretColumn] = ' '; // Erase char
 				}
 				// else if (caretRow > 0) { /* Handle backspace to previous line - complex */ }
+				prevCharCausedLineWrap = false;
 			}
 			else if ( c == '\t' )
 			{
@@ -416,31 +421,42 @@ public partial class ConsolePanel : Panel
 				for ( int i = 0; i < spacesToInsert && caretColumn < GridColumns; i++ )
 				{
 					screenGrid[caretRow][caretColumn] = ' ';
-					AdvanceCaret();
+					AdvanceCaret(); // AdvanceCaret will update prevCharCausedLineWrap
 				}
 			}
 			else if ( c == '\r' )
 			{
 				caretColumn = 0;
+				prevCharCausedLineWrap = false;
 			}
 			else if ( c == '\n' )
 			{
-				caretColumn = 0;
-				caretRow++;
-				if ( caretRow >= GridRows )
+				if ( prevCharCausedLineWrap )
 				{
-					caretRow = GridRows - 1;
-					ScrollGridUp();
+					// Previous char caused a wrap, so this \n is "consumed"
+					caretColumn = 0;
 				}
+				else
+				{
+					// Normal newline
+					caretColumn = 0;
+					caretRow++;
+					if ( caretRow >= GridRows )
+					{
+						caretRow = GridRows - 1;
+						ScrollGridUp();
+					}
+				}
+				prevCharCausedLineWrap = false; // Newline resets the flag.
 			}
 			else if ( c == 00 || c == '\u001A' || c == '\u000E' ) { /* Ignore */ }
-			else
+			else // Printable character
 			{
 				if ( caretRow >= 0 && caretRow < GridRows && caretColumn >= 0 && caretColumn < GridColumns )
 				{
 					screenGrid[caretRow][caretColumn] = c;
 				}
-				AdvanceCaret();
+				AdvanceCaret(); // This will set/reset prevCharCausedLineWrap
 			}
 
 			// If reader is active, output pushes the input prompt start position
@@ -459,27 +475,23 @@ public partial class ConsolePanel : Panel
 			csiParameterBuffer.Clear();
 			oscStringBuffer.Clear();
 			csiGotQuestionMark = false;
+			prevCharCausedLineWrap = false; // Starting an escape sequence resets the flag
 			return;
 		}
 
-		// if (currentEscapeState != EscapeSequenceState.None) // This check is redundant due to the first if
-		// {
 		DoEscape( c );
-		// }
-		// This 'else' block is now covered by the first 'if' in this method.
-		// else { ... }
 	}
 
 
 	public void DoEscape( char c )
 	{
-		bool bufferModified = false; // Grid modified
+		bool bufferModified = false;
 		switch ( currentEscapeState )
 		{
 			case EscapeSequenceState.GotEscape:
 				if ( c == '[' ) { currentEscapeState = EscapeSequenceState.GotCSI; csiGotQuestionMark = false; }
 				else if ( c == ']' ) { currentEscapeState = EscapeSequenceState.GotOSC; oscStringBuffer.Clear(); }
-				else { currentEscapeState = EscapeSequenceState.None; }
+				else { currentEscapeState = EscapeSequenceState.None; prevCharCausedLineWrap = false; } // Escape sequence aborted
 				break;
 
 			case EscapeSequenceState.GotCSI:
@@ -498,74 +510,68 @@ public partial class ConsolePanel : Panel
 
 					if ( csiGotQuestionMark )
 					{
-						// DEC Private Mode sequences like CSI ? P m h/l
-						if ( paramsStr == "25" ) // DECTCEM - Text Cursor Enable Mode
+						if ( paramsStr == "25" )
 						{
-							if ( c == 'h' ) { isCaretVisible = true; } // Show cursor
-							else if ( c == 'l' ) { isCaretVisible = false; } // Hide cursor
+							if ( c == 'h' ) { isCaretVisible = true; }
+							else if ( c == 'l' ) { isCaretVisible = false; }
 						}
-						// Consume other DEC private sequences
 					}
-					else // Standard CSI sequences
+					else
 					{
 						switch ( c )
 						{
-							case 'J': // Erase in Display
+							case 'J':
 								int eraseModeJ = ps.Length > 0 && int.TryParse( ps[0], out int valJ ) ? valJ : 0;
-								if ( eraseModeJ == 2 ) // Clear entire screen
+								if ( eraseModeJ == 2 )
 								{
-									InitializeGrid(); // Clears grid and resets caret
+									InitializeGrid();
 									caretRow = 0; caretColumn = 0;
-									bufferModified = true;
 								}
-								else if ( eraseModeJ == 0 ) // Clear from cursor to end of screen
+								else if ( eraseModeJ == 0 )
 								{
 									for ( int col = caretColumn; col < GridColumns; ++col ) screenGrid[caretRow][col] = ' ';
 									for ( int row = caretRow + 1; row < GridRows; ++row ) screenGrid[row] = new StringBuilder( new string( ' ', GridColumns ) );
-									bufferModified = true;
 								}
-								else if ( eraseModeJ == 1 ) // Clear from cursor to beginning of screen
+								else if ( eraseModeJ == 1 )
 								{
 									for ( int col = 0; col < caretColumn; ++col ) screenGrid[caretRow][col] = ' ';
 									for ( int row = 0; row < caretRow; ++row ) screenGrid[row] = new StringBuilder( new string( ' ', GridColumns ) );
-									bufferModified = true;
 								}
+								bufferModified = true;
 								break;
-							case 'H': // Cursor Position (row;colH, 1-based)
+							case 'H':
 								int rowH = ps.Length > 0 && int.TryParse( ps[0], out int rVal ) ? rVal - 1 : 0;
 								int colH = ps.Length > 1 && int.TryParse( ps[1], out int cVal ) ? cVal - 1 : 0;
 								caretRow = Math.Clamp( rowH, 0, GridRows - 1 );
 								caretColumn = Math.Clamp( colH, 0, GridColumns - 1 );
-								// If reader is active, output cursor movement also moves where input will start
 								if ( reader != null )
 								{
 									inputStartRow = caretRow;
 									inputStartColumn = caretColumn;
 								}
-								bufferModified = true; // Display needs update for caret pos
+								bufferModified = true;
 								break;
-							case 'm': // Select Graphic Rendition (SGR) - Consumed
+							case 'm':
 								break;
-							// Add other CSI commands as needed: 'K' (Erase in Line), 'A' (Cursor Up), etc.
-							case 'A': // Cursor Up
+							case 'A':
 								int countA = ps.Length > 0 && int.TryParse( ps[0], out int valA ) ? valA : 1;
 								caretRow = Math.Max( 0, caretRow - countA );
 								if ( reader != null ) inputStartRow = caretRow;
 								bufferModified = true;
 								break;
-							case 'B': // Cursor Down
+							case 'B':
 								int countB = ps.Length > 0 && int.TryParse( ps[0], out int valB ) ? valB : 1;
 								caretRow = Math.Min( GridRows - 1, caretRow + countB );
 								if ( reader != null ) inputStartRow = caretRow;
 								bufferModified = true;
 								break;
-							case 'C': // Cursor Forward
+							case 'C':
 								int countC = ps.Length > 0 && int.TryParse( ps[0], out int valC ) ? valC : 1;
 								caretColumn = Math.Min( GridColumns - 1, caretColumn + countC );
 								if ( reader != null ) inputStartColumn = caretColumn;
 								bufferModified = true;
 								break;
-							case 'D': // Cursor Backward
+							case 'D':
 								int countD = ps.Length > 0 && int.TryParse( ps[0], out int valD ) ? valD : 1;
 								caretColumn = Math.Max( 0, caretColumn - countD );
 								if ( reader != null ) inputStartColumn = caretColumn;
@@ -576,24 +582,27 @@ public partial class ConsolePanel : Panel
 					currentEscapeState = EscapeSequenceState.None;
 					csiParameterBuffer.Clear();
 					csiGotQuestionMark = false;
+					prevCharCausedLineWrap = false; // CSI sequence processed, reset flag
 				}
 				break;
 
 			case EscapeSequenceState.GotOSC:
-				if ( c == '\u0007' || (c == 0x1B && oscStringBuffer.Length > 0 && oscStringBuffer[oscStringBuffer.Length - 1] == '\\') ) // BEL or ESC \ (ST)
+				if ( c == '\u0007' || (c == 0x1B && oscStringBuffer.Length > 0 && oscStringBuffer[oscStringBuffer.Length - 1] == '\\') )
 				{
 					string oscCommand = oscStringBuffer.ToString();
-					if ( oscCommand.StartsWith( "0;" ) || oscCommand.StartsWith( "2;" ) ) // Set window title
+					if ( oscCommand.StartsWith( "0;" ) || oscCommand.StartsWith( "2;" ) )
 					{
 						SetWindowTitleAction?.Invoke( oscCommand.Substring( 2 ) );
 					}
 					currentEscapeState = EscapeSequenceState.None;
 					oscStringBuffer.Clear();
+					prevCharCausedLineWrap = false; // OSC sequence finished
 				}
-				else if ( c == 0x1B )
+				else if ( c == 0x1B ) // Could be an ST (ESC \) or a new ESC starting another sequence
 				{
-					currentEscapeState = EscapeSequenceState.None;
+					currentEscapeState = EscapeSequenceState.None; // Assume current OSC is aborted or ending.
 					oscStringBuffer.Clear();
+					prevCharCausedLineWrap = false;
 				}
 				else
 				{
