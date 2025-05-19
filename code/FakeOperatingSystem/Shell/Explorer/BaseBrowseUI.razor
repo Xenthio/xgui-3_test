@@ -67,6 +67,18 @@
 		}
 	}
 
+	// Close any open menu when clicking outside
+	protected override void OnMouseDown(MousePanelEvent e)
+	{
+		base.OnMouseDown(e);
+
+		// Only close if mouse is not over a menu button or menu
+		if (e.Target != null && !e.Target.HasClass("menu-item") && !e.Target.Parent.HasClass("menu-item"))
+		{
+			MenuToolbar.CloseAllMenus();
+		}
+	}
+
 	protected virtual void SetupMenuToolbar()
 	{
 		// Base menu setup

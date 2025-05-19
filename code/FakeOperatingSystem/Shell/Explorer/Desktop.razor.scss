@@ -1,7 +1,9 @@
 Desktop {
+	flex-direction: row;
+
 	.listview {
 		border: none;
-
+		padding:0px;
 
 		&::before {
 			border: 0px;
@@ -9,9 +11,9 @@ Desktop {
 
 		background-color: transparent;
 		color: white;
-	}
 
-	.listview-icon-container {
-		flex-direction: column;
+		.listview-icon-container {
+			flex-direction: column;
+		}
 	}
 }

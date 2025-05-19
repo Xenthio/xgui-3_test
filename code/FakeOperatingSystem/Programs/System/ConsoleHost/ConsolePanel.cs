@@ -153,29 +153,46 @@ public partial class ConsolePanel : Panel
 			string currentLineText;
 			if ( reader != null && r == inputStartRow )
 			{
-				// Construct the input line: part from screenGrid, then reader.CurrentLine, then padding
+				// Construct the input line: part from screenGrid, then reader.CurrentLine
 				StringBuilder lineBuilder = new StringBuilder();
-				// Append part of the screenGrid line before the input start column
 				if ( inputStartColumn > 0 && inputStartColumn < GridColumns )
 				{
 					lineBuilder.Append( screenGrid[r].ToString().Substring( 0, Math.Min( inputStartColumn, screenGrid[r].Length ) ) );
 				}
-
 				lineBuilder.Append( reader.CurrentLine ?? "" );
 
-				// Pad or truncate to GridColumns before trimming
+				// Determine the full line content after padding/truncating to GridColumns
+				string fullLineContentBeforeConditionalTrim;
 				if ( lineBuilder.Length < GridColumns )
 				{
-					lineBuilder.Append( new string( ' ', GridColumns - lineBuilder.Length ) );
+					fullLineContentBeforeConditionalTrim = lineBuilder.ToString() + new string( ' ', GridColumns - lineBuilder.Length );
 				}
 				else if ( lineBuilder.Length > GridColumns )
 				{
-					lineBuilder.Length = GridColumns; // Truncate if too long
+					fullLineContentBeforeConditionalTrim = lineBuilder.ToString().Substring( 0, GridColumns );
 				}
-				currentLineText = lineBuilder.ToString().TrimEnd();
+				else
+				{
+					fullLineContentBeforeConditionalTrim = lineBuilder.ToString();
+				}
+
+				// Calculate the global caret column on this full display line
+				// This is the point up to which characters (including user-typed spaces) should be preserved.
+				int globalCaretColumn = inputStartColumn + reader.CaretPositionInLine;
+
+				// Ensure globalCaretColumn is within the bounds of the fullLineContentBeforeConditionalTrim
+				globalCaretColumn = Math.Min( globalCaretColumn, fullLineContentBeforeConditionalTrim.Length );
+
+				string partToKeep = fullLineContentBeforeConditionalTrim.Substring( 0, globalCaretColumn );
+				string partToTrim = (globalCaretColumn < fullLineContentBeforeConditionalTrim.Length)
+									? fullLineContentBeforeConditionalTrim.Substring( globalCaretColumn )
+									: "";
+
+				currentLineText = partToKeep + partToTrim.TrimEnd();
 			}
 			else
 			{
+				// For non-input lines (historical output from screenGrid), TrimEnd() is acceptable.
 				currentLineText = screenGrid[r].ToString().TrimEnd();
 			}
 			potentialLines.Add( currentLineText );
