@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace FakeOperatingSystem.OSFileSystem;
 
@@ -53,6 +54,16 @@ public class VirtualFileSystem : IVirtualFileSystem
 	/// </summary>
 	public PathResolution ResolveMountPoint( string path )
 	{
+		if ( string.IsNullOrWhiteSpace( path ) )
+		{
+			return new PathResolution
+			{
+				MountPoint = null,
+				RealPath = path,
+				FileSystem = _defaultFileSystem
+			};
+		}
+
 		// Normalize the path
 		path = path.Replace( '\\', '/' );
 
@@ -93,14 +104,22 @@ public class VirtualFileSystem : IVirtualFileSystem
 
 	public bool FileExists( string path )
 	{
+		if ( string.IsNullOrWhiteSpace( path ) )
+		{
+			return false;
+		}
 		var resolution = ResolveMountPoint( path );
 		return resolution.FileSystem.FileExists( resolution.RealPath );
 	}
 
 	public bool DirectoryExists( string path )
 	{
+		if ( string.IsNullOrWhiteSpace( path ) )
+		{
+			return false;
+		}
 		var resolution = ResolveMountPoint( path );
-		return resolution.FileSystem.DirectoryExists( resolution.RealPath );
+		return resolution.FileSystem.DirectoryExists( resolution?.RealPath );
 	}
 
 	public Stream OpenRead( string path )
@@ -119,6 +138,12 @@ public class VirtualFileSystem : IVirtualFileSystem
 	{
 		var resolution = ResolveMountPoint( path );
 		return resolution.FileSystem.ReadAllBytes( resolution.RealPath ).ToArray();
+	}
+
+	public async Task<byte[]> ReadAllBytesAsync( string path )
+	{
+		var resolution = ResolveMountPoint( path );
+		return await resolution.FileSystem.ReadAllBytesAsync( resolution.RealPath );
 	}
 
 	public string ReadAllText( string path )
@@ -340,13 +365,18 @@ public class VirtualFileSystem : IVirtualFileSystem
 
 	public long RecursiveDirectorySize( string path )
 	{
+		if ( DirectoryExists( path ) == false )
+		{
+			return 0;
+		}
 		var resolution = ResolveMountPoint( path );
+
 		long totalSize = 0;
 		// Get all files in the directory
 		var files = resolution.FileSystem.FindFile( resolution.RealPath );
 		foreach ( var file in files )
 		{
-			totalSize += resolution.FileSystem.FileSize( Path.Combine( path, file ) );
+			totalSize += resolution.FileSystem.FileSize( Path.Combine( resolution.RealPath, file ) );
 		}
 		// Get all subdirectories and their sizes
 		var directories = resolution.FileSystem.FindDirectory( resolution.RealPath ); // Original FindDirectory for raw list
@@ -355,9 +385,40 @@ public class VirtualFileSystem : IVirtualFileSystem
 			// Ensure we don't recurse into "." or ".." if underlying system returns them
 			var dirName = GetFileName( dir );
 			if ( dirName == "." || dirName == ".." ) continue;
-			totalSize += RecursiveDirectorySize( Path.Combine( path, dir ) );
+			totalSize += RecursiveDirectorySize( Path.Combine( resolution.RealPath, dir ) );
 		}
 		return totalSize;
+	}
+
+	/// <summary>
+	/// Recursively counts files and directories in the given path
+	/// </summary>
+	/// <param name="path"></param>
+	/// <returns></returns>
+	public (int, int) RecursiveCount( string path )
+	{
+		var resolution = ResolveMountPoint( path );
+		int fileCount = 0;
+		int dirCount = 0;
+
+		var files = resolution.FileSystem.FindFile( resolution.RealPath );
+		foreach ( var file in files )
+		{
+			fileCount++;
+		}
+
+		var directories = resolution.FileSystem.FindDirectory( resolution.RealPath );
+		foreach ( var dir in directories )
+		{
+			// Ensure we don't recurse into "." or ".."
+			var dirName = GetFileName( dir );
+			if ( dirName == "." || dirName == ".." ) continue;
+			dirCount++;
+			var (subFileCount, subDirCount) = RecursiveCount( Path.Combine( path, dir ) );
+			fileCount += subFileCount;
+			dirCount += subDirCount;
+		}
+		return (fileCount, dirCount);
 	}
 
 	public long GetFreeSpace( string path )

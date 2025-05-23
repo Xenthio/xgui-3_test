@@ -7,6 +7,7 @@ TaskBar {
 		border-bottom: 0px;
 
 		&::before {
+			position:absolute;
 			border-left: 0px;
 			border-right: 0px;
 			border-bottom: 0px;
@@ -76,6 +77,9 @@ TaskBar {
 				height: 22px;
 				width: 158px;
 				margin-right: 3px;
+				.label {
+					text-overflow: ellipsis;
+				}
 
 				&.focused {
 					font-weight: bold;

@@ -6,6 +6,7 @@
 @using XGUI;
 @using FakeDesktop;
 @using FakeOperatingSystem;
+@using FakeOperatingSystem.Shell;
 @attribute [StyleSheet()]
 @inherits Window
 
@@ -132,47 +133,7 @@
 	// Method to open quick access item
 	private void OpenQuickAccessItem(QuickAccessItem item)
 	{
-		if (item.IsDirectory)
-		{
-			// Open folder in explorer
-			Log.Info($"Opening folder: {item.Path}");
-			// TODO: Launch Explorer with this path
-		}
-		else
-		{
-			// Handle file opening based on type
-			var virtualFileSystem = OldVirtualFileSystem.Instance;
-			if (virtualFileSystem == null)
-				return;
-
-			var entry = virtualFileSystem.GetEntry(item.Path);
-			if (entry == null)
-				return;
-
-			// Handle shortcuts
-			if (entry.Name.EndsWith(".lnk", StringComparison.OrdinalIgnoreCase))
-			{
-				Log.Info($"Opening shortcut: {entry.Name}");
-				virtualFileSystem.ResolveShortcut(entry.RealPath);
-				return;
-			}
-
-			// Handle executables
-			if (entry.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-			{
-				Log.Info($"Launching executable: {entry.Name}");
-				var launchOptions = new Win32LaunchOptions
-				{
-					Arguments = "",
-					WorkingDirectory = System.IO.Path.GetDirectoryName(entry.RealPath)
-				};
-				ProcessManager.Instance?.OpenExecutable(entry.Path, launchOptions);
-				return;
-			}
-
-			// For other files, use file associations
-			virtualFileSystem.OpenFile(entry.RealPath);
-		}
+		Shell.ShellExecute(item.Path);
 	}
 
 	// --- Open Windows Implementation ---

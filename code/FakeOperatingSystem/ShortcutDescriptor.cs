@@ -1,4 +1,5 @@
-﻿using FakeOperatingSystem;
+﻿using FakeOperatingSystem.OSFileSystem;
+using FakeOperatingSystem.Shell;
 using System;
 using System.IO;
 
@@ -98,46 +99,27 @@ public class ShortcutDescriptor
 		}
 	}
 
-	/// <summary>
-	/// Resolves the target by launching the appropriate program or navigating to the location
-	/// </summary>
-	public bool Resolve( OldVirtualFileSystem fileSystem )
+	public bool Resolve()
 	{
 		try
 		{
-			// Check if target is an EXE file
-			if ( TargetPath.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
+			Log.Info( $"Resolving shortcut: {TargetPath}" );
+			// Check if target is a file
+			if ( VirtualFileSystem.Instance.FileExists( TargetPath ) )
 			{
-				// Prepare launch options from shortcut properties
-				var launchOptions = new Win32LaunchOptions
-				{
-					Arguments = Arguments ?? "",
-					WorkingDirectory = !string.IsNullOrEmpty( WorkingDirectory )
-						? WorkingDirectory
-						: System.IO.Path.GetDirectoryName( TargetPath ),
-					WindowState = ShowState switch
-					{
-						WindowShowState.Minimized => WindowState.Minimized,
-						WindowShowState.Maximized => WindowState.Maximized,
-						_ => WindowState.Normal
-					}
-				};
-
-				// Launch using the new process manager
-				var process = ProcessManager.Instance?.OpenExecutable( TargetPath, launchOptions );
-				if ( process != null )
-					return true;
-
-				Log.Warning( $"Failed to launch shortcut target: {TargetPath}" );
-				return false;
+				Shell.ShellExecute( TargetPath );
+				return true;
 			}
-			// Check if target is a folder or other filesystem path
+			else if ( VirtualFileSystem.Instance.DirectoryExists( TargetPath ) )
+			{
+
+				// If the target is a folder, open it in the file browser
+				return true;
+			}
 			else
 			{
-				// TODO: Navigate to the folder or file location
-				Log.Info( $"Navigating to folder: {TargetPath}" );
-				// This would typically involve telling the FileBrowserView to navigate to this path
-				return true;
+				MessageBoxUtility.ShowCustom( $"Target path does not exist: {TargetPath}", "Error", MessageBoxIcon.Error, MessageBoxButtons.OK );
+				return false;
 			}
 		}
 		catch ( Exception ex )

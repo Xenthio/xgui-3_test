@@ -897,7 +897,7 @@ public class OldVirtualFileSystem
 		if ( shortcut == null )
 			return false;
 
-		return shortcut.Resolve( this );
+		return shortcut.Resolve();
 	}
 
 	/// <summary>

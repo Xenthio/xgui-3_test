@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86;
 
+// Might rename to PEInterpreter or something like that
 public partial class X86Interpreter
 {
 	public readonly X86Core Core = new();
@@ -22,6 +23,11 @@ public partial class X86Interpreter
 	public uint HeapStart = 0x00400000; // Default heap start address
 
 	public Dictionary<(uint hInstance, uint uID), string> StringResources = new();
+	public Dictionary<(uint hInstance, uint uID), byte[]> DialogResources { get; } = new();
+	public Dictionary<(uint hInstance, uint uID), byte[]> BitmapResources { get; } = new();
+	public Dictionary<(uint hInstance, uint uID), byte[]> IconResources { get; } = new(); // For RT_ICON
+	public Dictionary<(uint hInstance, uint uID), byte[]> GroupIconResources { get; } = new(); // For RT_GROUP_ICON
+
 
 	public delegate void MessageBoxHandler( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore );
 	public event MessageBoxHandler OnHaltWithMessageBox;
@@ -135,31 +141,54 @@ public partial class X86Interpreter
 
 		if ( loader.ParseAllResources( fileBytes, out var resources ) )
 		{
+			// Assuming hInstance for the main executable is its base address (HeapStart is used as a proxy here, typically 0x00400000)
+			// In a multi-module scenario, hInstance would vary.
+			uint hInstance = HeapStart; // Or a more robust way to determine the module's base address/handle
+
 			foreach ( var res in resources )
 			{
-				if ( res.Type == 6 ) // RT_STRING
+				if ( res.Type == 2 ) // RT_BITMAP
+				{
+					BitmapResources[(0x00400000, res.Name)] = res.Data;
+					Core.LogVerbose( $"Loaded bitmap resource: ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
+				}
+				else if ( res.Type == 3 ) // RT_ICON
+				{
+					IconResources[(0x00400000, res.Name)] = res.Data;
+					Core.LogVerbose( $"Loaded icon resource (RT_ICON): ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
+				}
+				else if ( res.Type == 5 ) // RT_DIALOG
+				{
+					DialogResources[(0x00400000, res.Name)] = res.Data;
+					Core.LogVerbose( $"Loaded dialog resource: ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
+				}
+				else if ( res.Type == 6 ) // RT_STRING
 				{
 					using var ms = new System.IO.MemoryStream( res.Data );
 					using var br = new System.IO.BinaryReader( ms );
-					for ( uint i = 0; i < 16; i++ )
+					for ( uint i = 0; i < 16; i++ ) // String tables are bundled in blocks of 16
 					{
 						if ( ms.Position + 2 > ms.Length )
-							break; // Prevents reading past end
+							break;
 
 						ushort strlen = br.ReadUInt16();
 						string value = "";
 						if ( strlen > 0 )
 						{
 							if ( ms.Position + strlen * 2 > ms.Length )
-								break; // Prevents reading past end
+								break;
 
 							byte[] strBytes = br.ReadBytes( strlen * 2 );
 							value = Encoding.Unicode.GetString( strBytes );
-							// Only add if not empty
 							StringResources[(0x00400000, (res.Name - 1) * 16 + i)] = value;
-							Core.LogVerbose( $"Loaded string resource: ID=0x{((res.Name - 1) * 16 + i):X8}, Value=\"{value}\"" );
+							Core.LogVerbose( $"Loaded string resource: ID=0x{((res.Name - 1) * 16 + i):X8}, Value=\"{value}\", hInstance=0x{hInstance:X8}" );
 						}
 					}
+				}
+				else if ( res.Type == 14 ) // RT_GROUP_ICON
+				{
+					GroupIconResources[(0x00400000, res.Name)] = res.Data;
+					Core.LogVerbose( $"Loaded group icon resource (RT_GROUP_ICON): ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
 				}
 			}
 		}

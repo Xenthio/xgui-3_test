@@ -1,5 +1,6 @@
 using FakeOperatingSystem.Experiments.Ambitious.X86.Handlers;
 using Sandbox;
+using System;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.Tests;
 public class X86EmulatorTests
@@ -28,6 +29,7 @@ public class X86EmulatorTests
 		TestSelfModifyingCode();
 		TestFlagsAfterSub();
 		TestRepMovsb();
+		TestLeaR32M();
 	}
 
 	public static void TestRetHandler()
@@ -352,22 +354,53 @@ public class X86EmulatorTests
 	public static void TestStackFrameChain()
 	{
 		var core = new X86Core();
-		core.Registers["esp"] = 0x9000;
-		core.Registers["ebp"] = 0x0;
+		uint initialEsp = 0x9000;
+		uint initialEbp = 0x0;
+
+		core.Registers["esp"] = initialEsp;
+		core.Registers["ebp"] = initialEbp;
+
 		// Simulate 3 nested calls with prologues
+		// Each prologue: PUSH EBP; MOV EBP, ESP
 		for ( int i = 0; i < 3; i++ )
 		{
 			core.Push( core.Registers["ebp"] );
 			core.Registers["ebp"] = core.Registers["esp"];
 		}
+
 		// Unwind
+		// Each epilogue (simplified): (MOV ESP, EBP - implicit here as ESP should already be EBP), POP EBP
 		bool pass = true;
 		for ( int i = 0; i < 3; i++ )
 		{
-			uint prevEbp = core.Pop();
+			// At this point, EBP and ESP should be pointing to the saved EBP from the previous frame.
+			// This is true after "MOV EBP, ESP" in the prologue, or after "MOV ESP, EBP" in an epilogue
+			// if no stack space for locals was allocated/deallocated relative to EBP.
+			// In this test's specific loop structure, EBP and ESP are aligned before the Pop.
 			pass &= (core.Registers["ebp"] == core.Registers["esp"]);
-			core.Registers["ebp"] = prevEbp;
+			if ( !pass )
+			{
+				Log.Info( $"Stack Frame Chain Test: FAIL - EBP (0x{core.Registers["ebp"]:X}) != ESP (0x{core.Registers["esp"]:X}) before Pop in unwind iteration {i + 1}" );
+				// Log test fail immediately and exit or break if desired for easier debugging
+			}
+
+			uint prevEbp = core.Pop(); // This is POP EBP. Reads from [ESP], then ESP increments.
+			core.Registers["ebp"] = prevEbp; // Restore EBP to the caller's EBP.
 		}
+
+		// After unwinding all frames, EBP and ESP should be restored to their initial values.
+		pass &= (core.Registers["ebp"] == initialEbp);
+		if ( !pass && core.Registers["ebp"] != initialEbp ) // Check if this specific condition failed
+		{
+			Log.Info( $"Stack Frame Chain Test: FAIL - Final EBP (0x{core.Registers["ebp"]:X}) != Initial EBP (0x{initialEbp:X})" );
+		}
+
+		pass &= (core.Registers["esp"] == initialEsp);
+		if ( !pass && core.Registers["esp"] != initialEsp ) // Check if this specific condition failed
+		{
+			Log.Info( $"Stack Frame Chain Test: FAIL - Final ESP (0x{core.Registers["esp"]:X}) != Initial ESP (0x{initialEsp:X})" );
+		}
+
 		Log.Info( "Stack Frame Chain Test:" );
 		Log.Info( pass ? "PASS" : "FAIL" );
 	}
@@ -397,9 +430,9 @@ public class X86EmulatorTests
 			core.WriteByte( codeAddr, 0x90 ); // NOP
 			Log.Info( "Self-Modifying Code Test: FAIL (no exception)" );
 		}
-		catch
+		catch ( Exception ex )
 		{
-			Log.Info( "Self-Modifying Code Test: PASS (exception thrown)" );
+			Log.Info( $"Self-Modifying Code Test: PASS (exception thrown) {ex}" );
 		}
 	}
 
@@ -430,6 +463,7 @@ public class X86EmulatorTests
 		core.Registers["esi"] = 0x1000;
 		core.Registers["edi"] = 0x2000;
 		core.Registers["ecx"] = 4;
+		core.DirectionFlag = false; // Explicitly clear Direction Flag (strings increment)
 		core.Registers["eip"] = 0xD000;
 		core.WriteByte( 0xD000, 0xF3 ); // REP prefix
 		core.WriteByte( 0xD001, 0xA4 ); // MOVSB
@@ -440,15 +474,64 @@ public class X86EmulatorTests
 		core.WriteByte( 0x1002, 0x33 );
 		core.WriteByte( 0x1003, 0x44 );
 
+		// Simulate CPU fetching and executing REP prefix
+		// EIP is initially 0xD000, pointing to REP
 		handler.Execute( core );
+		// After this call, EIP should be 0xD001 (pointing to MOVSB)
+		// and the handler's internal state should reflect an active REP.
+
+		// Simulate CPU fetching and executing MOVSB instruction
+		// EIP is now 0xD001, pointing to MOVSB
+		handler.Execute( core );
+		// After this call, MOVSB should have been executed REP ECX times.
+		// EIP should be 0xD002.
 
 		bool pass = core.ReadByte( 0x2000 ) == 0x11 &&
 					core.ReadByte( 0x2001 ) == 0x22 &&
 					core.ReadByte( 0x2002 ) == 0x33 &&
-					core.ReadByte( 0x2003 ) == 0x44;
+					core.ReadByte( 0x2003 ) == 0x44 &&
+					core.Registers["ecx"] == 0 && // ECX should be 0 after REP
+					core.Registers["esi"] == 0x1000 + 4 && // ESI should be incremented by 4
+					core.Registers["edi"] == 0x2000 + 4;   // EDI should be incremented by 4
 
 		Log.Info( "REP MOVSB Test:" );
 		Log.Info( pass ? "PASS" : "FAIL" );
+		if ( !pass )
+		{
+			Log.Info( $"  Result - ECX: {core.Registers["ecx"]}, ESI: {core.Registers["esi"]:X}, EDI: {core.Registers["edi"]:X}" );
+			Log.Info( $"  Result - Mem[0x2000]: {core.ReadByte( 0x2000 ):X2}, Mem[0x2001]: {core.ReadByte( 0x2001 ):X2}, Mem[0x2002]: {core.ReadByte( 0x2002 ):X2}, Mem[0x2003]: {core.ReadByte( 0x2003 ):X2}" );
+		}
+	}
+	public static void TestLeaR32M()
+	{
+		var core = new X86Core();
+		// Assuming LeaHandler exists and handles opcode 0x8D
+		// LEA EAX, [EBX + 0x50] -> Opcode 8D, ModRM 43, Disp8 50
+		var handler = new LeaHandler(); // Assuming this handler exists
+
+		Log.Info( "LEA r32, m Test:" );
+		uint initialEaxValue = 0xCDCDCDCD;
+		core.Registers["eax"] = initialEaxValue;
+		core.Registers["ebx"] = 0x1000;
+		uint addressToRead = core.Registers["ebx"] + 0x50; // 0x1050
+		uint memoryValueAtAddress = 0xABABABAB;
+		core.WriteDword( addressToRead, memoryValueAtAddress ); // Write a value to check it's not read
+
+		core.Registers["eip"] = 0x11000;
+		core.WriteByte( 0x11000, 0x8D ); // LEA
+		core.WriteByte( 0x11001, 0x43 ); // ModRM for EAX, [EBX+disp8]
+		core.WriteByte( 0x11002, 0x50 ); // disp8 = 0x50
+
+		handler.Execute( core );
+
+		uint expectedEaxValue = 0x1050;
+		Log.Info( $"  LEA EAX, [EBX+0x50] (EBX=0x1000): EAX={core.Registers["eax"]:X}" );
+		Log.Info( (core.Registers["eax"] == expectedEaxValue) ? "  PASS (EAX value correct)" : "  FAIL (EAX value incorrect)" );
+
+		// Verify that LEA did not read from the effective address
+		// This is an indirect check; a more direct check would require knowing how memory access is instrumented.
+		// If EAX was loaded from memory, it would be memoryValueAtAddress.
+		Log.Info( (core.Registers["eax"] != memoryValueAtAddress || expectedEaxValue == memoryValueAtAddress) ? "  PASS (Memory not read for EAX)" : "  FAIL (Memory potentially read for EAX)" );
 	}
 }
 

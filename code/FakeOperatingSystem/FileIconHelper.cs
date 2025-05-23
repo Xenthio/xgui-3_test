@@ -1,9 +1,12 @@
 using FakeOperatingSystem.OSFileSystem;
+using FakeOperatingSystem.Shell;
 using Sandbox;
 using System;
 using System.IO;
 using XGUI;
 
+
+// TODO: Move into Shell
 namespace FakeDesktop
 {
 	/// <summary>
@@ -14,6 +17,79 @@ namespace FakeDesktop
 		/// <summary>
 		/// Gets the appropriate icon for a file based on its extension or type
 		/// </summary>
+		public static string GetFileIcon( string path, int size = 16 )
+		{
+			if ( string.IsNullOrEmpty( path ) )
+				return GetGenericFileIcon( size );
+
+			if ( !VirtualFileSystem.Instance.FileExists( path ) )
+				return GetGenericFileIcon( size );
+
+			// Handle shortcuts - get icon from target
+			if ( path.EndsWith( ".lnk", StringComparison.OrdinalIgnoreCase ) )
+			{
+				string shortcutPath = path;
+				var shortcut = ShortcutDescriptor.FromFileContent( VirtualFileSystem.Instance.ReadAllText( shortcutPath ) );
+				// Try to get icon from target if it's an executable
+				if ( shortcut != null && !string.IsNullOrEmpty( shortcut.TargetPath ) )
+				{
+					if ( !string.IsNullOrEmpty( shortcut.IconName ) )
+					{
+						var icon = XGUIIconSystem.GetIcon( shortcut.IconName, XGUIIconSystem.IconType.FileType, size );
+						if ( !string.IsNullOrEmpty( icon ) )
+							return icon;
+					}
+					if ( shortcut.TargetPath.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
+					{
+						string filename = Path.GetFileNameWithoutExtension( shortcut.TargetPath );
+						return XGUIIconSystem.GetIcon( $"exe_{filename}", XGUIIconSystem.IconType.FileType, size );
+					}
+					return XGUIIconSystem.GetIcon( shortcut.IconName, XGUIIconSystem.IconType.FileType, size );
+				}
+			}
+
+			// For executables, try to get icon from the filename
+			if ( path.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
+			{
+				string filename = Path.GetFileNameWithoutExtension( path );
+				return XGUIIconSystem.GetIcon( $"exe_{filename}", XGUIIconSystem.IconType.FileType, size );
+			}
+
+			// Extract extension from path
+			var ext = Path.GetExtension( path );
+			return XGUIIconSystem.GetFileIcon( ext, size );
+		}
+
+		public static string GetFolderIcon( string path, int size = 16 )
+		{
+			if ( string.IsNullOrEmpty( path ) )
+				return GetGenericFolderIcon( size );
+
+			// Check for custom folder icon from desktop.ini
+			string customIcon = GetCustomFolderIconFromDesktopIni( path, VirtualFileSystem.Instance );
+			if ( !string.IsNullOrEmpty( customIcon ) )
+			{
+				return XGUIIconSystem.GetIcon( customIcon, XGUIIconSystem.IconType.Folder, size );
+			}
+
+			// Check shell namespace for custom folder icon
+			var shellFolder = ShellNamespace.Instance.GetFolder( path );
+			if ( shellFolder != null )
+			{
+				var icon = shellFolder.IconName;
+				if ( !string.IsNullOrEmpty( icon ) )
+				{
+					return XGUIIconSystem.GetIcon( icon, XGUIIconSystem.IconType.Folder, size );
+				}
+			}
+
+			return GetGenericFolderIcon( size );
+		}
+
+		/// <summary>
+		/// Gets the appropriate icon for a file based on its extension or type
+		/// </summary>
+		[Obsolete]
 		public static string GetFileIcon( string path, OldVirtualFileSystem virtualFileSystem, int size = 16 )
 		{
 			if ( string.IsNullOrEmpty( path ) )

@@ -275,49 +275,23 @@ public class VirtualFileBrowserView : FileBrowserView
 				var iconPanel = listViewItem.IconPanel;
 				var size = ViewMode == FileBrowserViewMode.Icons ? 32 : 16;
 
-				// Use custom icon from desktop.ini if present
+				string icon = "";
 				if ( isDirectory )
 				{
-					string customIcon = FileIconHelper.GetCustomFolderIconFromDesktopIni( realPath, _vfs );
-					if ( !string.IsNullOrEmpty( customIcon ) )
-					{
-						iconPanel.SetFolderIcon( customIcon, size );
-						break;
-					}
-					if ( string.IsNullOrEmpty( iconName ) || iconName == "folder" )
-					{
-						iconPanel.SetFolderIcon( "folder", size );
-					}
-					else
-					{
-						iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.Folder, size );
-					}
+					icon = FileIconHelper.GetFolderIcon( realPath, size );
 				}
 				else
 				{
-					// For files, try to determine by extension
-					string extension = System.IO.Path.GetExtension( path );
-					if ( !string.IsNullOrEmpty( extension ) && extension.StartsWith( "." ) )
-					{
-						extension = extension.Substring( 1 );
-					}
+					icon = FileIconHelper.GetFileIcon( realPath, size );
+				}
 
-					if ( extension == "exe" )
-					{
-						// todo, lookup icon inside of exe.
-						var filename = System.IO.Path.GetFileNameWithoutExtension( path );
-						iconPanel.SetFileIcon( $"exe_{filename}", size );
-						return;
-					}
-
-					if ( string.IsNullOrEmpty( iconName ) || iconName == "file" )
-					{
-						iconPanel.SetFileIcon( extension, size );
-					}
-					else
-					{
-						iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.FileType, size );
-					}
+				if ( icon == FileIconHelper.GetGenericFolderIcon( size ) )
+				{
+					iconPanel.SetIcon( iconName, XGUIIconSystem.IconType.Folder, size );
+				}
+				else
+				{
+					iconPanel.SetIcon( $"url:{icon}", iconSize: size );
 				}
 				break;
 			}
@@ -356,6 +330,47 @@ public class VirtualFileBrowserView : FileBrowserView
 	{
 		_currentContextMenu?.Delete();
 		_currentContextMenu = new ContextMenu( this, ContextMenu.PositionMode.UnderMouse );
+
+		// "View" submenu
+		_currentContextMenu.AddSubmenuItem( "View", submenu =>
+		{
+			submenu.AddMenuItem( "Icons", () => { ViewMode = FileBrowserViewMode.Icons; } );
+			submenu.AddMenuItem( "List", () => { ViewMode = FileBrowserViewMode.List; } );
+			submenu.AddMenuItem( "Details", () => { ViewMode = FileBrowserViewMode.Details; } );
+		} );
+
+		_currentContextMenu.AddSeparator();
+
+		// Customise this folder
+		_currentContextMenu.AddMenuItem( "Customize this Folder...", () =>
+		{
+			// Open the folder properties dialog
+			var folder = _shellManager.GetFolder( _currentShellPath );
+			if ( folder != null )
+			{
+				// Open the customise dialog for the folder
+				// todo: Implement the customise dialog
+			}
+			_currentContextMenu?.Delete();
+		} );
+
+		_currentContextMenu.AddSeparator();
+
+		// "Arrange Icons" submenu 
+		_currentContextMenu.AddSubmenuItem( "Arrange Icons", submenu =>
+		{
+			submenu.AddMenuItem( "By Name", () => { /* Implement sorting by name */ } );
+			submenu.AddMenuItem( "By Type", () => { /* Implement sorting by type */ } );
+			submenu.AddMenuItem( "By Size", () => { /* Implement sorting by size */ } );
+			submenu.AddMenuItem( "By Date", () => { /* Implement sorting by date modified */ } );
+			submenu.AddSeparator();
+			submenu.AddMenuItem( "Auto Arrange", () => { /* Implement auto arrange */ } );
+		} );
+
+		// "Line Up Icons" menu
+		_currentContextMenu.AddMenuItem( "Line Up Icons", () => { } );
+
+		_currentContextMenu.AddSeparator();
 
 		_currentContextMenu.AddMenuItem( "Refresh", () =>
 		{
@@ -440,7 +455,22 @@ public class VirtualFileBrowserView : FileBrowserView
 		} );
 
 		_currentContextMenu.AddSeparator();
-		_currentContextMenu.AddMenuItem( "Properties", () => Log.Info( $"Properties for {CurrentPath}" ) );
+		_currentContextMenu.AddMenuItem( "Properties", () =>
+		{
+			var folder = _shellManager.GetFolder( _currentShellPath );
+			if ( folder != null )
+			{
+				var dialog = new FilePropertiesDialog
+				{
+					Name = folder.Name,
+					Path = folder.RealPath ?? _currentShellPath,
+					IsDirectory = true,
+					Size = 0 // You can calculate folder size if needed
+				};
+				XGUISystem.Instance.Panel.AddChild( dialog );
+			}
+			_currentContextMenu?.Delete();
+		} );
 	}
 
 	// Optional: Show context menu for file/folder items
@@ -537,9 +567,42 @@ public class VirtualFileBrowserView : FileBrowserView
 			}
 			_currentContextMenu?.Delete();
 		} );
+		_currentContextMenu.AddMenuItem( "Properties", () =>
+		{
+			var shellItem = _shellManager.GetItems( _currentShellPath )
+				.FirstOrDefault( i => i.Path == item.FullPath );
 
-		_currentContextMenu.AddSeparator();
-		_currentContextMenu.AddMenuItem( "Properties", () => Log.Info( $"Properties for {item.FullPath}" ) );
+			if ( shellItem != null )
+			{
+				var isDir = item.IsDirectory;
+				var size = isDir ? VirtualFileSystem.Instance.RecursiveDirectorySize( shellItem.RealPath ) : _vfs.FileSize( shellItem.RealPath );
+				var dialog = new FilePropertiesDialog
+				{
+					Name = item.Name,
+					Path = shellItem.RealPath ?? item.FullPath,
+					IsDirectory = isDir,
+					Size = size
+				};
+				XGUISystem.Instance.Panel.AddChild( dialog );
+
+
+				// Get the size of the parent panel (this)
+				var parentWidth = this.Box.Right - this.Box.Left;
+				var parentHeight = this.Box.Bottom - this.Box.Top;
+
+				// Get the size of the dialog 
+				var dialogWidth = dialog.Box.Right - dialog.Box.Left;
+				var dialogHeight = dialog.Box.Bottom - dialog.Box.Top;
+
+				// Calculate the top-left position to center the dialog
+				var x = (int)(parentWidth / 2 - dialogWidth / 2);
+				var y = (int)(parentHeight / 2 - dialogHeight / 2);
+
+				dialog.Position = new Vector2( x, y );
+
+			}
+			_currentContextMenu?.Delete();
+		} );
 	}
 
 	// Add these methods to VirtualFileBrowserView

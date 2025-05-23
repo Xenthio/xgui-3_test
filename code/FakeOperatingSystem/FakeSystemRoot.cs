@@ -63,6 +63,9 @@ public class FakeSystemRoot
 		// Quick Launch folder
 		SetupQuickLaunch();
 
+		// Setup Start Menu items
+		SetupStartMenuItems();
+
 		// Create desktop shortcuts and other items
 		CreateDefaultDesktopItems();
 	}
@@ -116,14 +119,79 @@ public class FakeSystemRoot
 		// Internet Explorer shortcut
 		CreateShortcut(
 			$"{quickLaunchDir}/Internet Explorer.lnk",
-			"C:/Program Files/Internet Explorer/Iexplore.exe",
-			"iexplore"
+			"C:/Program Files/Internet Explorer/Iexplore.exe"
 		);
 		// Outlook Express shortcut
 		CreateShortcut(
 			$"{quickLaunchDir}/Outlook Express.lnk",
-			"C:/Program Files/Outlook Express/outlook.exe",
-			"outlook"
+			"C:/Program Files/Outlook Express/outlook.exe"
+		);
+	}
+	private static void SetupStartMenuItems()
+	{
+		string startMenuDir = "FakeSystemRoot/Windows/Start Menu/Programs";
+		FileSystem.Data.CreateDirectory( startMenuDir );
+		// Internet Explorer shortcut
+		CreateShortcut(
+			$"{startMenuDir}/Internet Explorer.lnk",
+			"C:/Program Files/Internet Explorer/Iexplore.exe"
+		);
+		// Outlook Express shortcut
+		CreateShortcut(
+			$"{startMenuDir}/Outlook Express.lnk",
+			"C:/Program Files/Outlook Express/outlook.exe"
+		);
+		// Windows Explorer shortcut
+		CreateShortcut(
+			$"{startMenuDir}/Windows Explorer.lnk",
+			"C:/Windows/explorer.exe",
+			"explore"
+		);
+		// Command Prompt shortcut
+		CreateShortcut(
+			$"{startMenuDir}/Command Prompt.lnk",
+			"C:/Windows/System32/cmd.exe"
+		);
+
+		// Accessories folder
+		string accessoriesDir = $"{startMenuDir}/Accessories";
+		FileSystem.Data.CreateDirectory( accessoriesDir );
+		// Notepad shortcut
+		CreateShortcut(
+			$"{accessoriesDir}/Notepad.lnk",
+			"C:/Windows/notepad.exe"
+		);
+		// Paint shortcut
+		CreateShortcut(
+			$"{accessoriesDir}/Paint.lnk",
+			"C:/Windows/mspaint.exe"
+		);
+		// Calculator shortcut
+		CreateShortcut(
+			$"{accessoriesDir}/Calculator.lnk",
+			"C:/Windows/calc.exe"
+		);
+		// Task Manager shortcut
+		CreateShortcut(
+			$"{accessoriesDir}/Task Manager.lnk",
+			"C:/Windows/System32/taskmgr.exe"
+		);
+
+		// Games folder
+		string gamesDir = $"{accessoriesDir}/Games";
+		FileSystem.Data.CreateDirectory( gamesDir );
+		// Minesweeper shortcut
+		CreateShortcut(
+			$"{gamesDir}/Minesweeper.lnk",
+			"C:/Windows/System32/winmine.exe"
+		);
+
+		// Ultimate Doom for Windows 95 shortcut
+		string doomDir = $"{startMenuDir}/Ultimate Doom for Windows 95";
+		FileSystem.Data.CreateDirectory( doomDir );
+		CreateShortcut(
+			$"{doomDir}/Doom95.lnk",
+			"C:/Program Files/Ultimate Doom for Windows 95/doom95.exe"
 		);
 	}
 
@@ -142,6 +210,9 @@ public class FakeSystemRoot
 
 		// Paint (system application)
 		NativeProgram.CompileIntoExe( typeof( PaintProgram ), $"{windowsDir}/mspaint.exe" );
+
+		// winver (system application)
+		NativeProgram.CompileIntoExe( typeof( WinVerProgram ), $"{windowsDir}/System32/winver.exe" );
 
 		// taskmgr (system application)
 		NativeProgram.CompileIntoExe( typeof( TaskMgrProgram ), $"{windowsDir}/System32/taskmgr.exe" );
@@ -163,21 +234,19 @@ public class FakeSystemRoot
 		// Outlook Express shortcut
 		CreateShortcut(
 			$"{desktopDir}/Outlook Express.lnk",
-			"FakeSystemRoot/Program Files/Outlook Express/outlook.exe",
-			"outlook"
+			"C:/Program Files/Outlook Express/outlook.exe"
 		);
 		// Doom 95 shortcut
 		CreateShortcut(
 			$"{desktopDir}/Doom 95.lnk",
-			"FakeSystemRoot/Program Files/Ultimate Doom for Windows 95/doom95.exe",
-			"doom95"
+			"C:/Program Files/Ultimate Doom for Windows 95/doom95.exe"
 		);
 	}
 
 	/// <summary>
 	/// Creates a shortcut file pointing to a target program
 	/// </summary>
-	private static void CreateShortcut( string shortcutPath, string targetPath, string iconName,
+	private static void CreateShortcut( string shortcutPath, string targetPath, string iconName = "",
 									 string arguments = "", string workingDir = "" )
 	{
 		// Create the shortcut descriptor

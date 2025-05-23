@@ -1,4 +1,6 @@
 ﻿@using System;
+@using FakeDesktop
+@using FakeOperatingSystem.OSFileSystem
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
@@ -125,72 +127,47 @@
 	private void OpenProgramsMenu()
 	{
 		CloseActiveMenu();
-
-		// Add "open" class to the Programs button
 		ProgramsButton.AddClass("open");
-
-		// Create the Programs menu
 		activeMenu = new ContextMenu(ProgramsButton, XGUIPopup.PositionMode.Right, 0);
 		activeMenu.AddClass("Large");
+		SetupMenuMouseEvents(activeMenu);
 
-		// Setup menu mouse tracking
-		SetupMenuMouseEvents(activeMenu); 
+		string programsPath = "C:/Windows/Start Menu/Programs";
+		PopulateProgramsMenuRecursive(activeMenu, programsPath);
 
-		// Accessories
-		activeMenu.AddSubmenuItem("Accessories", (submenu) =>
-		{
-			submenu.AddClass("Large");
-			// Games submenu
-			submenu.AddSubmenuItem("Games", (submenu2) =>
-			{
-				submenu2.AddClass("Large");
-				submenu2.AddMenuItem("Minesweeper", () => Log.Info("Opening Minesweeper"));
-				submenu2.AddMenuItem("Solitaire", () => Log.Info("Opening Solitaire"));
-
-				// Nested submenu
-				submenu2.AddSubmenuItem("More Games", (submenu3) =>
-				{
-					submenu3.AddClass("Large");
-					submenu3.AddMenuItem("Pinball", () => Log.Info("Opening Pinball"));
-					submenu3.AddMenuItem("Hearts", () => Log.Info("Opening Hearts"));
-				}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
-			}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
-			submenu.AddMenuItem("Calculator", () => Log.Info("Opening Calculator"), iconurl: "XGUI/Resources/95/calculator_icon_16.png");
-			submenu.AddMenuItem("Notepad", () => OpenExeAndClose("C:\\Windows\\notepad.exe"), iconurl: "XGUI/Resources/95/notepad_icon_16.png");
-			submenu.AddMenuItem("Paint", () => Log.Info("Opening Paint"), iconurl: "XGUI/Resources/95/paint_icon_16.png");
-			submenu.AddMenuItem("Task Manager", () => OpenExeAndClose("C:\\Windows\\System32\\taskmgr.exe"), iconurl: "XGUI/Resources/95/taskmgr_icon_16.png");
-		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
-
-		activeMenu.AddSubmenuItem("Ultimate Doom for S&box95", (submenu) =>
-		{
-			submenu.AddClass("Large");
-			submenu.AddMenuItem("Doom95", () => OpenPanelAndClose("Wad"), iconurl: "XGUI/Resources/95/doom95_icon_16.png");
-		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
-
+		// Hardcoded folders
 		// XGUI
 		activeMenu.AddSubmenuItem("XGUI", (submenu) =>
-		{ 
+		{
 			submenu.AddClass("Large");
 			submenu.AddMenuItem("About XGUI", () => OpenPanelAndClose("About"), iconurl: "XGUI/Resources/95/about_xgui_icon_16.png");
 			submenu.AddMenuItem("Panel List", () => OpenPanelAndClose("panelselector"), iconurl: "XGUI/Resources/95/panel_list_icon_16.png");
 			submenu.AddMenuItem("Global Theme", () => OpenPanelAndClose("globalstyle"), iconurl: "XGUI/Resources/95/global_theme_icon_16.png");
 		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+	}
 
-		// Startup
-		activeMenu.AddSubmenuItem("Startup", (submenu) =>
+	private void PopulateProgramsMenuRecursive(ContextMenu menu, string path)
+	{
+		// Add directories as submenus (recursively)
+		foreach (var dir in VirtualFileSystem.Instance.GetDirectories(path))
 		{
-			submenu.AddClass("Large");
-		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+			var dirName = System.IO.Path.GetFileName(dir);
+			if (dirName == "." || dirName == "..")
+				continue;
 
-		activeMenu.AddMenuItem("Command Prompt", () => ExecuteAndClose("C:\\Windows\\System32\\cmd.exe"), iconurl: XGUIIconSystem.GetFileIcon("exe_cmd", 16));
-		activeMenu.AddMenuItem("Windows Explorer", () => OpenExeAndClose("C:\\Windows\\explorer.exe"), iconurl: "XGUI/Resources/95/explorer_icon_16.png");
+			menu.AddSubmenuItem(dirName, (submenu) =>
+			{
+				submenu.AddClass("Large");
+				PopulateProgramsMenuRecursive(submenu, dir); // Recursive call
+			}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+		}
 
-
-		activeMenu.AddSubmenuItem("Steam", (submenu) =>
+		// Add files in this folder
+		foreach (var file in VirtualFileSystem.Instance.GetFiles(path))
 		{
-			submenu.AddClass("Large");
-			submenu.AddMenuItem("Steam", () => OpenPanelAndClose("GameLauncher"), iconurl: "XGUI/Resources/95/steam_icon_16.png");
-		}, iconurl: "XGUI/Resources/95/prog_folder_icon_16.png");
+			var fileName = System.IO.Path.GetFileNameWithoutExtension(file);
+			menu.AddMenuItem(fileName, () => Shell.ShellExecute(file), iconurl: FileIconHelper.GetFileIcon(file, 16));
+		}
 	}
 
 	private void OpenDocumentsMenu()
