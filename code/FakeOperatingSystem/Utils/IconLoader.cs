@@ -2,17 +2,23 @@
 using FakeOperatingSystem.OSFileSystem;
 using Sandbox; // For Log, Texture, FileSystem, ImageFormat
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace FakeOperatingSystem.Utils;
 
 public static class IconLoader
 {
-	// This structure is a copy/adaptation of the one in User32Emulator
-	// It's defined here to keep IconLoader self-contained or could be moved to a shared location.
+	// Cache for failed icon lookups to avoid repeated attempts.
+	private static readonly ConcurrentDictionary<string, bool> _failedLookupsCache = new ConcurrentDictionary<string, bool>();
+	// Cache for successfully parsed PE resources to avoid re-reading/re-parsing the same executable.
+	private static readonly ConcurrentDictionary<string, List<PELoader.PEResourceEntry>> _peResourceCache = new ConcurrentDictionary<string, List<PELoader.PEResourceEntry>>();
+
 	internal struct GrpIconDirEntry
 	{
 		public byte Width;      // Width, in pixels, of the image
@@ -25,14 +31,70 @@ public static class IconLoader
 		public ushort ID;       // the ID of the RT_ICON resource
 	}
 
-	/// <summary>
-	/// Loads a specific icon from an executable file, attempting to find the best match for the desired dimensions.
-	/// </summary>
-	/// <param name="executablePath">Full path to the executable file.</param>
-	/// <param name="iconGroupIdOrName">The ID (uint or ushort) or string name (e.g., "#123") of the RT_GROUP_ICON resource.</param>
-	/// <param name="desiredWidth">Desired width of the icon.</param>
-	/// <param name="desiredHeight">Desired height of the icon.</param>
-	/// <returns>A S&box Texture if successful, otherwise null.</returns>
+	public static async Task<string> LoadIconAndGetPath( string executablePath, object iconGroupIdOrName, int desiredWidth, int desiredHeight )
+	{
+		// Check if its a fake EXE file
+		if ( NativeProgram.IsNativeProgramExe( executablePath ) )
+			return null;
+
+		object idForHash = (iconGroupIdOrName is int intId && intId == 0) ? "default_icon" : iconGroupIdOrName;
+		string uniqueIdentifier = $"{executablePath}|{idForHash}|{desiredWidth}|{desiredHeight}";
+		string hashedFileName;
+
+		using ( var sha256 = SHA256.Create() )
+		{
+			byte[] hashBytes = sha256.ComputeHash( Encoding.UTF8.GetBytes( uniqueIdentifier ) );
+			// Optimized hex string conversion
+			hashedFileName = $"{Convert.ToHexString( hashBytes ).ToLowerInvariant()}.png";
+		}
+
+		string iconDumpDirectory = "IconDump";
+		string iconFilePath = $"{iconDumpDirectory}/{hashedFileName}";
+		string fullVirtualPath = $"data:{iconFilePath}";
+
+		if ( _failedLookupsCache.ContainsKey( uniqueIdentifier ) )
+		{
+			//Log.Info( $"[IconLoader] Icon lookup previously failed for '{uniqueIdentifier}', returning null (cached failure)." );
+			return null;
+		}
+
+		if ( FileSystem.Data.FileExists( iconFilePath ) )
+		{
+			//Log.Info( $"[IconLoader] Icon already exists, returning cached path: '{fullVirtualPath}'" );
+			return fullVirtualPath;
+		}
+
+		var iconTexture = await LoadIconFromExeAsync( executablePath, iconGroupIdOrName, desiredWidth, desiredHeight );
+		if ( iconTexture == null )
+		{
+			Log.Warning( $"[IconLoader] Failed to load icon for '{executablePath}' (group: {iconGroupIdOrName}). Caching this failure." );
+			_failedLookupsCache.TryAdd( uniqueIdentifier, true );
+			return null;
+		}
+
+		try
+		{
+			FileSystem.Data.CreateDirectory( iconDumpDirectory );
+			var data = iconTexture.GetBitmap( 0 ).ToPng();
+			using ( var stream = FileSystem.Data.OpenWrite( iconFilePath ) )
+			{
+				await stream.WriteAsync( data, 0, data.Length );
+			}
+			//Log.Info( $"[IconLoader] Successfully saved icon to '{iconFilePath}'. Returning path: '{fullVirtualPath}'" );
+			return fullVirtualPath;
+		}
+		catch ( Exception ex )
+		{
+			Log.Error( $"[IconLoader] Failed to save icon to '{iconFilePath}': {ex.Message}. Caching this failure." );
+			_failedLookupsCache.TryAdd( uniqueIdentifier, true );
+			return null;
+		}
+		finally
+		{
+			iconTexture?.Dispose();
+		}
+	}
+
 	public static async Task<Texture> LoadIconFromExeAsync( string executablePath, object iconGroupIdOrName, int desiredWidth, int desiredHeight )
 	{
 		if ( string.IsNullOrEmpty( executablePath ) )
@@ -41,180 +103,180 @@ public static class IconLoader
 			return null;
 		}
 
-		if ( !VirtualFileSystem.Instance.FileExists( executablePath ) )
+		string actualExecutablePath = executablePath;
+		if ( !VirtualFileSystem.Instance.FileExists( actualExecutablePath ) )
 		{
-			// Attempt to resolve from game root if not a full path
-			var gamePath = VirtualFileSystem.Instance.GetFullPath( executablePath );
+			var gamePath = VirtualFileSystem.Instance.GetFullPath( actualExecutablePath );
 			if ( !VirtualFileSystem.Instance.FileExists( gamePath ) )
 			{
-				Log.Warning( $"[IconLoader] Executable path not found: {executablePath} (also tried {gamePath})" );
+				Log.Warning( $"[IconLoader] Executable path not found: {actualExecutablePath} (also tried {gamePath})" );
 				return null;
 			}
-			executablePath = gamePath;
+			actualExecutablePath = gamePath;
 		}
 
-		byte[] fileBytes;
-		try
+		// Check if its a fake EXE file
+		if ( NativeProgram.IsNativeProgramExe( executablePath ) )
+			return null;
+
+		List<PELoader.PEResourceEntry> allResources;
+
+		if ( _peResourceCache.TryGetValue( actualExecutablePath, out var cachedResources ) )
 		{
-			fileBytes = await VirtualFileSystem.Instance.ReadAllBytesAsync( executablePath );
+			allResources = cachedResources;
+			//Log.Info( $"[IconLoader] Using cached PE resources for '{actualExecutablePath}'" );
 		}
-		catch ( Exception ex )
+		else
 		{
-			Log.Error( $"[IconLoader] Error reading executable file '{executablePath}': {ex.Message}" );
+			byte[] fileBytes;
+			try
+			{
+				fileBytes = await VirtualFileSystem.Instance.ReadAllBytesAsync( actualExecutablePath );
+			}
+			catch ( Exception ex )
+			{
+				Log.Error( $"[IconLoader] Error reading executable file '{actualExecutablePath}': {ex.Message}" );
+				return null;
+			}
+
+			if ( fileBytes == null || fileBytes.Length == 0 )
+			{
+				Log.Warning( $"[IconLoader] Executable file is empty: {actualExecutablePath}" );
+				return null;
+			}
+
+			var peLoader = new PELoader();
+			if ( !peLoader.ParseAllResources( fileBytes, out allResources ) || !allResources.Any() )
+			{
+				Log.Warning( $"[IconLoader] Failed to parse resources or no resources found in '{actualExecutablePath}'. Caching this PE parse failure." );
+				// Cache an empty list or a specific marker for PE parse failure to avoid re-parsing a known bad/empty PE for resources.
+				_peResourceCache.TryAdd( actualExecutablePath, new List<PELoader.PEResourceEntry>() );
+				return null;
+			}
+			_peResourceCache.TryAdd( actualExecutablePath, allResources );
+		}
+
+		// If cached resources were empty (e.g. from a previous parse failure for this EXE)
+		if ( allResources == null || !allResources.Any() )
+		{
+			// Log.Warning( $"[IconLoader] No resources available (possibly cached empty) for '{actualExecutablePath}'." );
 			return null;
 		}
 
-		if ( fileBytes == null || fileBytes.Length == 0 )
-		{
-			Log.Warning( $"[IconLoader] Executable file is empty: {executablePath}" );
-			return null;
-		}
 
-		var peLoader = new PELoader();
-		if ( !peLoader.ParseAllResources( fileBytes, out List<PELoader.PEResourceEntry> allResources ) || !allResources.Any() )
-		{
-			Log.Warning( $"[IconLoader] Failed to parse resources or no resources found in '{executablePath}'." );
-			return null;
-		}
-
-		uint groupIconId;
+		uint groupIconId = 0;
 		string groupIconName = null;
+		PELoader.PEResourceEntry groupIconEntry = null;
+		bool isDefaultIconRequest = false;
 
-		if ( iconGroupIdOrName is string nameStr )
+		if ( iconGroupIdOrName is int intId && intId == 0 )
+		{
+			isDefaultIconRequest = true;
+			groupIconEntry = allResources
+				.Where( r => r.Type == 14 )
+				.OrderBy( r => r.Name )
+				.FirstOrDefault();
+			if ( groupIconEntry != null ) groupIconId = groupIconEntry.Name;
+		}
+		else if ( iconGroupIdOrName is string nameStr )
 		{
 			if ( nameStr.StartsWith( "#" ) && uint.TryParse( nameStr.AsSpan( 1 ), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out uint parsedId ) )
 			{
 				groupIconId = parsedId;
 			}
-			// If PELoader is enhanced to provide string names, we would look up by string name here.
-			// For now, we assume string names are not directly supported by PELoader.PEResourceEntry.Name for lookup.
 			else
 			{
-				// Attempt to find a resource by string name if PELoader is ever updated to store them.
-				// This part is speculative based on current PELoader.
-				Log.Warning( $"[IconLoader] String icon group name '{nameStr}' provided. Direct string name lookup in PE resources is complex and may not be fully supported by current PELoader. This will likely fail if not in '#ID' format." );
-				// As a fallback, if it's a common name, one might hardcode an ID, but that's not robust.
-				// We'll let it try to find by name if PELoader's PEResourceEntry.Name could be a string.
-				// However, PEResourceEntry.Name is uint. So this path is problematic for non-"#ID" strings.
-				groupIconName = nameStr; // Store for potential future use if PELoader changes
-				groupIconId = 0; // Will rely on finding by name if PELoader supported it, or fail.
-								 // For now, this path for arbitrary string names will likely fail to find a match.
+				Log.Warning( $"[IconLoader] String icon group name '{nameStr}' provided. String name lookup is not robustly supported." );
+				groupIconName = nameStr;
 			}
 		}
-		else if ( iconGroupIdOrName is uint idAsUint )
-		{
-			groupIconId = idAsUint;
-		}
-		else if ( iconGroupIdOrName is ushort idAsUshort )
-		{
-			groupIconId = idAsUshort;
-		}
-		else if ( iconGroupIdOrName is int idAsInt && idAsInt >= 0 )
-		{
-			groupIconId = (uint)idAsInt;
-		}
+		else if ( iconGroupIdOrName is uint idAsUint ) groupIconId = idAsUint;
+		else if ( iconGroupIdOrName is ushort idAsUshort ) groupIconId = idAsUshort;
+		else if ( iconGroupIdOrName is int idAsInt && idAsInt > 0 ) groupIconId = (uint)idAsInt;
 		else
 		{
 			Log.Error( $"[IconLoader] Invalid iconGroupIdOrName type: {iconGroupIdOrName?.GetType()} (Value: '{iconGroupIdOrName}')" );
 			return null;
 		}
 
-		// Find the RT_GROUP_ICON resource data
-		PELoader.PEResourceEntry groupIconEntry = null;
-		if ( groupIconName != null )
+		if ( !isDefaultIconRequest && groupIconEntry == null )
 		{
-			// This part is speculative: PELoader.PEResourceEntry.Name is uint.
-			// If PELoader were to store string names, this is where you'd use it.
-			// For now, this will not work as intended.
-			Log.Info( $"[IconLoader] Attempting to find group icon by string name '{groupIconName}' (this may not be supported by PELoader)." );
-			// groupIconEntry = allResources.FirstOrDefault(r => r.Type == 14 && r.StringName == groupIconName); // Assuming StringName field existed
+			// String name lookup would require PEResourceEntry to support string names and PELoader to populate them.
+			// if (groupIconName != null) { /* ... find by string name ... */ }
+			if ( groupIconEntry == null && groupIconId != 0 )
+			{
+				groupIconEntry = allResources.FirstOrDefault( r => r.Type == 14 && r.Name == groupIconId );
+			}
 		}
-
-		if ( groupIconEntry == null && groupIconId != 0 )
-		{ // If not found by name or if ID was primary
-			groupIconEntry = allResources.FirstOrDefault( r => r.Type == 14 && r.Name == groupIconId );
-		}
-
 
 		if ( groupIconEntry == null )
 		{
-			Log.Warning( $"[IconLoader] RT_GROUP_ICON resource not found. Executable='{Path.GetFileName( executablePath )}', GroupID/Name='{iconGroupIdOrName}' (Resolved ID: {groupIconId})" );
+			string requestedIdentifier = isDefaultIconRequest ? "default (lowest ID)" : iconGroupIdOrName.ToString();
+			Log.Warning( $"[IconLoader] RT_GROUP_ICON resource not found. Executable='{Path.GetFileName( actualExecutablePath )}', Group='{requestedIdentifier}' (ID: {groupIconId})" );
 			return null;
 		}
 
+		uint actualGroupIconIdForLog = groupIconEntry.Name;
 		var iconDirEntries = new List<GrpIconDirEntry>();
 		try
 		{
 			using var ms = new MemoryStream( groupIconEntry.Data );
 			using var reader = new BinaryReader( ms );
-
-			ushort idReserved = reader.ReadUInt16(); // Should be 0
-			ushort idType = reader.ReadUInt16();     // Should be 1 for icons
-			ushort idCount = reader.ReadUInt16();    // Number of icons in the group
+			ushort idReserved = reader.ReadUInt16();
+			ushort idType = reader.ReadUInt16();
+			ushort idCount = reader.ReadUInt16();
 
 			if ( idReserved != 0 || idType != 1 || idCount == 0 )
 			{
-				Log.Warning( $"[IconLoader] Invalid GRPICONDIR header in '{Path.GetFileName( executablePath )}'. Type: {idType}, Count: {idCount}" );
+				Log.Warning( $"[IconLoader] Invalid GRPICONDIR header in '{Path.GetFileName( actualExecutablePath )}'. GroupID: {actualGroupIconIdForLog}" );
 				return null;
 			}
-
 			for ( int i = 0; i < idCount; i++ )
 			{
-				if ( ms.Position + 14 > ms.Length )
-				{ // 14 bytes for GrpIconDirEntry (excluding ID, which is 2 bytes, total 16 with ID)
-				  // Actually, GRPICONDIRENTRY is 14 bytes, then the ID is the RT_ICON ID.
-				  // The last field of GRPICONDIRENTRY in MS docs is wID (WORD).
-				  // Let's assume the struct size is 14 for the directory entry itself, and ID is the resource ID.
-				  // The struct in User32Emulator is 12 bytes + uint BytesInRes + ushort ID = 18 bytes.
-				  // Correct GRPICONDIRENTRY is 16 bytes.
-					Log.Warning( $"[IconLoader] Unexpected end of stream while reading GRPICONDIR entries." );
-					break;
-				}
+				if ( ms.Position + 14 > ms.Length ) break;
 				iconDirEntries.Add( new GrpIconDirEntry
 				{
-					Width = reader.ReadByte(),      // bWidth
-					Height = reader.ReadByte(),     // bHeight
-					ColorCount = reader.ReadByte(), // bColorCount
-					Reserved = reader.ReadByte(),   // bReserved
-					Planes = reader.ReadUInt16(),   // wPlanes
-					BitCount = reader.ReadUInt16(), // wBitCount
-					BytesInRes = reader.ReadUInt32(),// dwBytesInRes
-					ID = reader.ReadUInt16()        // nID
+					Width = reader.ReadByte(),
+					Height = reader.ReadByte(),
+					ColorCount = reader.ReadByte(),
+					Reserved = reader.ReadByte(),
+					Planes = reader.ReadUInt16(),
+					BitCount = reader.ReadUInt16(),
+					BytesInRes = reader.ReadUInt32(),
+					ID = reader.ReadUInt16()
 				} );
 			}
 		}
 		catch ( Exception ex )
 		{
-			Log.Error( $"[IconLoader] Exception parsing GRPICONDIR for '{Path.GetFileName( executablePath )}', GroupID='{iconGroupIdOrName}': {ex.Message}" );
+			Log.Error( $"[IconLoader] Exception parsing GRPICONDIR for '{Path.GetFileName( actualExecutablePath )}', GroupID='{actualGroupIconIdForLog}': {ex.Message}" );
 			return null;
 		}
 
 		if ( !iconDirEntries.Any() )
 		{
-			Log.Warning( $"[IconLoader] No icon entries found in GRPICONDIR for '{Path.GetFileName( executablePath )}', GroupID='{iconGroupIdOrName}'" );
+			Log.Warning( $"[IconLoader] No icon entries found in GRPICONDIR for '{Path.GetFileName( actualExecutablePath )}', GroupID='{actualGroupIconIdForLog}'" );
 			return null;
 		}
 
-		// Select best matching icon entry
 		GrpIconDirEntry bestEntry = iconDirEntries
 			.OrderBy( entry => Math.Abs( (entry.Width == 0 ? 256 : entry.Width) - desiredWidth ) + Math.Abs( (entry.Height == 0 ? 256 : entry.Height) - desiredHeight ) )
-			.ThenByDescending( entry => (entry.Width == 0 ? 256 : entry.Width) >= desiredWidth && (entry.Height == 0 ? 256 : entry.Height) >= desiredHeight ) // Prefer larger or equal
+			.ThenByDescending( entry => (entry.Width == 0 ? 256 : entry.Width) >= desiredWidth && (entry.Height == 0 ? 256 : entry.Height) >= desiredHeight )
 			.ThenByDescending( entry => entry.BitCount )
-			.ThenByDescending( entry => (entry.Width == 0 ? 256 : entry.Width) ) // Then by width
+			.ThenByDescending( entry => (entry.Width == 0 ? 256 : entry.Width) )
 			.FirstOrDefault();
 
-		if ( bestEntry.ID == 0 ) // Default struct if FirstOrDefault fails
+		if ( bestEntry.ID == 0 )
 		{
-			Log.Warning( $"[IconLoader] Could not determine best icon entry for desired size {desiredWidth}x{desiredHeight}." );
+			Log.Warning( $"[IconLoader] Could not determine best icon entry for GroupID '{actualGroupIconIdForLog}'." );
 			return null;
 		}
 
-		// Find the actual RT_ICON resource data
-		PELoader.PEResourceEntry actualIconResource = allResources.FirstOrDefault( r => r.Type == 3 && r.Name == bestEntry.ID ); // RT_ICON is type 3
+		PELoader.PEResourceEntry actualIconResource = allResources.FirstOrDefault( r => r.Type == 3 && r.Name == bestEntry.ID );
 
 		if ( actualIconResource == null )
 		{
-			Log.Warning( $"[IconLoader] RT_ICON resource not found for ID {bestEntry.ID} (selected from group '{iconGroupIdOrName}') in '{Path.GetFileName( executablePath )}'." );
+			Log.Warning( $"[IconLoader] RT_ICON resource not found for ID {bestEntry.ID} from group '{actualGroupIconIdForLog}'." );
 			return null;
 		}
 
@@ -224,20 +286,19 @@ public static class IconLoader
 			{
 				var texture = Texture.Create( iconWidth, iconVisualHeight, ImageFormat.RGBA8888 )
 									 .WithData( iconRgbaData )
-									 .WithName( $"exe_icon_{Path.GetFileNameWithoutExtension( executablePath )}_{iconGroupIdOrName}_{bestEntry.ID}" )
+									 .WithName( $"exe_icon_{Path.GetFileNameWithoutExtension( actualExecutablePath )}_{actualGroupIconIdForLog}_{bestEntry.ID}" )
 									 .Finish();
-				Log.Info( $"[IconLoader] Successfully loaded icon {iconWidth}x{iconVisualHeight} (ID: {bestEntry.ID}) from group '{iconGroupIdOrName}' in '{Path.GetFileName( executablePath )}'." );
 				return texture;
 			}
 			catch ( Exception ex )
 			{
-				Log.Error( $"[IconLoader] Failed to create S&box texture for icon ID {bestEntry.ID} from '{Path.GetFileName( executablePath )}': {ex.Message}" );
+				Log.Error( $"[IconLoader] Failed to create S&box texture for icon ID {bestEntry.ID}: {ex.Message}" );
 				return null;
 			}
 		}
 		else
 		{
-			Log.Warning( $"[IconLoader] Failed to parse DIB data for icon ID {bestEntry.ID} from '{Path.GetFileName( executablePath )}'." );
+			Log.Warning( $"[IconLoader] Failed to parse DIB data for icon ID {bestEntry.ID} from group '{actualGroupIconIdForLog}'." );
 			return null;
 		}
 	}

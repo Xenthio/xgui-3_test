@@ -1,5 +1,6 @@
 using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.Shell;
+using FakeOperatingSystem.Utils;
 using Sandbox;
 using System;
 using System.IO;
@@ -41,8 +42,9 @@ namespace FakeDesktop
 					}
 					if ( shortcut.TargetPath.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
 					{
-						string filename = Path.GetFileNameWithoutExtension( shortcut.TargetPath );
-						return XGUIIconSystem.GetIcon( $"exe_{filename}", XGUIIconSystem.IconType.FileType, size );
+						var icon = GetExeIcon( shortcut.TargetPath, size );
+						if ( !string.IsNullOrEmpty( icon ) )
+							return icon;
 					}
 					return XGUIIconSystem.GetIcon( shortcut.IconName, XGUIIconSystem.IconType.FileType, size );
 				}
@@ -51,13 +53,25 @@ namespace FakeDesktop
 			// For executables, try to get icon from the filename
 			if ( path.EndsWith( ".exe", StringComparison.OrdinalIgnoreCase ) )
 			{
-				string filename = Path.GetFileNameWithoutExtension( path );
-				return XGUIIconSystem.GetIcon( $"exe_{filename}", XGUIIconSystem.IconType.FileType, size );
+				var icon = GetExeIcon( path, size );
+				if ( !string.IsNullOrEmpty( icon ) )
+					return icon;
 			}
 
 			// Extract extension from path
 			var ext = Path.GetExtension( path );
 			return XGUIIconSystem.GetFileIcon( ext, size );
+		}
+
+		public static string GetExeIcon( string path, int size = 16 )
+		{
+			var i = IconLoader.LoadIconAndGetPath( path, 0, size, size ).Result;
+			if ( !string.IsNullOrEmpty( i ) )
+			{
+				return i;
+			}
+			string filename = Path.GetFileNameWithoutExtension( path );
+			return XGUIIconSystem.GetIcon( $"exe_{filename}", XGUIIconSystem.IconType.FileType, size );
 		}
 
 		public static string GetFolderIcon( string path, int size = 16 )

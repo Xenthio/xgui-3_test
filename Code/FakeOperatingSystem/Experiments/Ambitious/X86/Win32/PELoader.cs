@@ -133,7 +133,7 @@ public class PELoader
 		if ( resourceRVA == 0 || resourceSize == 0 )
 		{
 			resources = resourceList;
-			Log.Info( "[Resource] No resources found" );
+			//Log.Info( "[Resource] No resources found" );
 			return false;
 		}
 

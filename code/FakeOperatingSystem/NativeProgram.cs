@@ -3,6 +3,7 @@ using FakeOperatingSystem.OSFileSystem;
 using Sandbox;
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace FakeOperatingSystem;
@@ -191,6 +192,29 @@ public abstract class NativeProgram
 			Log.Warning( $"Failed to read fake executable '{path}': {ex.Message}" );
 			return null;
 		}
+	}
+
+	public static bool IsNativeProgramExe( string path )
+	{
+		if ( !VirtualFileSystem.Instance.FileExists( path ) )
+			return false;
+
+		byte[] fileBytes;
+		try
+		{
+			fileBytes = VirtualFileSystem.Instance.ReadAllBytes( path );
+		}
+		catch ( Exception ex )
+		{
+			Log.Warning( $"Error reading file {path} for IsNativeProgramExe check: {ex.Message}" );
+			return false; // Could not read the file
+		}
+
+		if ( fileBytes.Length < ExeTemplateBytes.Length )
+			return false; // File is too small to contain the template
+
+		// Compare the beginning of the file with ExeTemplateBytes
+		return fileBytes.Take( ExeTemplateBytes.Length ).SequenceEqual( ExeTemplateBytes );
 	}
 
 	protected static byte[] HexStringToByteArray( string hex )
