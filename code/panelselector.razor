@@ -1,4 +1,5 @@
-﻿@using Sandbox;
+﻿@using System.Linq;
+@using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
 @attribute [StyleSheet( "/XGUI/DefaultStyles/OliveGreen.scss" )]
@@ -9,10 +10,10 @@
 		<label style="flex-shrink:0;">Buttons to open all the panels available.</label>
 		
 		<scrollpanel>
-		@foreach ( var i in TypeLibrary.GetTypes<Window>() )
-		{
-			<button @onclick=@( () => ConsoleSystem.Run("openpanel", i.Name))>@i.Name</button>
-		}
+			@foreach ( var i in TypeLibrary.GetTypes<Window>().OrderBy(type => type.Name))
+			{
+				<button @onclick=@( () => ConsoleSystem.Run("openpanel", i.Name))>@i.Name</button>
+			}
 		</scrollpanel>
 	</div>
 </root>
