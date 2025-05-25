@@ -71,7 +71,13 @@ namespace FakeDesktop
 				return i;
 			}
 			string filename = Path.GetFileNameWithoutExtension( path );
-			return XGUIIconSystem.GetIcon( $"exe_{filename}", XGUIIconSystem.IconType.FileType, size );
+			var icon = XGUIIconSystem.GetIcon( $"exe_{filename}", XGUIIconSystem.IconType.FileType, size );
+			// return exe icon if icon == default file icon
+			if ( Path.GetFileName( icon ) == Path.GetFileName( GetGenericFileIcon( size ) ) )
+			{
+				icon = XGUIIconSystem.GetIcon( "exe", XGUIIconSystem.IconType.FileType, size );
+			}
+			return icon;
 		}
 
 		public static string GetFolderIcon( string path, int size = 16 )
