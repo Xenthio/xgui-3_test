@@ -11,6 +11,9 @@
 
 <root>
     <virtualfilebrowserview @ref=BrowserView class="browser-view" style="width:70%"></virtualfilebrowserview>
+    @{
+		BrowserView.ListView.ItemContainer.Style.FlexDirection = FlexDirection.Column;
+    }
 </root>
 
 @code {
@@ -22,6 +25,10 @@
 
         if (firstTime)
         {
+			BrowserView.DefaultDirection = FlexDirection.Column;
+			BrowserView.AutoArrangeIcons = false;
+            BrowserView.IconPositionsFileName = ".iconpositions_desktop";
+
             // Create virtual file system
             FakeSystemRoot.TryCreateSystemRoot();
 

@@ -1,16 +1,20 @@
 Desktop {
 	flex-direction: row;
+	flex-grow: 1;
 
 	.listview {
 		border: none;
-		padding:0px;
+		padding: 0px;
 
 		&::before {
 			border: 0px;
 		}
 
 		background-color: transparent;
-		color: white;
+
+		.listview-container {
+			color: white;
+		}
 
 		.listview-icon-container {
 			flex-direction: column;
