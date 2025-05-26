@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using XGUI;
 using static XGUI.ListView.ListViewItem;
 
@@ -56,7 +58,7 @@ public class VirtualFileBrowserView : FileBrowserView
 		// Navigate to Desktop (root of the shell namespace)
 		NavigateToShellPath( ShellNamespace.DESKTOP, sound: false );
 	}
-
+	private CancellationTokenSource _navigationCts;
 	/// <summary>
 	/// Navigate to a shell namespace path
 	/// </summary>
@@ -111,8 +113,12 @@ public class VirtualFileBrowserView : FileBrowserView
 		// Trigger navigation event
 		RaiseNavigateToEvent( _currentShellPath );
 
+		_navigationCts?.Cancel();
+		_navigationCts = new CancellationTokenSource();
+		var token = _navigationCts.Token;
+
 		// Add directory contents
-		PopulateFromShellPath( shellPath );
+		_ = PopulateFromShellPath( shellPath, token );
 	}
 
 	/// <summary>
@@ -245,28 +251,45 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// <summary>
 	/// Populate the browser view from a virtual path
 	/// </summary>
-	private void PopulateFromShellPath( string shellPath )
+	private async Task PopulateFromShellPath( string shellPath, CancellationToken cancellationToken = default )
 	{
+		// Loading mouse cursor
+		this.GetOwnerXGUIPanel().Style.Cursor = "progress";
+
 		LoadIconPositions( shellPath );
 
 		var items = _shellManager.GetItems( shellPath );
 
 		foreach ( var item in items.Where( i => i.IsFolder ) )
 		{
+			if ( cancellationToken.IsCancellationRequested )
+			{
+				this.GetOwnerXGUIPanel().Style.Cursor = null;
+				return;
+			}
+			;
 			if ( ShouldFileBeVisible( item ) )
 			{
 				AddDirectoryToView( item.Path, true, item.Name );
-				UpdateItemIcon( item, true );
+				await UpdateItemIconAsync( item, true );
 			}
 		}
 		foreach ( var item in items.Where( i => !i.IsFolder ) )
 		{
+			if ( cancellationToken.IsCancellationRequested )
+			{
+				this.GetOwnerXGUIPanel().Style.Cursor = null;
+				return;
+			}
+			;
 			if ( ShouldFileBeVisible( item ) )
 			{
 				AddFileToView( item.Path, true, item.Name );
-				UpdateItemIcon( item, false );
+				await UpdateItemIconAsync( item, false );
 			}
 		}
+
+		this.GetOwnerXGUIPanel().Style.Cursor = "wait";
 
 		// Only apply icon positions and drag logic in icon view
 		if ( ListView.ViewMode == ListView.ListViewMode.Icons && !AutoArrangeIcons )
@@ -281,25 +304,48 @@ public class VirtualFileBrowserView : FileBrowserView
 			if ( _iconPositions.TryGetValue( shellPath, out var positions ) == false )
 				positions = new Dictionary<string, Vector2>();
 
+			// Track occupied grid cells
+			var occupiedCells = new HashSet<(int, int)>();
+			// Mark cells for items with saved positions
+			foreach ( var kvp in positions )
+			{
+				var pos = kvp.Value;
+				int col = (int)Math.Round( (pos.x - startX) / (iconWidth + spacingX) );
+				int row = (int)Math.Round( (pos.y - startY) / (iconHeight + spacingY) );
+				occupiedCells.Add( (col, row) );
+			}
+
 			foreach ( var listViewItem in ListView.Items )
 			{
+				if ( cancellationToken.IsCancellationRequested ) return;
 				if ( listViewItem.Data is FileItem fileItem )
 				{
 					Vector2 pos;
+					// If we don't have a position for this item, find the next free grid cell
 					if ( !positions.TryGetValue( fileItem.FullPath, out pos ) )
 					{
-						if ( flexDirection == FlexDirection.Row )
+						int col = 0, row = 0;
+						bool found = false;
+						// Search for the next available cell
+						for ( int searchIndex = 0; !found; searchIndex++ )
 						{
-							int col = i % iconsPerRow;
-							int row = i / iconsPerRow;
-							pos = new Vector2( startX + col * (iconWidth + spacingX), startY + row * (iconHeight + spacingY) );
+							if ( flexDirection == FlexDirection.Row )
+							{
+								col = searchIndex % iconsPerRow;
+								row = searchIndex / iconsPerRow;
+							}
+							else
+							{
+								row = searchIndex % iconsPerRow;
+								col = searchIndex / iconsPerRow;
+							}
+							if ( !occupiedCells.Contains( (col, row) ) )
+							{
+								found = true;
+								occupiedCells.Add( (col, row) );
+							}
 						}
-						else
-						{
-							int row = i % iconsPerRow;
-							int col = i / iconsPerRow;
-							pos = new Vector2( startX + col * (iconWidth + spacingX), startY + row * (iconHeight + spacingY) );
-						}
+						pos = new Vector2( startX + col * (iconWidth + spacingX), startY + row * (iconHeight + spacingY) );
 						positions[fileItem.FullPath] = pos;
 					}
 					listViewItem.Style.Position = PositionMode.Absolute;
@@ -326,17 +372,20 @@ public class VirtualFileBrowserView : FileBrowserView
 				}
 			}
 		}
+
+
+
+		// testing
+		await GameTask.Delay( 10 );
+		this.GetOwnerXGUIPanel().Style.Cursor = null;
 	}
 
-	/// <summary>
-	/// Update the icon for a specific item
-	/// </summary>
-	private void UpdateItemIcon( ShellItem item, bool isDirectory )
+	// Change UpdateItemIcon to async
+	private async Task UpdateItemIconAsync( ShellItem item, bool isDirectory )
 	{
 		var path = item.Path;
 		var realPath = item.RealPath;
 		var iconName = item.IconName;
-		// Find the corresponding ListView item
 		var fileItem = FileItems.FirstOrDefault( item => item.FullPath == path );
 		if ( fileItem == null )
 			return;
@@ -351,11 +400,11 @@ public class VirtualFileBrowserView : FileBrowserView
 				string icon = "";
 				if ( isDirectory )
 				{
-					icon = FileIconHelper.GetFolderIcon( realPath, size );
+					icon = await GameTask.RunInThreadAsync( () => FileIconHelper.GetFolderIcon( realPath, size ) );
 				}
 				else
 				{
-					icon = FileIconHelper.GetFileIcon( realPath, size );
+					icon = await GameTask.RunInThreadAsync( () => FileIconHelper.GetFileIcon( realPath, size ) );
 				}
 
 				if ( icon == FileIconHelper.GetGenericFolderIcon( size ) )
@@ -719,7 +768,7 @@ public class VirtualFileBrowserView : FileBrowserView
 		CopyDirectoryRecursive( oldPath, newPath );
 
 		// Delete the original directory
-		_vfs.DeleteDirectory( oldPath );
+		_vfs.DeleteDirectory( oldPath, true );
 	}
 
 	private void CopyDirectoryRecursive( string sourceDir, string destDir )

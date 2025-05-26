@@ -135,8 +135,17 @@
 	protected virtual void SetupCommandToolbar()
 	{
 		// Navigation buttons
-		CommandToolbar.AddButton("Back", "navigate_back", OnBackClicked);
-		CommandToolbar.AddButton("Forward", "navigate_forward", OnForwardClicked);
+		//CommandToolbar.AddButton("Back", "navigate_back", OnBackClicked);
+		//CommandToolbar.AddButton("Forward", "navigate_forward", OnForwardClicked);
+		CommandToolbar.AddDropdownButton("Forward", "navigate_forward", OnForwardClicked, (dropdown) =>
+		{
+			dropdown.AddMenuItem("Todo, Forward History", () => Log.Info("Forward 1"));
+		});
+		CommandToolbar.AddDropdownButton("Back", "navigate_back", OnBackClicked, (dropdown) =>
+		{
+			dropdown.AddMenuItem("Todo, Back History", () => Log.Info("Back 1"));
+		});
+
 		CommandToolbar.AddButton("Up", "folder_up", OnUpClicked);
 	}
 

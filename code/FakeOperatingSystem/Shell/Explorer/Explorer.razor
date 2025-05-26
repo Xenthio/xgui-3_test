@@ -220,7 +220,18 @@
 		CommandToolbar.AddSeparator();
 
 		// View dropdown
-		var viewDropdown = CommandToolbar.AddButton("Views", "view");
+		CommandToolbar.AddDropdownButton(
+			"Views",
+			"view",
+			() => { /* main button click */ },
+			menu =>
+			{
+				menu.AddMenuItem("Large Icons", () => SetViewMode(FileBrowserViewMode.Icons));
+				//menu.AddMenuItem("Small Icons", () => SetViewMode(FileBrowserViewMode.SmallIcons));
+				menu.AddMenuItem("Details", () => SetViewMode(FileBrowserViewMode.Details));
+				menu.AddMenuItem("List", () => SetViewMode(FileBrowserViewMode.List));
+			}
+		);
 	}
 
 	private void SetViewMode(FileBrowserViewMode mode)
