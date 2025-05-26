@@ -572,6 +572,36 @@ public class VirtualFileBrowserView : FileBrowserView
 			_currentContextMenu?.Delete();
 		} );
 
+		_currentContextMenu.AddSeparator();
+
+		_currentContextMenu.AddMenuItem( "Delete", () =>
+		{
+			if ( item.IsDirectory )
+			{
+				// Get the shell item's real path and use the VFS to delete it
+				var shellItem = _shellManager.GetItems( _currentShellPath )
+					.FirstOrDefault( i => i.Path == item.FullPath );
+
+				if ( shellItem?.RealPath != null )
+				{
+					_vfs.DeleteDirectory( shellItem.RealPath );
+					Refresh();
+				}
+			}
+			else
+			{
+				var shellItem = _shellManager.GetItems( _currentShellPath )
+					.FirstOrDefault( i => i.Path == item.FullPath );
+
+				if ( shellItem?.RealPath != null )
+				{
+					_vfs.DeleteFile( shellItem.RealPath );
+					Refresh();
+				}
+			}
+			_currentContextMenu?.Delete();
+		} );
+
 		_currentContextMenu.AddMenuItem( "Rename", () =>
 		{
 			// Find the ListViewItem for this FileItem
@@ -618,33 +648,8 @@ public class VirtualFileBrowserView : FileBrowserView
 			_currentContextMenu?.Delete();
 		} );
 
-		_currentContextMenu.AddMenuItem( "Delete", () =>
-		{
-			if ( item.IsDirectory )
-			{
-				// Get the shell item's real path and use the VFS to delete it
-				var shellItem = _shellManager.GetItems( _currentShellPath )
-					.FirstOrDefault( i => i.Path == item.FullPath );
+		_currentContextMenu.AddSeparator();
 
-				if ( shellItem?.RealPath != null )
-				{
-					_vfs.DeleteDirectory( shellItem.RealPath );
-					Refresh();
-				}
-			}
-			else
-			{
-				var shellItem = _shellManager.GetItems( _currentShellPath )
-					.FirstOrDefault( i => i.Path == item.FullPath );
-
-				if ( shellItem?.RealPath != null )
-				{
-					_vfs.DeleteFile( shellItem.RealPath );
-					Refresh();
-				}
-			}
-			_currentContextMenu?.Delete();
-		} );
 		_currentContextMenu.AddMenuItem( "Properties", () =>
 		{
 			var shellItem = _shellManager.GetItems( _currentShellPath )
@@ -913,6 +918,76 @@ public class VirtualFileBrowserView : FileBrowserView
 		{
 			if ( ghost != null )
 			{
+				// 1. Check if dropped over a folder
+				ListView.ListViewItem targetFolderItem = null;
+				foreach ( var other in ListView.Items )
+				{
+					if ( other == item ) continue;
+					if ( other.Data is FileItem fi && fi.IsDirectory )
+					{
+						// Check if mouse is over this folder item
+						var rect = other.Box.Rect;
+						var parentRect = other.Parent?.Box.Rect ?? Box.Rect;
+						float left = rect.Left + parentRect.Left;
+						float top = rect.Top + parentRect.Top;
+						float right = rect.Right + parentRect.Left;
+						float bottom = rect.Bottom + parentRect.Top;
+
+						if ( rect.IsInside( e.ScreenPosition ) )
+						{
+							Log.Info( $"Moving item" );
+							targetFolderItem = other;
+							break;
+						}
+					}
+				}
+
+				if ( targetFolderItem != null && item.Data is FileItem draggedItem )
+				{
+					var targetFolder = targetFolderItem.Data as FileItem;
+					if ( targetFolder != null && targetFolder.IsDirectory )
+					{
+						// Prevent moving a folder into itself or its subfolders
+						if ( draggedItem.FullPath == targetFolder.FullPath ||
+							draggedItem.FullPath.StartsWith( targetFolder.FullPath + Path.DirectorySeparatorChar ) )
+						{
+							// Invalid move, do nothing
+						}
+						else
+						{
+							// Get real path for the dragged item
+							var shellItem = _shellManager.GetItems( _currentShellPath )
+								.FirstOrDefault( i => i.Path == draggedItem.FullPath );
+
+							if ( shellItem == null )
+								return;
+
+							// Get real path of the target folder
+							var targetShellItem = _shellManager.GetItems( _currentShellPath )
+								.FirstOrDefault( i => i.Path == targetFolder.FullPath );
+
+							if ( targetShellItem == null )
+								return;
+
+							string newPath = Path.Combine( targetShellItem.RealPath, draggedItem.Name );
+
+
+
+
+							if ( draggedItem.IsDirectory )
+								MoveDirectory( shellItem.RealPath, newPath );
+							else
+								MoveFile( shellItem.RealPath, newPath );
+
+							Refresh();
+							ghost.Delete();
+							ghost = null;
+							return;
+						}
+					}
+				}
+
+				// 2. If not dropped on a folder, just update position (if not auto arrange)
 				if ( !AutoArrangeIcons )
 				{
 					item.Style.Left = ghost.Style.Left;
