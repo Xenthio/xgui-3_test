@@ -145,6 +145,7 @@ public class FakeOSLoader : Component
 
 	private void ContinueBoot()
 	{
+		// Logon
 		_processManager = new ProcessManager();
 		ShellNamespace = new ShellNamespace( VirtualFileSystem );
 		FileAssociationManager.Initialize( VirtualFileSystem );
@@ -152,5 +153,8 @@ public class FakeOSLoader : Component
 		_processManager.OpenExecutable( "C:/Windows/explorer.exe", new Win32LaunchOptions() );
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<TaskBar>();
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<Desktop>();
+		var soundpath = XGUISoundSystem.GetSound( "LOGON" );
+		var soundfile = SoundFile.Load( soundpath );
+		Sound.PlayFile( soundfile );
 	}
 }

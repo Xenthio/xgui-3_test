@@ -103,6 +103,13 @@ public class VirtualFileBrowserView : FileBrowserView
 			return;
 		}
 
+		if ( folder.Type == ShellFolderType.ShellExecute )
+		{
+			Log.Info( $"Executing shell command: {folder.Name}" );
+			Shell.ShellExecute( folder.RealPath );
+			return;
+		}
+
 		if ( sound ) PlaySingleClickSound();
 		_currentContextMenu?.Delete();
 

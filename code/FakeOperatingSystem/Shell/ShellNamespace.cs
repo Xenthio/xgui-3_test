@@ -73,6 +73,16 @@ public class ShellNamespace
 			IconName = "mydocuments"
 		} );
 
+		// Internet Explorer
+		RegisterShellFolder( new ShellFolder
+		{
+			Name = "Internet Explorer",
+			Path = $"{DESKTOP}/Internet Explorer",
+			RealPath = "C:/Program Files/Internet Explorer/iexplore.exe",
+			Type = ShellFolderType.ShellExecute,
+			IconName = "iexplore"
+		} );
+
 		// Recycle Bin
 		RegisterShellFolder( new ShellFolder
 		{
@@ -389,7 +399,8 @@ public enum ShellFolderType
 	Drive,
 	Shortcut,
 	ControlPanel,
-	ControlPanelApplet
+	ControlPanelApplet,
+	ShellExecute, // For folders that can be launched like files
 }
 
 /// <summary>
