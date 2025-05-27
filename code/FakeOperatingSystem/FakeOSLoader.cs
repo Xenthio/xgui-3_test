@@ -3,6 +3,7 @@ using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.Shell;
 using Sandbox;
 using System.Linq;
+using System.Threading.Tasks;
 using XGUI;
 
 namespace FakeOperatingSystem;
@@ -40,7 +41,7 @@ public class FakeOSLoader : Component
 	/// <summary>
 	/// This would be boot.
 	/// </summary>
-	public void Boot()
+	public async Task Boot() // Changed to async Task
 	{
 		Instance = this;
 		_oldVirtualFileSystem = new OldVirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
@@ -76,8 +77,9 @@ public class FakeOSLoader : Component
 				if ( UserManager.Login( userToLogin.UserName, userToLogin.PasswordHash ) ) // Assuming Login sets CurrentUser
 				{
 					Log.Info( $"Auto-logged in as: {UserManager.CurrentUser.UserName}" );
-					Registry.LoadUserHive( UserManager.CurrentUser.UserName, UserManager.CurrentUser.RegistryHivePath ); // Load the user's hive
-					UserManager.SetupUserProfile( UserManager.CurrentUser );
+					// Load the user's hive
+					Registry.LoadUserHive( UserManager.CurrentUser.UserName, UserManager.CurrentUser.RegistryHivePath );
+					//await UserManager.SetupUserProfile( UserManager.CurrentUser ); // Await here
 				}
 				else
 				{
@@ -96,7 +98,7 @@ public class FakeOSLoader : Component
 		else
 		{
 			// Single-user mode: set up global folders
-			UserManager.SetupUserProfile( null );
+			//await UserManager.SetupUserProfile( null ); // Await here
 			Registry.LoadUserHive( "Default", @"C:\Windows\USER.DAT" );
 		}
 
@@ -107,7 +109,7 @@ public class FakeOSLoader : Component
 	{
 		// Pseudocode for dialog
 		var dialog = new CreateUserDialog(
-			onCreate: ( username, password ) =>
+			onCreate: async ( username, password ) => // Lambda becomes async
 			{
 				UserSystemEnabled = true;
 				Registry.SetValue( @"HKEY_LOCAL_MACHINE\Network\Logon", "UserProfiles", 1 );
@@ -125,15 +127,15 @@ public class FakeOSLoader : Component
 				var allUsers = @"C:\Documents and Settings\All Users";
 				if ( !vfs.DirectoryExists( allUsers ) )
 					vfs.CreateDirectory( allUsers );
-				UserManager.SetupUserProfile( user );
-				UserManager.Login( username, password );
-				ContinueBoot();
+				await UserManager.SetupUserProfile( user ); // Await here
+				UserManager.Login( username, password ); // This should ideally also set CurrentUser for ContinueBoot
+				ContinueBoot(); // This might need to be awaited if it also becomes async
 			},
-			onSkip: () =>
+			onSkip: async () => // Lambda becomes async
 			{
 				UserSystemEnabled = false;
 				Registry.SetValue( @"HKEY_LOCAL_MACHINE\Network\Logon", "UserProfiles", 0 );
-				UserManager.SetupUserProfile( null );
+				await UserManager.SetupUserProfile( null ); // Await here
 				ContinueBoot();
 			}
 		);

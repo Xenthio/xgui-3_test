@@ -1,6 +1,7 @@
 @using System;
 @using System.Collections.Generic;
 @using System.Linq;
+@using FakeOperatingSystem.User
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
@@ -88,7 +89,7 @@
 			return;
 
 		// Path to Quick Launch folder
-		string quickLaunchPath = @"C:\Windows\Application Data\Microsoft\Internet Explorer\Quick Launch";
+		string quickLaunchPath = UserProfileHelper.GetQuickLaunchPath();
 
 		// Check if the folder exists
 		var quickLaunchEntry = virtualFileSystem.GetEntry(quickLaunchPath);

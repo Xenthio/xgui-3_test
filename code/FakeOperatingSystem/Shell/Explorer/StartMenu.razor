@@ -1,8 +1,10 @@
 ﻿@using System;
 @using FakeDesktop
 @using FakeOperatingSystem.OSFileSystem
+@using FakeOperatingSystem.User
 @using Sandbox;
 @using Sandbox.UI;
+@using System.IO
 @using XGUI;
 @using FakeOperatingSystem;
 @using FakeOperatingSystem.Shell;
@@ -132,7 +134,7 @@
 		activeMenu.AddClass("Large");
 		SetupMenuMouseEvents(activeMenu);
 
-		string programsPath = "C:/Windows/Start Menu/Programs";
+		string programsPath = Path.Combine(UserProfileHelper.GetStartMenuPath(), "Programs");
 		PopulateProgramsMenuRecursive(activeMenu, programsPath);
 
 		// Hardcoded folders

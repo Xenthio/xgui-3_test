@@ -1,8 +1,12 @@
 using FakeDesktop;
 using FakeOperatingSystem.OSFileSystem;
+using FakeOperatingSystem.User;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using XGUI;
+
 namespace FakeOperatingSystem;
 public class UserManager
 {
@@ -11,12 +15,8 @@ public class UserManager
 
 	public void LoadUsers()
 	{
-		// Load from a JSON file or registry (e.g., C:\Documents and Settings\users.json)
-		// For now, create a default user if none exist
 		if ( !VirtualFileSystem.Instance.FileExists( @"C:\Windows\users.json" ) )
-		{
-			SaveUsers();
-		}
+			return;
 		else
 		{
 			var json = VirtualFileSystem.Instance.ReadAllText( @"C:\Windows\users.json" );
@@ -32,8 +32,9 @@ public class UserManager
 
 	public bool Login( string username, string password )
 	{
-		var user = Users.FirstOrDefault( u => u.UserName == username );
-		if ( user != null && user.PasswordHash == password ) // Replace with hash check
+		var user = Users.FirstOrDefault( u => u.UserName.Equals( username, System.StringComparison.OrdinalIgnoreCase ) );
+		// TODO: Implement proper password hashing and comparison
+		if ( user != null && (string.IsNullOrEmpty( user.PasswordHash ) || user.PasswordHash == password) )
 		{
 			CurrentUser = user;
 			return true;
@@ -41,179 +42,180 @@ public class UserManager
 		return false;
 	}
 
-	public void SetupUserProfile( UserAccount user )
+	/// <summary>
+	/// Sets up the user's profile folders asynchronously. This allows a UI 
+	/// to show a "Setting up personalized settings..." message while this method executes.
+	/// </summary>
+	public async Task SetupUserProfile( UserAccount user )
 	{
+		PersonalisedSettingsDialog personalizedDialog = new PersonalisedSettingsDialog();
+		XGUISystem.Instance.Panel.AddChild( personalizedDialog );
+		await Task.Delay( 50 ); // Give the dialog a moment to render
+
 		var vfs = VirtualFileSystem.Instance;
+		string effectiveProfilePath;
 
 		if ( FakeOSLoader.UserSystemEnabled && user != null )
 		{
-			// All Users folder
-			string allUsers = @"C:\Documents and Settings\All Users";
-			if ( !vfs.DirectoryExists( allUsers ) )
-				vfs.CreateDirectory( allUsers );
+			personalizedDialog.UpdateStatus( $"Loading personal settings for {user.UserName}..." );
+			await Task.Delay( 200 ); // Simulate work
+			effectiveProfilePath = user.ProfilePath;
+			if ( !vfs.DirectoryExists( effectiveProfilePath ) )
+				vfs.CreateDirectory( effectiveProfilePath );
+			await Task.Yield();
 
-			// User profile root
-			if ( !vfs.DirectoryExists( user.ProfilePath ) )
-				vfs.CreateDirectory( user.ProfilePath );
+			personalizedDialog.UpdateStatus( "Applying your personal settings..." );
+			await Task.Delay( 200 );
 
-			// My Documents
-			string myDocs = Path.Combine( user.ProfilePath, "My Documents" );
+			string myDocs = Path.Combine( effectiveProfilePath, "My Documents" );
 			if ( !vfs.DirectoryExists( myDocs ) )
+			{
 				vfs.CreateDirectory( myDocs );
+				vfs.WriteAllText( Path.Combine( myDocs, "desktop.ini" ),
+					"[.XGUIInfo]\nIcon=mydocuments\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,3\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=3" );
+			}
+			await Task.Yield();
 
-			// Desktop, Start Menu, etc.
-			SetupDesktopItems( user );
-			SetupStartMenuItems( user );
-			SetupQuickLaunch( user );
+			string favouritesDir = Path.Combine( effectiveProfilePath, "Favorites" );
+			if ( !vfs.DirectoryExists( favouritesDir ) )
+			{
+				vfs.CreateDirectory( favouritesDir );
+				vfs.WriteAllText( Path.Combine( favouritesDir, "desktop.ini" ),
+					"[.XGUIInfo]\nIcon=favourites\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,2\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=2" );
+			}
+			await Task.Yield();
+
+			await CreateStandardUserFolders( effectiveProfilePath, vfs, personalizedDialog ); // Pass dialog
+			await SetupStartMenuItems( user, personalizedDialog ); // Pass dialog
+			await SetupQuickLaunch( user, personalizedDialog );   // Pass dialog
+			await SetupDesktopItems( user, personalizedDialog );  // Pass dialog
 		}
 		else
 		{
-			// User system disabled: put everything in C:\Windows, My Documents in C:\
-			string windows = @"C:\Windows";
+			personalizedDialog.UpdateStatus( "Applying system settings..." );
+			await Task.Delay( 200 );
+			effectiveProfilePath = UserProfileHelper.GetProfilePath();
+			if ( !vfs.DirectoryExists( effectiveProfilePath ) )
+				vfs.CreateDirectory( effectiveProfilePath );
+			await Task.Yield();
 
-			// If this doesn't exist, something is wrong, but let's continue anyways...
-			if ( !vfs.DirectoryExists( windows ) )
-				vfs.CreateDirectory( windows );
-
-			string myDocs = @"C:\My Documents";
-			if ( !vfs.DirectoryExists( myDocs ) )
-				vfs.CreateDirectory( myDocs );
-
-			// Setup "global" Desktop, Start Menu, etc. in C:\Windows
-			var globalUser = new UserAccount
+			string myDocsGlobal = UserProfileHelper.GetMyDocumentsPath();
+			if ( !vfs.DirectoryExists( myDocsGlobal ) )
 			{
-				ProfilePath = windows
-			};
-			SetupDesktopItems( globalUser );
-			SetupStartMenuItems( globalUser );
-			SetupQuickLaunch( globalUser );
+				vfs.CreateDirectory( myDocsGlobal );
+				vfs.WriteAllText( Path.Combine( myDocsGlobal, "desktop.ini" ),
+					"[.XGUIInfo]\nIcon=mydocuments\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,3\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=3" );
+			}
+			await Task.Yield();
+
+			string favouritesGlobal = UserProfileHelper.GetFavoritesPath();
+			if ( !vfs.DirectoryExists( favouritesGlobal ) )
+			{
+				vfs.CreateDirectory( favouritesGlobal );
+				vfs.WriteAllText( Path.Combine( favouritesGlobal, "desktop.ini" ),
+					"[.XGUIInfo]\nIcon=favourites\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,2\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=2" );
+			}
+			await Task.Yield();
+
+			var globalUserAccountRepresentation = new UserAccount { ProfilePath = effectiveProfilePath };
+			await CreateStandardUserFolders( effectiveProfilePath, vfs, personalizedDialog );
+			await SetupStartMenuItems( globalUserAccountRepresentation, personalizedDialog );
+			await SetupQuickLaunch( globalUserAccountRepresentation, personalizedDialog );
+			await SetupDesktopItems( globalUserAccountRepresentation, personalizedDialog );
 		}
+
+		personalizedDialog.UpdateStatus( "Finalizing settings..." );
+		await Task.Delay( 300 ); // Simulate final steps
+		personalizedDialog.Complete();
 	}
 
-
-	private void SetupStartMenuItems( UserAccount user )
+	private async Task CreateStandardUserFolders( string baseProfilePath, IVirtualFileSystem vfs, PersonalisedSettingsDialog dialog )
 	{
-		string startMenuDir = Path.Combine( user.ProfilePath, "Start Menu" );
-		VirtualFileSystem.Instance.CreateDirectory( startMenuDir );
-		// Internet Explorer shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Internet Explorer.lnk",
-			"C:/Program Files/Internet Explorer/iexplore.exe"
-		);
-		// Outlook Express shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Outlook Express.lnk",
-			"C:/Program Files/Outlook Express/outlook.exe"
-		);
-		// Windows Explorer shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Windows Explorer.lnk",
-			"C:/Windows/explorer.exe",
-			"explore"
-		);
-		// Command Prompt shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Command Prompt.lnk",
-			"C:/Windows/System32/cmd.exe"
-		);
+		dialog.UpdateStatus( "Creating application data folders..." );
+		await Task.Delay( 50 );
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Application Data" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Application Data", "Microsoft" ) ); await Task.Yield();
 
-		// Accessories folder
-		string accessoriesDir = $"{startMenuDir}/Accessories";
-		VirtualFileSystem.Instance.CreateDirectory( accessoriesDir );
-		// Notepad shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Notepad.lnk",
-			"C:/Windows/notepad.exe"
-		);
-		// Paint shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Paint.lnk",
-			"C:/Windows/mspaint.exe"
-		);
-		// Calculator shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Calculator.lnk",
-			"C:/Windows/calc.exe"
-		);
-		// Task Manager shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Task Manager.lnk",
-			"C:/Windows/System32/taskmgr.exe"
-		);
-
-		// Games folder
-		string gamesDir = $"{accessoriesDir}/Games";
-		VirtualFileSystem.Instance.CreateDirectory( gamesDir );
-		// Minesweeper shortcut
-		CreateShortcut(
-			$"{gamesDir}/Minesweeper.lnk",
-			"C:/Windows/System32/winmine.exe"
-		);
-
-		// Ultimate Doom for Windows 95 shortcut
-		string doomDir = $"{startMenuDir}/Ultimate Doom for Windows 95";
-		VirtualFileSystem.Instance.CreateDirectory( doomDir );
-		CreateShortcut(
-			$"{doomDir}/Doom95.lnk",
-			"C:/Program Files/Ultimate Doom for Windows 95/doom95.exe"
-		);
-	}
-	private void SetupQuickLaunch( UserAccount User )
-	{
-		//string quickLaunchDir = "FakeSystemRoot/Windows/Application Data/Microsoft/Internet Explorer/Quick Launch";
-		string quickLaunchDir = Path.Combine( User.ProfilePath, "Application Data", "Microsoft", "Internet Explorer", "Quick Launch" );
-		VirtualFileSystem.Instance.CreateDirectory( quickLaunchDir );
-		// Show Desktop shortcut
-		CreateShortcut(
-			$"{quickLaunchDir}/Show Desktop.lnk",
-			"C:/Windows/System32/Show Desktop.scf",
-			"Show Desktop"
-		);
-		// Internet Explorer shortcut
-		CreateShortcut(
-			$"{quickLaunchDir}/Internet Explorer.lnk",
-			"C:/Program Files/Internet Explorer/Iexplore.exe"
-		);
-		// Outlook Express shortcut
-		CreateShortcut(
-			$"{quickLaunchDir}/Outlook Express.lnk",
-			"C:/Program Files/Outlook Express/outlook.exe"
-		);
+		dialog.UpdateStatus( "Setting up user environment folders..." );
+		await Task.Delay( 50 );
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Cookies" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "History" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Local Settings" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Local Settings", "Application Data" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Local Settings", "Temp" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Local Settings", "Temporary Internet Files" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "NetHood" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "PrintHood" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Recent" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "SendTo" ) ); await Task.Yield();
+		vfs.CreateDirectory( Path.Combine( baseProfilePath, "Templates" ) ); await Task.Yield();
 	}
 
-	public void SetupDesktopItems( UserAccount user )
+	private async Task SetupStartMenuItems( UserAccount user, PersonalisedSettingsDialog dialog )
 	{
-		//string desktopDir = "FakeSystemRoot/Windows/Desktop";
+		dialog.UpdateStatus( "Setting up Start Menu items..." );
+		await Task.Delay( 200 );
+
+		string startMenuRoot = Path.Combine( user.ProfilePath, "Start Menu" );
+		VirtualFileSystem.Instance.CreateDirectory( startMenuRoot ); await Task.Yield();
+		string programsDir = Path.Combine( startMenuRoot, "Programs" );
+		VirtualFileSystem.Instance.CreateDirectory( programsDir ); await Task.Yield();
+
+		CreateShortcut( Path.Combine( programsDir, "Internet Explorer.lnk" ), "C:/Program Files/Internet Explorer/iexplore.exe" ); await Task.Yield();
+		CreateShortcut( Path.Combine( programsDir, "Outlook Express.lnk" ), "C:/Program Files/Outlook Express/outlook.exe" ); await Task.Yield();
+		CreateShortcut( Path.Combine( programsDir, "Windows Explorer.lnk" ), "C:/Windows/explorer.exe", "explore" ); await Task.Yield();
+		CreateShortcut( Path.Combine( programsDir, "Command Prompt.lnk" ), "C:/Windows/System32/cmd.exe" ); await Task.Yield();
+
+		string accessoriesDir = Path.Combine( programsDir, "Accessories" );
+		VirtualFileSystem.Instance.CreateDirectory( accessoriesDir ); await Task.Yield();
+		CreateShortcut( Path.Combine( accessoriesDir, "Notepad.lnk" ), "C:/Windows/notepad.exe" ); await Task.Yield();
+		CreateShortcut( Path.Combine( accessoriesDir, "Paint.lnk" ), "C:/Windows/mspaint.exe" ); await Task.Yield();
+		CreateShortcut( Path.Combine( accessoriesDir, "Calculator.lnk" ), "C:/Windows/calc.exe" ); await Task.Yield();
+		CreateShortcut( Path.Combine( accessoriesDir, "Task Manager.lnk" ), "C:/Windows/System32/taskmgr.exe" ); await Task.Yield();
+
+		string gamesDir = Path.Combine( accessoriesDir, "Games" );
+		VirtualFileSystem.Instance.CreateDirectory( gamesDir ); await Task.Yield();
+		CreateShortcut( Path.Combine( gamesDir, "Minesweeper.lnk" ), "C:/Windows/System32/winmine.exe" ); await Task.Yield();
+
+		string doomProgramsDir = Path.Combine( programsDir, "Ultimate Doom for Windows 95" );
+		VirtualFileSystem.Instance.CreateDirectory( doomProgramsDir ); await Task.Yield();
+		CreateShortcut( Path.Combine( doomProgramsDir, "Doom95.lnk" ), "C:/Program Files/Ultimate Doom for Windows 95/doom95.exe" ); await Task.Yield();
+
+		string startupDir = Path.Combine( startMenuRoot, "StartUp" );
+		VirtualFileSystem.Instance.CreateDirectory( startupDir ); await Task.Yield();
+	}
+	private async Task SetupQuickLaunch( UserAccount user, PersonalisedSettingsDialog dialog )
+	{
+		dialog.UpdateStatus( "Configuring Quick Launch bar..." );
+		await Task.Delay( 50 );
+		string quickLaunchDir = Path.Combine( user.ProfilePath, "Application Data", "Microsoft", "Internet Explorer", "Quick Launch" );
+		VirtualFileSystem.Instance.CreateDirectory( quickLaunchDir ); await Task.Yield();
+		CreateShortcut( Path.Combine( quickLaunchDir, "Show Desktop.lnk" ), "C:/Windows/System32/Show Desktop.scf", "Show Desktop" ); await Task.Yield();
+		CreateShortcut( Path.Combine( quickLaunchDir, "Internet Explorer.lnk" ), "C:/Program Files/Internet Explorer/Iexplore.exe" ); await Task.Yield();
+		CreateShortcut( Path.Combine( quickLaunchDir, "Outlook Express.lnk" ), "C:/Program Files/Outlook Express/outlook.exe" ); await Task.Yield();
+	}
+
+	public async Task SetupDesktopItems( UserAccount user, PersonalisedSettingsDialog dialog )
+	{
+		dialog.UpdateStatus( "Preparing your Desktop..." );
+		await Task.Delay( 100 );
 		string desktopDir = Path.Combine( user.ProfilePath, "Desktop" );
-		VirtualFileSystem.Instance.CreateDirectory( desktopDir );
-		VirtualFileSystem.Instance.CreateDirectory( $"{desktopDir}/Online Services" );
-		// Outlook Express shortcut
-		CreateShortcut(
-			$"{desktopDir}/Outlook Express.lnk",
-			"C:/Program Files/Outlook Express/outlook.exe"
-		);
-		// Doom 95 shortcut
-		CreateShortcut(
-			$"{desktopDir}/Doom 95.lnk",
-			"C:/Program Files/Ultimate Doom for Windows 95/doom95.exe"
-		);
+		VirtualFileSystem.Instance.CreateDirectory( desktopDir ); await Task.Yield();
+		VirtualFileSystem.Instance.CreateDirectory( Path.Combine( desktopDir, "Online Services" ) ); await Task.Yield();
+		CreateShortcut( Path.Combine( desktopDir, "Outlook Express.lnk" ), "C:/Program Files/Outlook Express/outlook.exe" ); await Task.Yield();
+		CreateShortcut( Path.Combine( desktopDir, "Doom 95.lnk" ), "C:/Program Files/Ultimate Doom for Windows 95/doom95.exe" ); await Task.Yield();
 	}
 
-	/// <summary>
-	/// Creates a shortcut file pointing to a target program
-	/// </summary>
+	// CreateShortcut remains synchronous as VFS operations are synchronous
 	private static void CreateShortcut( string shortcutPath, string targetPath, string iconName = "",
 									 string arguments = "", string workingDir = "" )
 	{
-		// Create the shortcut descriptor
 		var shortcut = new ShortcutDescriptor(
 			targetPath,
 			string.IsNullOrEmpty( workingDir ) ? Path.GetDirectoryName( targetPath ) : workingDir,
 			arguments,
 			iconName
 		);
-
-		// Write to file
 		VirtualFileSystem.Instance.WriteAllText(
 			shortcutPath,
 			shortcut.ToFileContent()

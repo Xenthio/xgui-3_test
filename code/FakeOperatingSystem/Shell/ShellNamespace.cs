@@ -1,5 +1,5 @@
 ﻿using FakeOperatingSystem.OSFileSystem;
-using FakeOperatingSystem.User;
+using FakeOperatingSystem.User; // Added for UserProfileHelper
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -78,7 +78,7 @@ public class ShellNamespace
 		{
 			Name = RECYCLE_BIN,
 			Path = $"{DESKTOP}/{RECYCLE_BIN}",
-			RealPath = "C:/Recycled", // Assuming Recycled is the VFS path for the recycle bin
+			RealPath = "C:/Recycled",
 			Type = ShellFolderType.SpecialFolder,
 			IconName = "recyclebinempty"
 		} );
@@ -178,14 +178,15 @@ public class ShellNamespace
 	{
 		var applets = new[]
 		{
-			 ("Network", "network"),
-			 ("System", "system"),
-			 ("Mouse", "mouse"),
-			 ("Keyboard", "keyboard"),
-			 ("Sounds", "sounds"),
-			 ("Add/Remove Programs", "addremove"),
-			 ("Date/Time", "datetime"),
-			 ("Regional Settings", "regional")
+			("Display", "display"),
+			("Network", "network"),
+			("System", "system"),
+			("Mouse", "mouse"),
+			("Keyboard", "keyboard"),
+			("Sounds", "sounds"),
+			("Add/Remove Programs", "addremove"),
+			("Date/Time", "datetime"),
+			("Regional Settings", "regional")
 		};
 
 		string controlPanelPath = $"{DESKTOP}/{MY_COMPUTER}/{CONTROL_PANEL}";
@@ -226,11 +227,7 @@ public class ShellNamespace
 	public ShellFolder GetFolder( string path )
 	{
 		if ( string.IsNullOrEmpty( path ) )
-		{
-			if ( _shellFolders.TryGetValue( DESKTOP, out var desktopFolder ) )
-				return desktopFolder;
-			return null;
-		}
+			return _shellFolders[DESKTOP];
 
 		path = NormalizePath( path );
 
@@ -246,13 +243,13 @@ public class ShellNamespace
 			{
 				// Get the subpath after the drive
 				string subPath = path.Substring( drivePrefix.Length );
-				string vfsPath = string.IsNullOrEmpty( subPath ) ? drive.RealPath : Path.Combine( drive.RealPath, subPath ).Replace( '\\', '/' );
+				string vfsPath = string.IsNullOrEmpty( subPath ) ? drive.RealPath : $"{drive.RealPath}/{subPath}";
 
 				if ( _vfs.DirectoryExists( vfsPath ) )
 				{
 					return new ShellFolder
 					{
-						Name = _vfs.GetFileName( vfsPath ),
+						Name = Path.GetFileName( vfsPath ),
 						Path = path,
 						RealPath = vfsPath,
 						Type = ShellFolderType.Directory,
@@ -262,12 +259,12 @@ public class ShellNamespace
 			}
 		}
 
-		// Fallback: treat as a VFS path directly if it's an absolute path
-		if ( path.Contains( ":/" ) && _vfs.DirectoryExists( path ) )
+		// Fallback: treat as a VFS path directly
+		if ( _vfs.DirectoryExists( path ) )
 		{
 			return new ShellFolder
 			{
-				Name = _vfs.GetFileName( path ),
+				Name = Path.GetFileName( path ),
 				Path = path,
 				RealPath = path,
 				Type = ShellFolderType.Directory,
@@ -289,49 +286,37 @@ public class ShellNamespace
 		if ( folder == null )
 			return items;
 
-		// Add registered subfolders that are direct children
-		string prefix = folder.Path.EndsWith( "/" ) ? folder.Path : $"{folder.Path}/";
-		if ( folder.Path == DESKTOP && !prefix.EndsWith( "/" ) ) prefix += "/";
-
-		foreach ( var sfPath in _shellFolders.Keys )
+		// Add registered subfolders
+		string prefix = $"{folder.Path}/";
+		foreach ( var sf in _shellFolders.Values.Where( f =>
+			f.Path.StartsWith( prefix ) &&
+			f.Path.Count( c => c == '/' ) == folder.Path.Count( c => c == '/' ) + 1 ) )
 		{
-			var sf = _shellFolders[sfPath];
-			if ( sf.Path.StartsWith( prefix, StringComparison.OrdinalIgnoreCase ) && sf.Path.Length > prefix.Length )
+			items.Add( new ShellItem
 			{
-				string remainingPath = sf.Path.Substring( prefix.Length );
-				if ( !remainingPath.Contains( '/' ) )
-				{
-					items.Add( new ShellItem
-					{
-						Name = sf.Name,
-						Path = sf.Path,
-						RealPath = sf.RealPath,
-						IsFolder = true,
-						IconName = sf.IconName,
-						Type = sf.Type
-					} );
-				}
-			}
+				Name = sf.Name,
+				Path = sf.Path,
+				RealPath = sf.RealPath,
+				IsFolder = true,
+				IconName = sf.IconName,
+				Type = sf.Type
+			} );
 		}
 
-		// For non-virtual folders, add real files and folders from the VFS
-		if ( !folder.IsVirtual && !string.IsNullOrEmpty( folder.RealPath ) && _vfs.DirectoryExists( folder.RealPath ) )
+		// For non-virtual folders, add real files and folders
+		if ( !folder.IsVirtual && folder.RealPath != null )
 		{
 			// Add directories
 			foreach ( var dir in _vfs.GetDirectories( folder.RealPath ) )
 			{
-				string dirName = _vfs.GetFileName( dir );
-
 				// DO NOT ADD "." AND ".." DIRECTORIES
-				if ( dirName == "." || dirName == ".." )
+				if ( Path.GetFileName( dir ) == "." || Path.GetFileName( dir ) == ".." )
 					continue;
+
+				string dirName = Path.GetFileName( dir );
 
 				// Skip if this directory is already added as a special folder
-				if ( items.Any( i => i.IsFolder && i.Name.Equals( dirName, StringComparison.OrdinalIgnoreCase ) && i.RealPath == dir ) )
-					continue;
-
-				// Also skip if a registered shell folder has this RealPath
-				if ( _shellFolders.Values.Any( sf => sf.RealPath == dir ) )
+				if ( items.Any( i => i.IsFolder && i.Name.Equals( dirName, StringComparison.OrdinalIgnoreCase ) ) )
 					continue;
 
 				items.Add( new ShellItem
@@ -348,8 +333,8 @@ public class ShellNamespace
 			// Add files
 			foreach ( var file in _vfs.GetFiles( folder.RealPath ) )
 			{
-				string fileName = _vfs.GetFileName( file );
-				string extension = _vfs.GetExtension( file ).ToLowerInvariant();
+				string fileName = Path.GetFileName( file );
+				string extension = Path.GetExtension( file ).ToLowerInvariant();
 
 				string iconName = "file";
 				ShellFolderType type = ShellFolderType.File;
@@ -373,7 +358,7 @@ public class ShellNamespace
 			}
 		}
 
-		return items.DistinctBy( i => i.Path ).ToList();
+		return items;
 	}
 
 	/// <summary>
@@ -381,12 +366,9 @@ public class ShellNamespace
 	/// </summary>
 	private string NormalizePath( string path )
 	{
-		if ( string.IsNullOrEmpty( path ) ) return path;
 		path = path.Replace( '\\', '/' );
 
-		if ( path == DESKTOP ) return DESKTOP;
-
-		if ( path.StartsWith( "/" ) && path.Length > 1 )
+		if ( path.StartsWith( "/" ) )
 			path = path.Substring( 1 );
 
 		if ( path.EndsWith( "/" ) && path.Length > 1 )
@@ -448,7 +430,7 @@ public class ShellFolder
 	/// <summary>
 	/// Launches the folder if it is a control panel applet
 	/// </summary>
-	public IControlPanelApplet Applet { get; set; }
+	public IControlPanelApplet Applet { get; set; } // null unless ControlPanelApplet
 }
 
 /// <summary>
@@ -486,7 +468,6 @@ public class ShellItem
 	/// </summary>
 	public string IconName { get; set; }
 }
-
 public interface IControlPanelApplet
 {
 	string Name { get; }
