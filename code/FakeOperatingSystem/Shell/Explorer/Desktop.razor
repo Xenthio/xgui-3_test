@@ -29,9 +29,6 @@
 			BrowserView.AutoArrangeIcons = false;
             BrowserView.IconPositionsFileName = ".iconpositions_desktop";
 
-            // Create virtual file system
-            FakeSystemRoot.TryCreateSystemRoot();
-
             // Initialize browser view with virtual file system
             BrowserView.Initialize(VirtualFileSystem.Instance, ShellNamespace.Instance, FileSystem.Data);
 

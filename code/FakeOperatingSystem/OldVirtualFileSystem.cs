@@ -58,7 +58,6 @@ public class OldVirtualFileSystem
 	/// </summary>
 	private void SetupFileSystem()
 	{
-		FakeSystemRoot.TryCreateSystemRoot();
 		// Set up default file associations
 		SetupDefaultFileAssociations();
 	}

@@ -54,8 +54,6 @@
 
 		if (firstTime)
 		{
-			// Create virtual file system
-			FakeSystemRoot.TryCreateSystemRoot();
 
 			// Set up the file browser
 			BrowserView.Initialize(VirtualFileSystem.Instance, ShellNamespace.Instance, FileSystem.Data);
