@@ -20,8 +20,8 @@ public class FakeSystemRoot
 	{
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Program Files" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/My Documents" );
-		FileSystem.Data.WriteAllText( "FakeSystemRoot/My Documents/desktop.ini", "[.XGUIInfo]\nIcon=mydocuments\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,3\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=3" );
+		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/My Documents" );
+		//FileSystem.Data.WriteAllText( "FakeSystemRoot/My Documents/desktop.ini", "[.XGUIInfo]\nIcon=mydocuments\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,3\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=3" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Recycled" );
 		FileSystem.Data.WriteAllText( "FakeSystemRoot/Recycled/desktop.ini", "[.XGUIInfo]\nIcon=recyclebinfull\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,10\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=10" );
 
@@ -29,11 +29,11 @@ public class FakeSystemRoot
 
 		// Windows
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/All Users" );
+		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/All Users" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Downloaded Program Files" );
 		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Downloaded Program Files/desktop.ini", "[.XGUIInfo]\nIcon=downloadedprogramfiles\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,5\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=5" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Favorites" );
-		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Favorites/desktop.ini", "[.XGUIInfo]\nIcon=favourites\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,2\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=2" );
+		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Favorites" );
+		//FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Favorites/desktop.ini", "[.XGUIInfo]\nIcon=favourites\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,2\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=2" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Fonts" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Help" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/History" );
@@ -59,15 +59,6 @@ public class FakeSystemRoot
 
 		// System and bundled applications in Windows directory
 		SetupWindowsFiles();
-
-		// Quick Launch folder
-		SetupQuickLaunch();
-
-		// Setup Start Menu items
-		SetupStartMenuItems();
-
-		// Create desktop shortcuts and other items
-		CreateDefaultDesktopItems();
 	}
 
 	public static void SetupRootFiles()
@@ -106,95 +97,6 @@ public class FakeSystemRoot
 		NativeProgram.CompileIntoExe( typeof( SteamProgram ), $"{steamDir}/steam.exe" );
 	}
 
-	private static void SetupQuickLaunch()
-	{
-		string quickLaunchDir = "FakeSystemRoot/Windows/Application Data/Microsoft/Internet Explorer/Quick Launch";
-		FileSystem.Data.CreateDirectory( quickLaunchDir );
-		// Show Desktop shortcut
-		CreateShortcut(
-			$"{quickLaunchDir}/Show Desktop.lnk",
-			"C:/Windows/System32/Show Desktop.scf",
-			"Show Desktop"
-		);
-		// Internet Explorer shortcut
-		CreateShortcut(
-			$"{quickLaunchDir}/Internet Explorer.lnk",
-			"C:/Program Files/Internet Explorer/Iexplore.exe"
-		);
-		// Outlook Express shortcut
-		CreateShortcut(
-			$"{quickLaunchDir}/Outlook Express.lnk",
-			"C:/Program Files/Outlook Express/outlook.exe"
-		);
-	}
-	private static void SetupStartMenuItems()
-	{
-		string startMenuDir = "FakeSystemRoot/Windows/Start Menu/Programs";
-		FileSystem.Data.CreateDirectory( startMenuDir );
-		// Internet Explorer shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Internet Explorer.lnk",
-			"C:/Program Files/Internet Explorer/Iexplore.exe"
-		);
-		// Outlook Express shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Outlook Express.lnk",
-			"C:/Program Files/Outlook Express/outlook.exe"
-		);
-		// Windows Explorer shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Windows Explorer.lnk",
-			"C:/Windows/explorer.exe",
-			"explore"
-		);
-		// Command Prompt shortcut
-		CreateShortcut(
-			$"{startMenuDir}/Command Prompt.lnk",
-			"C:/Windows/System32/cmd.exe"
-		);
-
-		// Accessories folder
-		string accessoriesDir = $"{startMenuDir}/Accessories";
-		FileSystem.Data.CreateDirectory( accessoriesDir );
-		// Notepad shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Notepad.lnk",
-			"C:/Windows/notepad.exe"
-		);
-		// Paint shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Paint.lnk",
-			"C:/Windows/mspaint.exe"
-		);
-		// Calculator shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Calculator.lnk",
-			"C:/Windows/calc.exe"
-		);
-		// Task Manager shortcut
-		CreateShortcut(
-			$"{accessoriesDir}/Task Manager.lnk",
-			"C:/Windows/System32/taskmgr.exe"
-		);
-
-		// Games folder
-		string gamesDir = $"{accessoriesDir}/Games";
-		FileSystem.Data.CreateDirectory( gamesDir );
-		// Minesweeper shortcut
-		CreateShortcut(
-			$"{gamesDir}/Minesweeper.lnk",
-			"C:/Windows/System32/winmine.exe"
-		);
-
-		// Ultimate Doom for Windows 95 shortcut
-		string doomDir = $"{startMenuDir}/Ultimate Doom for Windows 95";
-		FileSystem.Data.CreateDirectory( doomDir );
-		CreateShortcut(
-			$"{doomDir}/Doom95.lnk",
-			"C:/Program Files/Ultimate Doom for Windows 95/doom95.exe"
-		);
-	}
-
 	/// <summary>
 	/// Setup applications that belong in the Windows directory
 	/// </summary>
@@ -225,22 +127,6 @@ public class FakeSystemRoot
 
 		// edit (system application)
 		NativeProgram.CompileIntoExe( typeof( EditProgram ), $"{windowsDir}/System32/edit.exe" );
-	}
-
-	public static void CreateDefaultDesktopItems()
-	{
-		string desktopDir = "FakeSystemRoot/Windows/Desktop";
-		FileSystem.Data.CreateDirectory( $"{desktopDir}/Online Services" );
-		// Outlook Express shortcut
-		CreateShortcut(
-			$"{desktopDir}/Outlook Express.lnk",
-			"C:/Program Files/Outlook Express/outlook.exe"
-		);
-		// Doom 95 shortcut
-		CreateShortcut(
-			$"{desktopDir}/Doom 95.lnk",
-			"C:/Program Files/Ultimate Doom for Windows 95/doom95.exe"
-		);
 	}
 
 	/// <summary>

@@ -272,36 +272,7 @@ public class OldVirtualFileSystem
 
 	private void CreateControlPanelApplets()
 	{
-		// Define Control Panel applets - these are virtual items
-		string controlPanelPath = $"{DESKTOP}/{MY_COMPUTER}/{CONTROL_PANEL}";
-
-		var applets = new[]
-		{
-			("Display", "display"),
-			("Network", "network"),
-			("System", "system"),
-			("Mouse", "mouse"),
-			("Keyboard", "keyboard"),
-			("Sounds", "sounds"),
-			("Add/Remove Programs", "addremove"),
-			("Date/Time", "datetime"),
-			("Regional Settings", "regional")
-		};
-
-		foreach ( var (name, icon) in applets )
-		{
-			Log.Info( $"Adding Control Panel applet: {name}" );
-			string appletPath = $"{controlPanelPath}/{name}";
-			_virtualPaths[appletPath] = new VirtualEntry
-			{
-				Name = name,
-				Path = appletPath,
-				RealPath = null,
-				Type = EntryType.ControlPanelApplet,
-				IsVirtual = true,
-				IconName = icon
-			};
-		}
+		// Obsolete: This is a placeholder for creating control panel applets
 	}
 
 	/// <summary>

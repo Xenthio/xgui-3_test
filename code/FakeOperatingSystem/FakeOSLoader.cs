@@ -2,6 +2,7 @@
 using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.Shell;
 using Sandbox;
+using System.Linq;
 using XGUI;
 
 namespace FakeOperatingSystem;
@@ -26,6 +27,9 @@ public class FakeOSLoader : Component
 	{
 		XGUISystem.Instance.SetGlobalTheme( "/XGUI/DefaultStyles/Computer95.scss" );
 
+		// Do core OS file setup (no file copying setup process or ui for now)
+		FakeSystemRoot.TryCreateSystemRoot();
+
 		// Initialize the virtual file system
 		VirtualFileSystem = new VirtualFileSystem( FileSystem.Data );
 
@@ -38,31 +42,112 @@ public class FakeOSLoader : Component
 	/// </summary>
 	public void Boot()
 	{
-
 		Instance = this;
-
-		// Initialize the old virtual file system (for compatibility with old code, this is more like shell namespace)
 		_oldVirtualFileSystem = new OldVirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
-
-		// Do core OS file setup (no file copying setup process or ui for now)
-		FakeSystemRoot.TryCreateSystemRoot();
-
-		// Initialize the registry (add this)
 		Registry = new Registry();
+		UserManager = new UserManager();
+		UserManager.LoadUsers(); // Load existing users first
 
-		// initialize program manager
+		// Check if user system is enabled in registry
+		// Request a nullable int (int?). If the value doesn't exist, GetValue will return default(int?), which is null.
+		int? userProfilesSetting = Registry.GetValue<int?>( @"HKEY_LOCAL_MACHINE\Network\Logon", "UserProfiles", null );
+
+		if ( userProfilesSetting == null ) // Now this correctly checks if the value was not found or was explicitly null
+		{
+			// First boot or registry value missing: show create user dialog
+			ShowCreateUserDialog();
+			return; // Wait for dialog result before continuing boot
+		}
+		else
+		{
+			// Value exists, proceed to use it
+			UserSystemEnabled = userProfilesSetting.Value == 1;
+		}
+
+		// If user system is enabled, but no user is set (e.g. after first boot dialog was skipped then re-enabled manually)
+		// or if it's just a normal boot with users enabled.
+		if ( UserSystemEnabled )
+		{
+			if ( UserManager.Users.Any() )
+			{
+				// TODO: Implement a proper Logon Dialog here.
+				// For now, auto-login the first user if one exists.
+				var userToLogin = UserManager.Users.First();
+				if ( UserManager.Login( userToLogin.UserName, userToLogin.PasswordHash ) ) // Assuming Login sets CurrentUser
+				{
+					Log.Info( $"Auto-logged in as: {UserManager.CurrentUser.UserName}" );
+					Registry.LoadUserHive( UserManager.CurrentUser.UserName, UserManager.CurrentUser.RegistryHivePath ); // Load the user's hive
+					UserManager.SetupUserProfile( UserManager.CurrentUser );
+				}
+				else
+				{
+					Log.Error( "Auto-login failed. Halting boot for user setup." );
+					// Potentially show login dialog again or an error.
+					return;
+				}
+			}
+			else
+			{
+				Log.Warning( "User system enabled, but no users found. Showing create user dialog." );
+				ShowCreateUserDialog();
+				return;
+			}
+		}
+		else
+		{
+			// Single-user mode: set up global folders
+			UserManager.SetupUserProfile( null );
+			Registry.LoadUserHive( "Default", @"C:\Windows\USER.DAT" );
+		}
+
+		ContinueBoot();
+	}
+
+	private void ShowCreateUserDialog()
+	{
+		// Pseudocode for dialog
+		var dialog = new CreateUserDialog(
+			onCreate: ( username, password ) =>
+			{
+				UserSystemEnabled = true;
+				Registry.SetValue( @"HKEY_LOCAL_MACHINE\Network\Logon", "UserProfiles", 1 );
+				var user = new UserAccount
+				{
+					UserName = username,
+					PasswordHash = password, // Hash in real code!
+					ProfilePath = $@"C:\Documents and Settings\{username}\",
+					RegistryHivePath = $@"C:\Documents and Settings\{username}\NTUSER.DAT"
+				};
+				UserManager.Users.Add( user );
+				UserManager.SaveUsers();
+				// Create All Users folder
+				var vfs = VirtualFileSystem.Instance;
+				var allUsers = @"C:\Documents and Settings\All Users";
+				if ( !vfs.DirectoryExists( allUsers ) )
+					vfs.CreateDirectory( allUsers );
+				UserManager.SetupUserProfile( user );
+				UserManager.Login( username, password );
+				ContinueBoot();
+			},
+			onSkip: () =>
+			{
+				UserSystemEnabled = false;
+				Registry.SetValue( @"HKEY_LOCAL_MACHINE\Network\Logon", "UserProfiles", 0 );
+				UserManager.SetupUserProfile( null );
+				ContinueBoot();
+			}
+		);
+		// Show dialog in your UI system
+		XGUISystem.Instance.Panel.AddChild( dialog );
+	}
+
+	private void ContinueBoot()
+	{
 		_processManager = new ProcessManager();
-
 		ShellNamespace = new ShellNamespace( VirtualFileSystem );
-
 		FileAssociationManager.Initialize( VirtualFileSystem );
-
-		// Todo: Move to Logon
 		ThemeResources.ReloadAll();
-
 		_processManager.OpenExecutable( "C:/Windows/explorer.exe", new Win32LaunchOptions() );
-
-		// Move TaskBar and Desktop to Explorer.
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<TaskBar>();
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<Desktop>();
 	}
