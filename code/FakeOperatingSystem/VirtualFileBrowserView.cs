@@ -856,6 +856,8 @@ public class VirtualFileBrowserView : FileBrowserView
 	/// </summary>
 	private void MakeItemGhostDraggable( ListView.ListViewItem item )
 	{
+		Panel ghostRoot = null;
+		Panel ghostFakeListView = null; // This is for styling purposes
 		Panel ghost = null;
 		Vector2 grabOffset = default;
 		item.Draggable = true; // Enable dragging on the item
@@ -863,35 +865,73 @@ public class VirtualFileBrowserView : FileBrowserView
 		// Start drag: create ghost and calculate offset
 		item.OnDragStartEvent += ( ItemDragEvent e ) =>
 		{
+			// kinda SUCKS that we have to do all this just to make a ghost panel
+			// TODO: perhaps we can make a helper class for this in the future
+			// or just refactor to be nicer.
+
 			grabOffset = e.LocalGrabPosition;
 
+			ghostRoot = new Panel();
+			ghostRoot.AddClass( "Panel" );
+			// copy style sheets from the parent window
+			foreach ( var sheet in item.GetOwnerXGUIPanel().AllStyleSheets ?? Enumerable.Empty<StyleSheet>() )
+			{
+				ghostRoot.StyleSheet.Add( sheet );
+			}
+			ghostRoot.Style.Position = PositionMode.Absolute;
+
+			ghostFakeListView = new Panel();
+			ghostFakeListView.Classes = item.Parent?.Parent?.Classes ?? "listview";
+			ghostFakeListView.AddClass( "ghost-listview" );
+			ghostRoot.AddChild( ghostFakeListView );
+
 			ghost = new Panel();
-			ghost.Parent = this;
+			ghostFakeListView.AddChild( ghost );
+			ghost.Classes = item.Classes;
+
+			ghost.RemoveClass( "selected" );
+
 			ghost.Style.Position = PositionMode.Absolute;
 
 
-			var parentRect = item.Parent?.Box.Rect ?? Box.Rect;
-			float parentLeft = parentRect.Left;
-			float parentTop = parentRect.Top;
-			float newLeft = e.ScreenPosition.x - parentLeft - grabOffset.x;
-			float newTop = e.ScreenPosition.y - parentTop - grabOffset.y;
-			ghost.Style.Left = newLeft;
-			ghost.Style.Top = newTop;
+			//var parentRect = item.Parent?.Box.Rect ?? Box.Rect;
+			//float parentLeft = parentRect.Left;
+			//float parentTop = parentRect.Top;
+			//float newLeft = e.ScreenPosition.x - parentLeft - grabOffset.x;
+			//float newTop = e.ScreenPosition.y - parentTop - grabOffset.y;
+			//ghost.Style.Left = newLeft;
+			//ghost.Style.Top = newTop;
+
+			ghostRoot.Style.Left = e.ScreenPosition.x - grabOffset.x;
+			ghostRoot.Style.Top = e.ScreenPosition.y - grabOffset.y;
 
 			ghost.Style.Width = item.Box.Rect.Width;
 			ghost.Style.Height = item.Box.Rect.Height;
-			ghost.Style.Opacity = 0.79f;
-			ghost.Style.ZIndex = 1000;
+			ghostRoot.Style.Width = item.Box.Rect.Width;
+			ghostRoot.Style.Height = item.Box.Rect.Height;
+			ghostFakeListView.Style.Width = item.Box.Rect.Width;
+			ghostFakeListView.Style.Height = item.Box.Rect.Height;
 
-			//test background
-			//ghost.Style.BackgroundColor = Color.Blue;
+			// remove background and border
+			ghostRoot.Style.BackgroundColor = Color.Transparent;
+			ghostRoot.Style.BorderColor = Color.Transparent;
+			ghostRoot.Style.BorderWidth = 0;
+			ghostFakeListView.Style.BackgroundColor = Color.Transparent;
+			ghostFakeListView.Style.BorderColor = Color.Transparent;
+			ghostFakeListView.Style.BorderWidth = 0;
+			ghostFakeListView.Style.Padding = 0;
+
+			// remove ::before and ::after pseudo-elements
+			ghostFakeListView.StyleSheet.Parse( @"
+				.listview::before, .listview::after {
+					border: none;
+				}" );
+
+			ghost.Style.Opacity = 0.79f;
+			ghostRoot.Style.ZIndex = 100000;
 
 			ghost.Style.PointerEvents = PointerEvents.None;
-
-			// copy classes from the original item
-			ghost.Classes = item.Classes;
-			ghost.AddClass( "ghost-drag" );
-			ghost.RemoveClass( "selected" );
+			ghostRoot.Style.PointerEvents = PointerEvents.None;
 
 			if ( ListView.ViewMode == XGUI.ListView.ListViewMode.Icons )
 			{
@@ -940,9 +980,8 @@ public class VirtualFileBrowserView : FileBrowserView
 				}
 			}
 
-
-
-			item.Parent?.AddChild( ghost ); // Ensure ghost is added to the correct parent panel
+			XGUISystem.Instance.Panel.AddChild( ghostRoot );
+			//XGUISystem.Instance.Panel.SetChildIndex( ghostRoot, 1000 );
 
 			item.Style.Cursor = "grabbing";
 		};
@@ -953,13 +992,18 @@ public class VirtualFileBrowserView : FileBrowserView
 			if ( ghost == null ) return;
 
 			// Calculate ghost position relative to the parent panel
-			var parentRect = item.Parent?.Box.Rect ?? Box.Rect;
+			/*			
+ 			var parentRect = item.Parent?.Box.Rect ?? Box.Rect;
 			float parentLeft = parentRect.Left;
 			float parentTop = parentRect.Top;
 			float newLeft = e.ScreenPosition.x - parentLeft - grabOffset.x;
 			float newTop = e.ScreenPosition.y - parentTop - grabOffset.y;
 			ghost.Style.Left = newLeft;
 			ghost.Style.Top = newTop;
+			*/
+
+			ghostRoot.Style.Left = e.ScreenPosition.x - grabOffset.x;
+			ghostRoot.Style.Top = e.ScreenPosition.y - grabOffset.y;
 		};
 
 		// End drag: move real item, save, and remove ghost
@@ -1039,8 +1083,14 @@ public class VirtualFileBrowserView : FileBrowserView
 				// 2. If not dropped on a folder, just update position (if not auto arrange)
 				if ( !AutoArrangeIcons )
 				{
-					item.Style.Left = ghost.Style.Left;
-					item.Style.Top = ghost.Style.Top;
+					var parentRect = item.Parent?.Box.Rect ?? Box.Rect;
+					float parentLeft = parentRect.Left;
+					float parentTop = parentRect.Top;
+					float newLeft = e.ScreenPosition.x - parentLeft - grabOffset.x;
+					float newTop = e.ScreenPosition.y - parentTop - grabOffset.y;
+
+					item.Style.Left = newLeft;
+					item.Style.Top = newTop;
 
 					if ( item.Data is FileBrowserView.FileItem fileItem )
 					{
@@ -1051,7 +1101,9 @@ public class VirtualFileBrowserView : FileBrowserView
 					}
 				}
 
-				ghost.Delete();
+				ghostRoot.Delete();
+				ghostRoot = null;
+				ghostFakeListView = null;
 				ghost = null;
 			}
 		};
