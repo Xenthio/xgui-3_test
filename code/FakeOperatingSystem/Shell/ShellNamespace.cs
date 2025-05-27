@@ -190,6 +190,18 @@ public class ShellNamespace
 
 		string controlPanelPath = $"{DESKTOP}/{MY_COMPUTER}/{CONTROL_PANEL}";
 
+		var displayApplet = new DesktopSettingsApplet();
+
+		RegisterShellFolder( new ShellFolder
+		{
+			Name = displayApplet.Name,
+			Path = $"{controlPanelPath}/{displayApplet.Name}",
+			Type = ShellFolderType.ControlPanelApplet,
+			IconName = displayApplet.IconName,
+			IsVirtual = true,
+			Applet = displayApplet
+		} );
+
 		foreach ( var (name, icon) in applets )
 		{
 			RegisterShellFolder( new ShellFolder
@@ -413,6 +425,11 @@ public class ShellFolder
 	/// Icon name for display
 	/// </summary>
 	public string IconName { get; set; }
+
+	/// <summary>
+	/// Launches the folder if it is a control panel applet
+	/// </summary>
+	public IControlPanelApplet Applet { get; set; } // null unless ControlPanelApplet
 }
 
 /// <summary>
@@ -449,4 +466,11 @@ public class ShellItem
 	/// Icon name for display
 	/// </summary>
 	public string IconName { get; set; }
+}
+public interface IControlPanelApplet
+{
+	string Name { get; }
+	string IconName { get; }
+	string Description { get; }
+	void Launch();
 }

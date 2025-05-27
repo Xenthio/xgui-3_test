@@ -33,6 +33,7 @@ public class VirtualFileBrowserView : FileBrowserView
 	private List<string> _navigationHistory = new();
 	private int _historyIndex = -1;
 
+	private static readonly List<VirtualFileBrowserView> AllFileBrowsers = new();
 
 	protected override bool WantsDragScrolling => false;
 
@@ -41,9 +42,16 @@ public class VirtualFileBrowserView : FileBrowserView
 
 	public VirtualFileBrowserView() : base()
 	{
+		AllFileBrowsers.Add( this );
 		// Override the DirectoryOpened event to handle virtual navigation
 		OnDirectoryOpened += HandleDirectoryOpened;
 		OnFileOpened += HandleFileOpened;
+	}
+
+	public override void OnDeleted()
+	{
+		AllFileBrowsers.Remove( this );
+		base.OnDeleted();
 	}
 
 	/// <summary>
@@ -85,6 +93,13 @@ public class VirtualFileBrowserView : FileBrowserView
 		if ( folder == null )
 		{
 			Log.Warning( $"Shell path not found: {shellPath}" );
+			return;
+		}
+
+		if ( folder.Type == ShellFolderType.ControlPanelApplet )
+		{
+			Log.Info( $"Opening Control Panel applet: {folder.Name}" );
+			folder.Applet?.Launch();
 			return;
 		}
 
@@ -1011,24 +1026,79 @@ public class VirtualFileBrowserView : FileBrowserView
 		{
 			if ( ghost != null )
 			{
-				// 1. Check if dropped over a folder
+				// Find the topmost view under the mouse
+				VirtualFileBrowserView topmostView = null;
+				var mousePos = Mouse.Position;
+
+				var sorted = AllFileBrowsers
+					.OrderByDescending( view =>
+					{
+						var parent = view.GetOwnerXGUIPanel();
+						return parent?.Parent?.GetChildIndex( parent ) ?? -1;
+					} )
+					.ToList();
+
+				foreach ( var view in sorted )
+				{
+					var screenRect = view.Box.Rect;
+					if ( screenRect.IsInside( mousePos ) )
+					{
+						topmostView = view;
+					}
+				}
+
+				// If the topmost view is not this, allow cross-view drop
+				if ( topmostView != null && topmostView != this && item.Data is FileItem crossDraggedItem )
+				{
+					var targetView = topmostView;
+					// Get the real path of the dragged item
+					var shellItem = _shellManager.GetItems( _currentShellPath )
+						.FirstOrDefault( i => i.Path == crossDraggedItem.FullPath );
+					if ( shellItem == null ) goto EndGhost;
+
+					// Get the target folder's real path
+					var targetShellFolder = targetView._shellManager.GetFolder( targetView._currentShellPath );
+					if ( targetShellFolder?.RealPath == null ) goto EndGhost;
+
+					string newPath = Path.Combine( targetShellFolder.RealPath, crossDraggedItem.Name );
+					if ( crossDraggedItem.IsDirectory )
+						MoveDirectory( shellItem.RealPath, newPath );
+					else
+						MoveFile( shellItem.RealPath, newPath );
+
+					if ( !targetView.AutoArrangeIcons && targetView.ListView.ViewMode == XGUI.ListView.ListViewMode.Icons )
+					{
+						var targetListViewRect = targetView.ListView.Box.Rect;
+						var dropPos = e.ScreenPosition - new Vector2( targetListViewRect.Left, targetListViewRect.Top ) - grabOffset;
+
+						dropPos.x = Math.Max( 0, dropPos.x );
+						dropPos.y = Math.Max( 0, dropPos.y );
+
+						if ( !targetView._iconPositions.ContainsKey( targetView._currentShellPath ) )
+							targetView._iconPositions[targetView._currentShellPath] = new Dictionary<string, Vector2>();
+
+						string newShellPath = targetView._currentShellPath.TrimEnd( '/', '\\' ) + "/" + crossDraggedItem.Name;
+						targetView._iconPositions[targetView._currentShellPath][newShellPath] = dropPos;
+						targetView.SaveIconPositions( targetView._currentShellPath );
+					}
+
+					// Refresh both views
+					Refresh();
+					targetView.Refresh();
+
+					goto EndGhost;
+				}
+
+				// 1. Check if dropped over a folder in this view (existing logic)
 				ListView.ListViewItem targetFolderItem = null;
 				foreach ( var other in ListView.Items )
 				{
 					if ( other == item ) continue;
 					if ( other.Data is FileItem fi && fi.IsDirectory )
 					{
-						// Check if mouse is over this folder item
 						var rect = other.Box.Rect;
-						var parentRect = other.Parent?.Box.Rect ?? Box.Rect;
-						float left = rect.Left + parentRect.Left;
-						float top = rect.Top + parentRect.Top;
-						float right = rect.Right + parentRect.Left;
-						float bottom = rect.Bottom + parentRect.Top;
-
 						if ( rect.IsInside( e.ScreenPosition ) )
 						{
-							Log.Info( $"Moving item" );
 							targetFolderItem = other;
 							break;
 						}
@@ -1048,30 +1118,17 @@ public class VirtualFileBrowserView : FileBrowserView
 						}
 						else
 						{
-							// Get real path for the dragged item
 							var shellItem = _shellManager.GetItems( _currentShellPath )
 								.FirstOrDefault( i => i.Path == draggedItem.FullPath );
-
-							if ( shellItem == null )
-								return;
-
-							// Get real path of the target folder
+							if ( shellItem == null ) return;
 							var targetShellItem = _shellManager.GetItems( _currentShellPath )
 								.FirstOrDefault( i => i.Path == targetFolder.FullPath );
-
-							if ( targetShellItem == null )
-								return;
-
+							if ( targetShellItem == null ) return;
 							string newPath = Path.Combine( targetShellItem.RealPath, draggedItem.Name );
-
-
-
-
 							if ( draggedItem.IsDirectory )
 								MoveDirectory( shellItem.RealPath, newPath );
 							else
 								MoveFile( shellItem.RealPath, newPath );
-
 							Refresh();
 							ghost.Delete();
 							ghost = null;
@@ -1101,6 +1158,7 @@ public class VirtualFileBrowserView : FileBrowserView
 					}
 				}
 
+				EndGhost:
 				ghostRoot.Delete();
 				ghostRoot = null;
 				ghostFakeListView = null;

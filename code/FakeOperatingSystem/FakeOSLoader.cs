@@ -16,6 +16,12 @@ public class FakeOSLoader : Component
 	public VirtualFileSystem VirtualFileSystem;
 	public ShellNamespace ShellNamespace;
 	ProcessManager _processManager;
+	public Registry Registry;
+
+
+	/// <summary>
+	/// This would be boot.
+	/// </summary>
 	protected override void OnStart()
 	{
 		Instance = this;
@@ -25,6 +31,8 @@ public class FakeOSLoader : Component
 		_oldVirtualFileSystem = new OldVirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
 		VirtualFileSystem = new VirtualFileSystem( FileSystem.Data );
 
+		// Initialize the registry (add this)
+		Registry = new Registry();
 
 		ShellNamespace = new ShellNamespace( VirtualFileSystem );
 
@@ -35,7 +43,6 @@ public class FakeOSLoader : Component
 
 		ThemeResources.ReloadAll();
 
-		//Scene.GetSystem<XGUISystem>().Panel.AddChild<Explorer>();
 		_processManager.OpenExecutable( "C:/Windows/explorer.exe", new Win32LaunchOptions() );
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<TaskBar>();
 		Scene.GetSystem<XGUISystem>().Panel.AddChild<Desktop>();
