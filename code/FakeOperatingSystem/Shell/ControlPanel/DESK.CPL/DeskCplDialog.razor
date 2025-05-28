@@ -73,7 +73,7 @@
 
 	private void ApplyThemeSettings()
 	{
-		if (!string.IsNullOrEmpty(DeskCplDialogThemeTab.SelectedThemePath))
+		if (!string.IsNullOrWhiteSpace(DeskCplDialogThemeTab.SelectedThemePath))
 		{
 			string selectedTheme = DeskCplDialogThemeTab.SelectedThemePath;
 
@@ -90,6 +90,7 @@
 			{
 				Log.Warning("Registry.Instance is null. Cannot save theme setting.");
 			}
+			this.FocusWindow();
 		}
 		else
 		{

@@ -34,6 +34,10 @@
 
 		// dumb, need to do because of stupid bug in s&box.
 		SelectedThemePath = $"/XGUI/DefaultStyles/{_selectedThemePath}.scss";
+		if (string.IsNullOrWhiteSpace(SelectedThemePath) || SelectedThemePath == "/XGUI/DefaultStyles/.scss")
+		{
+			SelectedThemePath = ""; // nullify!
+		}
 	}
 
 	List<string> GetAllThemes()
