@@ -2,24 +2,32 @@
 using FakeOperatingSystem;
 using Sandbox;
 using System.IO;
+using System.Threading.Tasks;
+using XGUI;
 
 public class FakeSystemRoot
 {
+	protected static SetupDialog _setupDialog;
 	/// <summary>
 	/// calls CreateSystemRoot if the systemroot in FileSystem.Data doesn't exist.
 	/// </summary>
-	public static void TryCreateSystemRoot()
+	public static async Task TryCreateSystemRoot()
 	{
 		if ( !FileSystem.Data.DirectoryExists( "FakeSystemRoot" ) )
 		{
-			CreateSystemRoot();
+			await CreateSystemRoot();
 		}
 	}
 
-	public static void CreateSystemRoot()
+	public static async Task CreateSystemRoot()
 	{
+		_setupDialog = new SetupDialog();
+		XGUISystem.Instance.Panel.AddChild( _setupDialog );
+
+
+		await Task.Delay( 20 ); // Give UI time to render
+
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Program Files" );
 		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/My Documents" );
 		//FileSystem.Data.WriteAllText( "FakeSystemRoot/My Documents/desktop.ini", "[.XGUIInfo]\nIcon=mydocuments\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,3\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=3" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Recycled" );
@@ -28,6 +36,7 @@ public class FakeSystemRoot
 		SetupRootFiles();
 
 		// Windows
+		_setupDialog.UpdateStatus( "Setting up Windows files..." );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows" );
 		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/All Users" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Downloaded Program Files" );
@@ -46,19 +55,28 @@ public class FakeSystemRoot
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32/drivers" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32/config" );
 
+		// System and bundled applications in Windows directory
+		SetupWindowsFiles();
+		await Task.Delay( 20 ); // Give UI time to render
+
 		// Desktop Folders
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Desktop" );
 
+		_setupDialog.UpdateStatus( "Installing Start Menu Items..." );
 		// Start Menu
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Start Menu" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Start Menu/Programs" );
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Start Menu/Start Up" );
+		await Task.Delay( 20 ); // Give UI time to render
 
+		_setupDialog.UpdateStatus( "Setting up Program files..." );
+		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Program Files" );
 		// Program Files with proper application folders
 		SetupProgramFiles();
 
-		// System and bundled applications in Windows directory
-		SetupWindowsFiles();
+		await Task.Delay( 20 ); // Give UI time to render
+
+		_setupDialog.Complete();
 	}
 
 	public static void SetupRootFiles()
@@ -159,5 +177,12 @@ public class FakeSystemRoot
 	{
 		FileSystem.Data.DeleteDirectory( "FakeSystemRoot", true );
 		CreateSystemRoot();
+	}
+
+
+	[ConCmd( "xguitest_delete_system_root" )]
+	public static void DeleteSystemRoot()
+	{
+		FileSystem.Data.DeleteDirectory( "FakeSystemRoot", true );
 	}
 }

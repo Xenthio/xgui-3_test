@@ -28,14 +28,20 @@ public class FakeOSLoader : Component
 	{
 		XGUISystem.Instance.SetGlobalTheme( "/XGUI/DefaultStyles/Computer95.scss" );
 
+		Startup();
+		base.OnStart();
+	}
+
+	public async Task Startup() // Changed to async Task
+	{
+
 		// Do core OS file setup (no file copying setup process or ui for now)
-		FakeSystemRoot.TryCreateSystemRoot();
+		await FakeSystemRoot.TryCreateSystemRoot();
 
 		// Initialize the virtual file system
 		VirtualFileSystem = new VirtualFileSystem( FileSystem.Data );
 
-		Boot();
-		base.OnStart();
+		await Boot();
 	}
 
 	/// <summary>
@@ -86,6 +92,8 @@ public class FakeOSLoader : Component
 			// Single-user mode: set up global folders
 			//await UserManager.SetupUserProfile( null ); // Await here
 			Registry.LoadUserHive( "Default", @"C:\Windows\USER.DAT" );
+			// Apply default theme if no user specific theme logic for single user mode
+			// Or apply a specific theme for single user mode from HKLM if desired
 		}
 
 		ContinueBoot();
@@ -115,6 +123,13 @@ public class FakeOSLoader : Component
 					vfs.CreateDirectory( allUsers );
 				await UserManager.SetupUserProfile( user ); // Await here
 				UserManager.Login( username, password ); // This should ideally also set CurrentUser for ContinueBoot
+
+				// After user profile is set up and hive loaded by Login (implicitly via LoadUserHive in Login or here)
+				// Apply default theme for new user or let them pick later.
+				// For now, new users will get the system default theme.
+				// If a specific theme should be set for new users, it can be done here.
+				// Example: Registry.Instance.SetValue(DeskCplDialog.UserThemeRegistryPath, DeskCplDialog.UserThemeRegistryValueName, "/XGUI/DefaultStyles/Computer95.scss");
+
 				ContinueBoot(); // This might need to be awaited if it also becomes async
 			},
 			onSkip: async () => // Lambda becomes async
@@ -137,6 +152,30 @@ public class FakeOSLoader : Component
 				// UserManager.CurrentUser is already set by LogonDialog's call to UserManager.Login
 				Log.Info( $"Logged in as: {UserManager.CurrentUser.UserName}" );
 				Registry.LoadUserHive( UserManager.CurrentUser.UserName, UserManager.CurrentUser.RegistryHivePath );
+
+				// Apply user's saved theme
+				if ( Registry.Instance != null )
+				{
+					string userThemePathFromRegistry = Registry.Instance.GetValue<string>(
+						DeskCplDialog.UserThemeRegistryPath,
+						DeskCplDialog.UserThemeRegistryValueName,
+						null );
+
+					if ( !string.IsNullOrEmpty( userThemePathFromRegistry ) )
+					{
+						Log.Info( $"Applying user theme from registry: {userThemePathFromRegistry}" );
+						XGUISystem.Instance.SetGlobalTheme( userThemePathFromRegistry );
+					}
+					else
+					{
+						// If no user theme is set, the default theme (Computer95.scss set in OnStart) will remain.
+						Log.Info( "No user theme found in registry, using system default theme." );
+					}
+				}
+				else
+				{
+					Log.Warning( "Registry.Instance is null. Cannot load user theme preference." );
+				}
 
 				// SetupUserProfile ensures profile folders exist, creates if first login for this user
 				//await UserManager.SetupUserProfile( UserManager.CurrentUser );

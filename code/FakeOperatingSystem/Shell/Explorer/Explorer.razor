@@ -5,6 +5,7 @@
 @using FakeOperatingSystem.Shell
 @using Sandbox;
 @using Sandbox.UI;
+@using System.IO
 @using XGUI;
 @using FakeDesktop;
 @inherits BaseBrowseUI
@@ -85,6 +86,8 @@
 				Title = $"{System.IO.Path.GetFileName(path)}";
 				var icon = FileIconHelper.GetFolderIcon(path, OldVirtualFileSystem.Instance, 16);
 				TitleBar.TitleIcon.Style.SetBackgroundImage(icon);
+
+				OnNavigate(path);
 			};
 
 			// Initialize with the provided path or default to Desktop
@@ -230,6 +233,13 @@
 				menu.AddMenuItem("List", () => SetViewMode(FileBrowserViewMode.List));
 			}
 		);
+	}
+
+	private void OnNavigate(string path)
+	{
+		// If we can't go up any further, disable the Up button
+		bool canGoUp = !string.IsNullOrEmpty(Path.GetDirectoryName(BrowserView.GetCurrentShellPath()));
+		UpButton.SetClass("disabled", !canGoUp);
 	}
 
 	private void SetViewMode(FileBrowserViewMode mode)

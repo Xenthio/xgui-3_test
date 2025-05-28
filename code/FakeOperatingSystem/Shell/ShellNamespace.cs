@@ -188,7 +188,6 @@ public class ShellNamespace
 	{
 		var applets = new[]
 		{
-			("Display", "display"),
 			("Network", "network"),
 			("System", "system"),
 			("Mouse", "mouse"),

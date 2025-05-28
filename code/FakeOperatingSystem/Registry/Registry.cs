@@ -69,7 +69,9 @@ public class RegistryHive
 
 public class Registry
 {
-	private Dictionary<string, RegistryHive> _hives = new();
+	private Dictionary<string, RegistryHive> _hives = new( StringComparer.OrdinalIgnoreCase );
+	// Stores mapping from full component key path (e.g., "HKEY_LOCAL_MACHINE\SYSTEM") to its file path.
+	private Dictionary<string, string> _componentHiveFilePaths = new( StringComparer.OrdinalIgnoreCase );
 	public static Registry Instance { get; private set; }
 	public IEnumerable<string> RootHiveNames => _hives.Keys;
 	public IEnumerable<RegistryHive> RootHives => _hives.Values;
@@ -80,42 +82,54 @@ public class Registry
 
 		// --- HKEY_LOCAL_MACHINE ---
 		var hklmRootKey = new RegistryKey();
-		// The FilePath for HKLM itself is a placeholder; its content comes from other files.
 		var hklmHive = new RegistryHive( "HKEY_LOCAL_MACHINE", hklmRootKey, @"C:\Windows\System32\config\HKLM_VIRTUAL.hive" );
-
-		RegistryKey systemKey = LoadKeyFromFile( @"C:\Windows\System32\config\SYSTEM" );
-		if ( systemKey != null ) hklmRootKey.SubKeys["SYSTEM"] = systemKey;
-
-		RegistryKey softwareKey = LoadKeyFromFile( @"C:\Windows\System32\config\SOFTWARE" );
-		if ( softwareKey != null ) hklmRootKey.SubKeys["SOFTWARE"] = softwareKey;
-
-		RegistryKey networkKey = LoadKeyFromFile( @"C:\Windows\System32\config\NETWORK" );
-		if ( networkKey != null ) hklmRootKey.SubKeys["NETWORK"] = networkKey;
-		// Add SAM, SECURITY, HARDWARE similarly if you have files for them.
 		_hives["HKEY_LOCAL_MACHINE"] = hklmHive;
+
+		string systemFilePath = @"C:\Windows\System32\config\SYSTEM";
+		RegistryKey systemKey = LoadKeyFromFile( systemFilePath );
+		if ( systemKey != null )
+		{
+			hklmRootKey.SubKeys["SYSTEM"] = systemKey;
+			_componentHiveFilePaths[$"{hklmHive.Name}\\SYSTEM"] = systemFilePath;
+		}
+
+		string softwareFilePath = @"C:\Windows\System32\config\SOFTWARE";
+		RegistryKey softwareKey = LoadKeyFromFile( softwareFilePath );
+		if ( softwareKey != null )
+		{
+			hklmRootKey.SubKeys["SOFTWARE"] = softwareKey;
+			_componentHiveFilePaths[$"{hklmHive.Name}\\SOFTWARE"] = softwareFilePath;
+		}
+
+		string networkFilePath = @"C:\Windows\System32\config\NETWORK";
+		RegistryKey networkKey = LoadKeyFromFile( networkFilePath );
+		if ( networkKey != null )
+		{
+			hklmRootKey.SubKeys["NETWORK"] = networkKey;
+			_componentHiveFilePaths[$"{hklmHive.Name}\\NETWORK"] = networkFilePath;
+		}
+		// Add SAM, SECURITY, HARDWARE similarly if you have files for them and update _componentHiveFilePaths.
 
 		// --- HKEY_USERS ---
 		var hkuRootKey = new RegistryKey();
-		// FilePath for HKU is also a placeholder.
 		var hkuHive = new RegistryHive( "HKEY_USERS", hkuRootKey, @"C:\Windows\System32\config\HKU_VIRTUAL.hive" );
-
-		RegistryKey defaultUserKey = LoadKeyFromFile( @"C:\Windows\System32\config\DEFAULT" );
-		if ( defaultUserKey != null ) hkuRootKey.SubKeys[".DEFAULT"] = defaultUserKey;
 		_hives["HKEY_USERS"] = hkuHive;
 
+		string defaultUserFilePath = @"C:\Windows\System32\config\DEFAULT";
+		RegistryKey defaultUserKey = LoadKeyFromFile( defaultUserFilePath );
+		if ( defaultUserKey != null )
+		{
+			hkuRootKey.SubKeys[".DEFAULT"] = defaultUserKey;
+			_componentHiveFilePaths[$"{hkuHive.Name}\\.DEFAULT"] = defaultUserFilePath;
+		}
+
 		// --- HKEY_CURRENT_USER ---
-		// This is a distinct hive, loaded per user. Initial one points to a default.
 		_hives["HKEY_CURRENT_USER"] = new RegistryHive( "HKEY_CURRENT_USER", @"C:\Windows\USER.DAT" );
 
 		// --- HKEY_CURRENT_CONFIG ---
 		_hives["HKEY_CURRENT_CONFIG"] = new RegistryHive( "HKEY_CURRENT_CONFIG", @"C:\Windows\System32\config\CONFIG" );
-
-		// HKEY_DYN_DATA (Optional, Win9x specific)
-		// _hives["HKEY_DYN_DATA"] = new RegistryHive("HKEY_DYN_DATA", @"C:\Windows\System32\config\DYN_DATA");
 	}
 
-	// Helper to load a RegistryKey structure from a specific file.
-	// These files (SYSTEM, SOFTWARE, etc.) now represent the content of a single key.
 	private RegistryKey LoadKeyFromFile( string filePath )
 	{
 		if ( VirtualFileSystem.Instance.FileExists( filePath ) )
@@ -125,17 +139,25 @@ public class Registry
 		}
 		else
 		{
-			// If a component file (like SYSTEM) is missing, create an empty key and save it.
 			var newKey = new RegistryKey();
-			var json = JsonSerializer.Serialize( newKey, new JsonSerializerOptions { WriteIndented = true } );
-			VirtualFileSystem.Instance.WriteAllText( filePath, json );
+			SaveKeyToFile( newKey, filePath ); // Use SaveKeyToFile to create it
 			Log.Info( $"Registry: Created default empty key file at {filePath}" );
 			return newKey;
 		}
 	}
 
-	// Public AddHive is for adding completely new top-level hives if ever needed by external tools.
-	// Not typically used for standard Windows hives after initial setup.
+	// Helper to save a specific RegistryKey structure to a file.
+	private void SaveKeyToFile( RegistryKey key, string filePath )
+	{
+		if ( string.IsNullOrEmpty( filePath ) || key == null )
+		{
+			Log.Warning( $"Registry: SaveKeyToFile called with invalid arguments. FilePath: '{filePath}'" );
+			return;
+		}
+		var json = JsonSerializer.Serialize( key, new JsonSerializerOptions { WriteIndented = true } );
+		VirtualFileSystem.Instance.WriteAllText( filePath, json );
+	}
+
 	public void AddHive( string rootHiveName, string filePath )
 	{
 		if ( _hives.ContainsKey( rootHiveName ) )
@@ -143,24 +165,21 @@ public class Registry
 			Log.Warning( $"Registry: Hive '{rootHiveName}' already exists. Overwriting." );
 		}
 		_hives[rootHiveName] = new RegistryHive( rootHiveName, filePath );
+		// Note: If this new hive could contain component files, _componentHiveFilePaths might need updating.
+		// For now, assuming AddHive is for simple, single-file hives.
 	}
 
 	public void LoadUserHive( string userName, string userHiveFilePath )
 	{
-		// 1. Update HKEY_CURRENT_USER to point to this user's hive file
 		_hives["HKEY_CURRENT_USER"] = new RegistryHive( "HKEY_CURRENT_USER", userHiveFilePath );
 
-		// 2. Mount this user's hive data under HKEY_USERS\<UserNameOrSID>
-		//    In a real system, userName would map to a SID. For simplicity, we use userName.
 		if ( _hives.TryGetValue( "HKEY_USERS", out RegistryHive hkuHive ) )
 		{
-			RegistryKey userSpecificDataRoot = LoadKeyFromFile( userHiveFilePath ); // Load the content of NTUSER.DAT
+			RegistryKey userSpecificDataRoot = LoadKeyFromFile( userHiveFilePath );
 			if ( userSpecificDataRoot != null )
 			{
 				hkuHive.Root.SubKeys[userName] = userSpecificDataRoot;
-				// Note: This modification to hkuHive.Root is in-memory. 
-				// The HKU_VIRTUAL.hive file (if it existed) wouldn't be saved by this,
-				// which is fine as HKU is a container of other hives.
+				_componentHiveFilePaths[$"{hkuHive.Name}\\{userName}"] = userHiveFilePath;
 			}
 		}
 	}
@@ -172,11 +191,9 @@ public class Registry
 
 		foreach ( var hiveNameInDict in _hives.Keys )
 		{
-			// We need to match "HKEY_LOCAL_MACHINE" against "HKEY_LOCAL_MACHINE\SYSTEM"
 			if ( keyPath.StartsWith( hiveNameInDict, StringComparison.OrdinalIgnoreCase ) )
 			{
-				// Ensure it's a full word match for the hive name or followed by a separator
-				if ( keyPath.Length == hiveNameInDict.Length || keyPath[hiveNameInDict.Length] == '\\' )
+				if ( keyPath.Length == hiveNameInDict.Length || (keyPath.Length > hiveNameInDict.Length && keyPath[hiveNameInDict.Length] == '\\') )
 				{
 					if ( hiveNameInDict.Length > longestMatch.Length )
 					{
@@ -200,7 +217,7 @@ public class Registry
 	public T GetValue<T>( string keyPath, string valueName, T defaultValue = default )
 	{
 		var (hive, subPath) = Resolve( keyPath );
-		var key = GetKey( hive.Root, subPath, false ); // GetKey will navigate using subPath from hive.Root
+		var key = GetKey( hive.Root, subPath, false );
 		if ( key != null && key.Values.TryGetValue( valueName, out var valueObj ) )
 		{
 			if ( Nullable.GetUnderlyingType( typeof( T ) ) != null && valueObj == null )
@@ -250,31 +267,43 @@ public class Registry
 	public void SetValue( string keyPath, string valueName, object value )
 	{
 		var (hive, subPath) = Resolve( keyPath );
-		var key = GetKey( hive.Root, subPath, true );
+		var key = GetKey( hive.Root, subPath, true ); // Ensure key is created if it doesn't exist
 		key.Values[valueName] = value;
-		// Saving the individual component hive (SYSTEM.json, etc.) needs to be handled
-		// if the change was within such a component.
-		// The current hive.Save() would save HKLM_VIRTUAL.hive or HKU_VIRTUAL.hive, which is not what we want for subkey changes.
-		// This requires a more sophisticated save mechanism or saving the component file directly.
-		// For now, let's assume component files are saved by LoadKeyFromFile if created,
-		// and modifications to existing component files need a dedicated save path.
-		// A simple solution: if hive.FilePath points to a "VIRTUAL" hive, don't save it.
-		// The actual component file (e.g. SYSTEM) would need to be identified and saved.
-		// This is complex. For now, let's rely on the fact that the RegistryKey objects are modified in memory.
-		// A full save strategy would be:
-		// 1. Determine which original file this keyPath belongs to (e.g. SYSTEM, SOFTWARE, or USER.DAT)
-		// 2. Save that specific file.
-		// For now, only hives with non-virtual FilePaths (like HKCU) will save correctly on SetValue.
+
 		if ( hive.FilePath != null && !hive.FilePath.Contains( "_VIRTUAL." ) )
 		{
-			hive.Save();
+			hive.Save(); // Standard hive, save the whole hive file (e.g., HKCU's USER.DAT)
 		}
-		else
+		else // Virtual hive (HKLM, HKU) - need to save the specific component file
 		{
-			// Need to find which original file to save for HKLM subkeys
-			// e.g. if keyPath is HKLM\SYSTEM\MyKey, save SYSTEM file.
-			// This logic is not yet implemented here.
-			Log.Warning( $"Registry: SetValue on virtual hive '{hive.Name}'. Component file not saved automatically. Path: {keyPath}" );
+			var parts = subPath.Split( new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries );
+			if ( parts.Length > 0 )
+			{
+				string componentKeyName = parts[0]; // e.g., "SYSTEM", "SOFTWARE", ".DEFAULT", or a username
+				string fullComponentPath = $"{hive.Name}\\{componentKeyName}";
+
+				if ( _componentHiveFilePaths.TryGetValue( fullComponentPath, out string componentFilePath ) )
+				{
+					if ( hive.Root.SubKeys.TryGetValue( componentKeyName, out RegistryKey componentRootKey ) )
+					{
+						SaveKeyToFile( componentRootKey, componentFilePath );
+					}
+					else
+					{
+						Log.Error( $"Registry: Component key '{componentKeyName}' not found in hive '{hive.Name}' for saving. Path: {keyPath}" );
+					}
+				}
+				else
+				{
+					Log.Warning( $"Registry: SetValue on virtual hive '{hive.Name}'. File path for component '{componentKeyName}' not found. Path: {keyPath}" );
+				}
+			}
+			else
+			{
+				// This means keyPath was just "HKEY_LOCAL_MACHINE" or "HKEY_USERS" itself.
+				// Setting a value directly on the virtual root doesn't map to a single component file.
+				Log.Warning( $"Registry: SetValue directly on virtual hive root '{hive.Name}'. This change will not be persisted to a component file. Path: {keyPath}" );
+			}
 		}
 	}
 
@@ -284,14 +313,37 @@ public class Registry
 		var key = GetKey( hive.Root, subPath, false );
 		if ( key != null && key.Values.Remove( valueName ) )
 		{
-			// Similar saving issue as SetValue for virtual hives
 			if ( hive.FilePath != null && !hive.FilePath.Contains( "_VIRTUAL." ) )
 			{
 				hive.Save();
 			}
-			else
+			else // Virtual hive
 			{
-				Log.Warning( $"Registry: DeleteValue on virtual hive '{hive.Name}'. Component file not saved automatically. Path: {keyPath}" );
+				var parts = subPath.Split( new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries );
+				if ( parts.Length > 0 )
+				{
+					string componentKeyName = parts[0];
+					string fullComponentPath = $"{hive.Name}\\{componentKeyName}";
+					if ( _componentHiveFilePaths.TryGetValue( fullComponentPath, out string componentFilePath ) )
+					{
+						if ( hive.Root.SubKeys.TryGetValue( componentKeyName, out RegistryKey componentRootKey ) )
+						{
+							SaveKeyToFile( componentRootKey, componentFilePath );
+						}
+						else
+						{
+							Log.Error( $"Registry: Component key '{componentKeyName}' not found in hive '{hive.Name}' for saving after DeleteValue. Path: {keyPath}" );
+						}
+					}
+					else
+					{
+						Log.Warning( $"Registry: DeleteValue on virtual hive '{hive.Name}'. File path for component '{componentKeyName}' not found. Path: {keyPath}" );
+					}
+				}
+				else
+				{
+					Log.Warning( $"Registry: DeleteValue directly on virtual hive root '{hive.Name}'. This change will not be persisted. Path: {keyPath}" );
+				}
 			}
 		}
 	}
@@ -300,46 +352,83 @@ public class Registry
 	{
 		var (hive, subPath) = Resolve( keyPath );
 		var parts = subPath.Split( '\\', StringSplitOptions.RemoveEmptyEntries );
-		if ( parts.Length == 0 && (hive.Name == "HKEY_LOCAL_MACHINE" || hive.Name == "HKEY_USERS") )
+
+		if ( string.IsNullOrEmpty( subPath ) ) // Attempting to delete a hive root
 		{
-			// Trying to delete a main component like "SYSTEM" from HKLM
-			if ( hive.Root.SubKeys.Remove( subPath ) ) // subPath would be "SYSTEM"
+			if ( hive.FilePath != null && !hive.FilePath.Contains( "_VIRTUAL." ) )
 			{
-				Log.Info( $"Registry: Deleted component key '{subPath}' from virtual hive '{hive.Name}'. The backing file is not deleted by this operation." );
-				// No direct hive.Save() for the virtual hive. The component file (e.g. SYSTEM.json) would still exist.
-				// To truly delete it, you'd delete the file and then remove from SubKeys.
+				// Deleting a file-backed hive root (e.g., HKCU). Clear its contents.
+				Log.Warning( $"Registry: Attempted to delete root of file-backed hive '{keyPath}'. Clearing root and saving." );
+				hive.Root.SubKeys.Clear();
+				hive.Root.Values.Clear();
+				hive.Save();
+			}
+			else
+			{
+				// Attempting to delete a virtual hive root (e.g., HKLM, HKU). This is generally not allowed/supported.
+				Log.Error( $"Registry: Deleting the root of a virtual hive ('{keyPath}') is not supported." );
 			}
 			return;
 		}
-		if ( parts.Length == 0 && hive.FilePath != null && !hive.FilePath.Contains( "_VIRTUAL." ) )
-		{
-			// Trying to delete the root of a file-backed hive (e.g. HKCU). Clear it instead?
-			Log.Warning( $"Registry: Attempted to delete root of hive '{keyPath}'. Clearing root instead." );
-			hive.Root.SubKeys.Clear();
-			hive.Root.Values.Clear();
-			hive.Save();
-			return;
-		}
 
+		// Deleting a subkey or a component key
+		string keyNameToRemove = parts[^1];
+		string parentSubPath = string.Join( '\\', parts[..^1] );
+		var parentKey = GetKey( hive.Root, parentSubPath, false );
 
-		var parentKey = GetKey( hive.Root, string.Join( '\\', parts[..^1] ), false );
-		if ( parentKey != null )
+		if ( parentKey != null && parentKey.SubKeys.Remove( keyNameToRemove ) )
 		{
-			if ( parentKey.SubKeys.Remove( parts[^1] ) )
+			if ( hive.FilePath != null && !hive.FilePath.Contains( "_VIRTUAL." ) )
 			{
-				if ( hive.FilePath != null && !hive.FilePath.Contains( "_VIRTUAL." ) )
+				hive.Save(); // Standard hive, save the whole hive file
+			}
+			else // Virtual hive (HKLM, HKU)
+			{
+				// Check if we deleted a top-level component key (e.g., HKLM\SYSTEM)
+				// In this case, parentKey is hive.Root, and parts.Length was 1 (subPath was "SYSTEM")
+				if ( parentKey == hive.Root && parts.Length == 1 )
 				{
-					hive.Save();
+					string componentKeyName = keyNameToRemove; // This is the component key, e.g., "SYSTEM"
+					string fullComponentPath = $"{hive.Name}\\{componentKeyName}";
+					if ( _componentHiveFilePaths.TryGetValue( fullComponentPath, out string componentFilePath ) )
+					{
+						VirtualFileSystem.Instance.DeleteFile( componentFilePath );
+						_componentHiveFilePaths.Remove( fullComponentPath );
+						Log.Info( $"Registry: Deleted component key '{componentKeyName}' from '{hive.Name}' and its backing file '{componentFilePath}'." );
+					}
+					else
+					{
+						Log.Warning( $"Registry: Deleted component key '{componentKeyName}' from '{hive.Name}', but its backing file path was not found or not managed." );
+					}
 				}
-				else
+				// Check if we deleted a subkey within a component (e.g., HKLM\SYSTEM\SomeSubKey)
+				// parts.Length will be > 0 because subPath was not empty.
+				else if ( parts.Length > 0 )
 				{
-					Log.Warning( $"Registry: DeleteKey on virtual hive '{hive.Name}'. Component file not saved automatically. Path: {keyPath}" );
+					string componentKeyName = parts[0]; // The top-level component, e.g., "SYSTEM"
+					string fullComponentPath = $"{hive.Name}\\{componentKeyName}";
+					if ( _componentHiveFilePaths.TryGetValue( fullComponentPath, out string componentFilePath ) )
+					{
+						if ( hive.Root.SubKeys.TryGetValue( componentKeyName, out RegistryKey componentRootKey ) )
+						{
+							SaveKeyToFile( componentRootKey, componentFilePath );
+						}
+						else
+						{
+							// This implies the component key itself was removed by a previous operation but not its file,
+							// or an inconsistent state.
+							Log.Error( $"Registry: Component key '{componentKeyName}' (expected to contain deleted subkey) not found in hive '{hive.Name}' for saving after DeleteKey. Path: {keyPath}" );
+						}
+					}
+					else
+					{
+						Log.Warning( $"Registry: DeleteKey on virtual hive '{hive.Name}'. File path for component '{componentKeyName}' not found. Path: {keyPath}" );
+					}
 				}
 			}
 		}
 	}
 
-	// GetKey remains the same, it navigates from the provided root using the subPath.
 	private RegistryKey GetKey( RegistryKey root, string keyPath, bool create )
 	{
 		if ( string.IsNullOrEmpty( keyPath ) ) return root;

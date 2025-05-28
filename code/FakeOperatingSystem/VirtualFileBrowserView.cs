@@ -143,6 +143,11 @@ public class VirtualFileBrowserView : FileBrowserView
 		_ = PopulateFromShellPath( shellPath, token );
 	}
 
+	public string GetCurrentShellPath()
+	{
+		return _currentShellPath;
+	}
+
 	/// <summary>
 	/// Navigate back in history
 	/// </summary>
