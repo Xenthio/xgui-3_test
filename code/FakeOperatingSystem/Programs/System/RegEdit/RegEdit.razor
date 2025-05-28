@@ -1,0 +1,392 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using System.IO;
+@using System.Collections.Generic;
+@using System.Linq;
+@using FakeDesktop;
+@using FakeOperatingSystem;
+
+@attribute [StyleSheet("RegEdit.razor.scss")]
+@inherits Window
+
+<root title="Registry Editor"
+	  minwidth="600" minheight="400"
+	  width="780" height="520"
+	  class="regedit-window window1"
+	  hasminimise="true"
+	  hasmaximise="true">
+	<div class="window-content" style="flex-direction: column;"> <!-- Main content flex column -->
+
+		<!-- Menu Bar -->
+		<div class="toolbar menu-toolbar" style="flex-shrink: 0;"> <!-- Prevent menu from shrinking -->
+			<button @ref=FileMenuButton class="menu-item" onclick=@ShowFileMenu>Registry</button>
+			<button @ref=EditMenuButton class="menu-item" onclick=@ShowEditMenu>Edit</button>
+			<button @ref=ViewMenuButton class="menu-item" onclick=@ShowViewMenu>View</button>
+			<button @ref=FavoritesMenuButton class="menu-item" onclick=@ShowFavoritesMenu>Favorites</button> <!-- Added Favorites -->
+			<button @ref=HelpMenuButton class="menu-item" onclick=@ShowHelpMenu>Help</button>
+		</div>
+
+		<!-- Address Bar (Optional - like modern RegEdit) -->
+		<!-- <div class="address-bar" style="flex-shrink: 0; padding: 2px;">
+			<TextEntry @ref="AddressBarEntry" placeholder="Computer\" style="width: 100%;" />
+		</div> -->
+
+		<!-- Main content area with TreeView and ListView -->
+		<div class="main-content-area" style="flex-grow: 1; display: flex; flex-direction: row; overflow: hidden;">
+			<div class="tree-panel" style="width: 250px; min-width: 150px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid #7F7F7F;">
+				<treeview @ref="KeyTreeView" style="width: 100%; height: 100%;" />
+			</div>
+			<div class="value-panel" style="flex-grow: 1; overflow-y: auto;">
+				<listview @ref="ValueListView" style="width: 100%; height: 100%;" />
+			</div>
+		</div>
+
+		<!-- Status Bar -->
+
+		<div class="status-bar layout-inset" style="flex-shrink:0; margin-top:1px;">
+			<Label @ref="StatusBarLabel" Text="Ready" />
+		</div>
+
+		<resizer>
+		</resizer>
+	</div>
+</root>
+
+@code {
+	private ListView ValueListView;
+	private TreeView KeyTreeView;
+
+	Button FileMenuButton; // Should be RegistryMenuButton now
+	Button EditMenuButton;
+	Button ViewMenuButton;
+	Button FavoritesMenuButton; // Added
+	Button HelpMenuButton;
+
+	private Label StatusBarLabel; // For status updates
+
+	private ContextMenu activeMenu;
+	private string _currentSelectedKeyPath = "";
+
+
+	protected override void OnAfterTreeRender(bool firstTime)
+	{
+		base.OnAfterTreeRender(firstTime);
+		if (firstTime)
+		{
+			InitializeRegistryView();
+		}
+	}
+
+	private void InitializeRegistryView()
+	{
+		if (KeyTreeView == null || ValueListView == null) return;
+
+		// Setup ListView columns
+		ValueListView.AddColumn("Name", "Name", 150);
+		ValueListView.AddColumn("Type", "Type", 100);
+		ValueListView.AddColumn("Data", "Data", 300);
+		ValueListView.ViewMode = ListView.ListViewMode.Details;
+
+
+		// Populate TreeView with root hives
+		KeyTreeView.ClearNodes();
+
+		if (Registry.Instance != null)
+		{
+			foreach (var hive in Registry.Instance.RootHives.OrderBy(h => h.Name))
+			{
+				var rootNode = KeyTreeView.AddRootNode(hive.Name, "folder_closed", hive); // Store hive object in Data
+				// Add a dummy child to make it expandable if it has subkeys (or always for root hives)
+				// We'll load actual children on expand
+				if (hive.Root.SubKeys.Any()) // Check if the root of the hive has subkeys
+				{
+					rootNode.AddChild("Loading...", null, null); // Dummy node
+				}
+			}
+		}
+
+		KeyTreeView.OnNodeSelected += OnRegistryKeySelected;
+		KeyTreeView.OnNodeExpanded += OnRegistryKeyExpanded;
+	}
+
+	private void OnRegistryKeySelected(TreeView.TreeViewNode node)
+	{
+		if (node == null || node.Data == null)
+		{
+			ValueListView.Items.Clear(); // Clear items if no valid node or data
+			ValueListView.UpdateItems();
+			_currentSelectedKeyPath = "";
+			// Update Status Bar: node.Text or full path
+			return;
+		}
+
+		_currentSelectedKeyPath = GetFullNodePath(node);
+		// Update Status Bar: _currentSelectedKeyPath
+
+		PopulateListView(_currentSelectedKeyPath);
+	}
+
+	private void OnRegistryKeyExpanded(TreeView.TreeViewNode node)
+	{
+		if (node == null || node.Data == null) return;
+
+		// Remove dummy "Loading..." node if it exists
+		var dummyNode = node.Children.FirstOrDefault(n => n.Text == "Loading...");
+		if (dummyNode != null)
+		{
+			node.RemoveChild(dummyNode);
+		}
+
+		// Prevent re-populating if already populated (check if children are not just the dummy)
+		if (node.Children.Any(n => n.Text != "Loading...")) return;
+
+
+		string fullPath = GetFullNodePath(node);
+		RegistryKey currentKeyData = GetRegistryKeyFromPath(fullPath);
+
+		if (currentKeyData != null)
+		{
+			node.ClearChildren(); // Clear any remaining dummy nodes or previous children
+			foreach (var subKeyEntry in currentKeyData.SubKeys.OrderBy(kv => kv.Key))
+			{
+				var childNode = node.AddChild(subKeyEntry.Key, "folder_closed", subKeyEntry.Value);
+				// Add dummy child if this subkey itself has children, to make it expandable
+				if (subKeyEntry.Value.SubKeys.Any())
+				{
+					childNode.AddChild("Loading...", null, null);
+				}
+			}
+		}
+	}
+
+	private string GetFullNodePath(TreeView.TreeViewNode node)
+	{
+		if (node == null) return "";
+
+		var pathParts = new List<string>();
+		var currentNode = node;
+		while (currentNode != null)
+		{
+			// For root nodes, their Text is the full hive name (e.g., "HKEY_LOCAL_MACHINE\\SYSTEM")
+			// For child nodes, their Text is just the key name.
+			if (currentNode.ParentNode == null && currentNode.Data is RegistryHive hive) // It's a root hive node
+			{
+				pathParts.Add(hive.Name); // Use the full hive name from data
+			}
+			else
+			{
+				pathParts.Add(currentNode.Text);
+			}
+			currentNode = currentNode.ParentNode;
+		}
+		pathParts.Reverse();
+		return string.Join("\\", pathParts);
+	}
+
+	private RegistryKey GetRegistryKeyFromPath(string fullPath)
+	{
+		if (string.IsNullOrEmpty(fullPath) || Registry.Instance == null) return null;
+
+		// This is a simplified way to get the key. Registry.cs needs a method to get a RegistryKey object.
+		// For now, let's assume Registry.cs can provide this.
+		// We need to parse the hive name and the subkey path.
+
+		string hiveName = fullPath.Split('\\').First();
+		RegistryHive targetHive = Registry.Instance.RootHives.FirstOrDefault(h => h.Name.Equals(hiveName, StringComparison.OrdinalIgnoreCase));
+
+		if (targetHive == null) return null;
+
+		string subKeyPath = "";
+		int firstSlash = fullPath.IndexOf('\\');
+		if (firstSlash != -1 && firstSlash + 1 < fullPath.Length)
+		{
+			subKeyPath = fullPath.Substring(firstSlash + 1);
+		}
+
+		RegistryKey currentKey = targetHive.Root;
+		if (string.IsNullOrEmpty(subKeyPath)) return currentKey; // It's the root of the hive
+
+		var parts = subKeyPath.Split('\\');
+		foreach (var part in parts)
+		{
+			if (currentKey.SubKeys.TryGetValue(part, out RegistryKey nextKey))
+			{
+				currentKey = nextKey;
+			}
+			else
+			{
+				return null; // Path not found
+			}
+		}
+		return currentKey;
+	}
+
+
+	private void PopulateListView(string keyPath)
+	{
+		ValueListView.Items.Clear();
+		RegistryKey currentKeyData = GetRegistryKeyFromPath(keyPath);
+
+		if (currentKeyData != null)
+		{
+			// (Default) value
+			if (currentKeyData.Values.TryGetValue("", out object defaultValue) || !currentKeyData.Values.Any())
+			{
+				// In real RegEdit, the (Default) value is often shown even if not explicitly set,
+				// and its type might be REG_SZ with "(value not set)" data.
+				string dataDisplay = defaultValue == null ? "(value not set)" : defaultValue.ToString();
+				if (defaultValue is byte[] byteArray) dataDisplay = BitConverter.ToString(byteArray).Replace("-", " ");
+
+				ValueListView.AddItem(new { Name = "(Default)", Type = "REG_SZ", Data = dataDisplay }, // Store data for editing
+									  new List<string> { "(Default)", "REG_SZ", dataDisplay });
+			}
+
+			foreach (var valueEntry in currentKeyData.Values.OrderBy(kv => kv.Key))
+			{
+				if (string.IsNullOrEmpty(valueEntry.Key)) continue; // Skip default if already handled or if it was truly empty
+
+				string typeStr = "REG_SZ"; // Default
+				string dataStr = valueEntry.Value?.ToString() ?? "";
+
+				if (valueEntry.Value is int || valueEntry.Value is uint) { typeStr = "REG_DWORD"; dataStr = $"0x{valueEntry.Value:X8} ({valueEntry.Value})"; }
+				else if (valueEntry.Value is long || valueEntry.Value is ulong) { typeStr = "REG_QWORD"; dataStr = $"0x{valueEntry.Value:X16} ({valueEntry.Value})"; }
+				else if (valueEntry.Value is byte[]) { typeStr = "REG_BINARY"; dataStr = BitConverter.ToString((byte[])valueEntry.Value).Replace("-", " "); }
+				else if (valueEntry.Value is string[]) { typeStr = "REG_MULTI_SZ"; dataStr = string.Join(" ", (string[])valueEntry.Value); }
+				// Add REG_EXPAND_SZ if you implement it
+
+				ValueListView.AddItem(valueEntry, // Store KeyValuePair for editing
+									  new List<string> { valueEntry.Key, typeStr, dataStr });
+			}
+		}
+		ValueListView.UpdateItems();
+	}
+
+	// --- Menu Handlers (To be implemented) ---
+	protected override void OnMouseDown(MousePanelEvent e)
+	{
+		base.OnMouseDown(e);
+		if (activeMenu != null &&
+			!FileMenuButton.HasHovered &&
+			!EditMenuButton.HasHovered &&
+			!ViewMenuButton.HasHovered &&
+			!FavoritesMenuButton.HasHovered && // Added
+			!HelpMenuButton.HasHovered &&
+			!activeMenu.HasHovered)
+		{
+			CloseActiveMenu();
+		}
+	}
+
+	private void CloseActiveMenu()
+	{
+		if (activeMenu != null)
+		{
+			FileMenuButton?.SetClass("active", false);
+			EditMenuButton?.SetClass("active", false);
+			ViewMenuButton?.SetClass("active", false);
+			FavoritesMenuButton?.SetClass("active", false); // Added
+			HelpMenuButton?.SetClass("active", false);
+			activeMenu.Delete(true);
+			activeMenu = null;
+		}
+	}
+
+	private void ShowFileMenu() // Renamed to Registry for consistency with Windows RegEdit
+	{
+		CloseActiveMenu();
+		FileMenuButton.SetClass("active", true);
+		activeMenu = new ContextMenu(FileMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Import...", () => Log.Info("Import Registry File"));
+		activeMenu.AddMenuItem("Export Registry File...", () => Log.Info("Export Registry File"));
+		activeMenu.AddSeparator();
+		// Connect/Disconnect Network Registry (Advanced)
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Exit", () => Delete());
+	}
+
+	private void ShowEditMenu()
+	{
+		CloseActiveMenu();
+		EditMenuButton.SetClass("active", true);
+		activeMenu = new ContextMenu(EditMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		var newSubMenu = activeMenu.AddSubmenuItem("New", (submenu) =>
+		{
+			submenu.AddMenuItem("Key", () => Log.Info("New Key"));
+			submenu.AddSeparator();
+			submenu.AddMenuItem("String Value", () => Log.Info("New String Value"));
+			submenu.AddMenuItem("Binary Value", () => Log.Info("New Binary Value"));
+			submenu.AddMenuItem("DWORD (32-bit) Value", () => Log.Info("New DWORD Value"));
+			submenu.AddMenuItem("QWORD (64-bit) Value", () => Log.Info("New QWORD Value"));
+			submenu.AddMenuItem("Multi-String Value", () => Log.Info("New Multi-String Value"));
+			submenu.AddMenuItem("Expandable String Value", () => Log.Info("New Expandable String Value"));
+		});
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Permissions...", () => Log.Info("Permissions")); // Disabled if nothing selected
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Delete", () => Log.Info("Delete Key/Value")); // Ctrl+Del
+		activeMenu.AddMenuItem("Rename", () => Log.Info("Rename Key/Value")); // F2
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Copy Key Name", () => Log.Info("Copy Key Name"));
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Find...", () => Log.Info("Find")); // Ctrl+F
+		activeMenu.AddMenuItem("Find Next", () => Log.Info("Find Next")); // F3
+	}
+
+	private void ShowViewMenu()
+	{
+		CloseActiveMenu();
+		ViewMenuButton.SetClass("active", true);
+		activeMenu = new ContextMenu(ViewMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Status Bar", () => Log.Info("Toggle Status Bar")); // Checkable
+		activeMenu.AddMenuItem("Split", () => Log.Info("Split (not implemented, usually a draggable splitter)"));
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Refresh", () =>
+		{
+			if (!string.IsNullOrEmpty(_currentSelectedKeyPath))
+			{
+				// Re-populate children of selected node if it's expanded
+				var selectedNode = KeyTreeView.SelectedNode;
+				if (selectedNode != null && selectedNode.IsExpanded)
+				{
+					OnRegistryKeyExpanded(selectedNode); // This will clear and re-add children
+				}
+				// Re-populate list view
+				PopulateListView(_currentSelectedKeyPath);
+			}
+		}); // F5
+	}
+
+	private void ShowFavoritesMenu()
+	{
+		CloseActiveMenu();
+		FavoritesMenuButton.SetClass("active", true);
+		activeMenu = new ContextMenu(FavoritesMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Add to Favorites...", () => Log.Info("Add to Favorites"));
+		activeMenu.AddMenuItem("Remove Favorite", () => Log.Info("Remove Favorite"));
+		activeMenu.AddSeparator();
+		// List of favorites would go here
+		//activeMenu.AddMenuItem("(No favorites defined)", null).Disabled = true;
+	}
+
+	private void ShowHelpMenu()
+	{
+		CloseActiveMenu();
+		HelpMenuButton.SetClass("active", true);
+		activeMenu = new ContextMenu(HelpMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Help Topics", () => Log.Info("RegEdit Help"));
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("About Registry Editor", () =>
+		{
+			// Example: new AboutDialog("Registry Editor", "Version 1.0...", "icon_regedit").Show();
+			Log.Info("About Registry Editor");
+		});
+	}
+
+	// BuildHash and EndTask are from TaskMgr, remove or adapt if not needed for RegEdit
+	// protected override int BuildHash()
+	// {
+	// 	return System.HashCode.Combine(Registry.Instance?.GetHashCode() ?? 0, _currentSelectedKeyPath);
+	// }
+}

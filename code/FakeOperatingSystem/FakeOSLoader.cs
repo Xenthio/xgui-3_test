@@ -71,22 +71,8 @@ public class FakeOSLoader : Component
 		{
 			if ( UserManager.Users.Any() )
 			{
-				// TODO: Implement a proper Logon Dialog here.
-				// For now, auto-login the first user if one exists.
-				var userToLogin = UserManager.Users.First();
-				if ( UserManager.Login( userToLogin.UserName, userToLogin.PasswordHash ) ) // Assuming Login sets CurrentUser
-				{
-					Log.Info( $"Auto-logged in as: {UserManager.CurrentUser.UserName}" );
-					// Load the user's hive
-					Registry.LoadUserHive( UserManager.CurrentUser.UserName, UserManager.CurrentUser.RegistryHivePath );
-					//await UserManager.SetupUserProfile( UserManager.CurrentUser ); // Await here
-				}
-				else
-				{
-					Log.Error( "Auto-login failed. Halting boot for user setup." );
-					// Potentially show login dialog again or an error.
-					return;
-				}
+				ShowLogonDialog(); // Show logon dialog instead of auto-login
+				return;
 			}
 			else
 			{
@@ -141,6 +127,35 @@ public class FakeOSLoader : Component
 		);
 		// Show dialog in your UI system
 		XGUISystem.Instance.Panel.AddChild( dialog );
+	}
+	private void ShowLogonDialog()
+	{
+		var logonDialog = new LogonDialog(
+			UserManager.Users, // Pass the list of users
+			onLoginSuccess: async ( UserAccount loggedInUser ) =>
+			{
+				// UserManager.CurrentUser is already set by LogonDialog's call to UserManager.Login
+				Log.Info( $"Logged in as: {UserManager.CurrentUser.UserName}" );
+				Registry.LoadUserHive( UserManager.CurrentUser.UserName, UserManager.CurrentUser.RegistryHivePath );
+
+				// SetupUserProfile ensures profile folders exist, creates if first login for this user
+				//await UserManager.SetupUserProfile( UserManager.CurrentUser );
+				ContinueBoot();
+			},
+			onLoginCancel: () =>
+			{
+				Log.Info( "Logon cancelled by user." );
+				// What to do on cancel? 
+				// Option 1: Stay on logon screen (do nothing further here, user can try again or shutdown)
+				// Option 2: If no users exist, maybe show CreateUserDialog (but users should exist if we got here)
+				// Option 3: Implement a shutdown mechanism.
+				// For now, let's assume the LogonDialog remains, or we could re-show it.
+				// If you want to allow re-showing, you might call ShowLogonDialog() again,
+				// but be careful of infinite loops if there's no other exit.
+				// A simple approach is to do nothing, requiring the user to click OK again or a shutdown button.
+			}
+		);
+		XGUISystem.Instance.Panel.AddChild( logonDialog );
 	}
 
 	private void ContinueBoot()

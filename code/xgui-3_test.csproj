@@ -63,8 +63,4 @@
 
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="FakeOperatingSystem\Shell\ControlPanel\" />
-  </ItemGroup>
-
 </Project>

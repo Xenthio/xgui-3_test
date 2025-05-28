@@ -127,6 +127,9 @@ public class FakeSystemRoot
 
 		// edit (system application)
 		NativeProgram.CompileIntoExe( typeof( EditProgram ), $"{windowsDir}/System32/edit.exe" );
+
+		// regedit (system application)
+		NativeProgram.CompileIntoExe( typeof( RegEditProgram ), $"{windowsDir}/regedit.exe" );
 	}
 
 	/// <summary>
