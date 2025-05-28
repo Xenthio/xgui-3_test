@@ -63,4 +63,10 @@
 
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="FakeOperatingSystem\Programs\System\RegEdit\RegEdit.razor.scss">
+      <DependentUpon>RegEdit.razor</DependentUpon>
+    </None>
+  </ItemGroup>
+
 </Project>

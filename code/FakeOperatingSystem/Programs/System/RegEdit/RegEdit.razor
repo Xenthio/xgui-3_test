@@ -35,10 +35,10 @@
 
 		<!-- Main content area with TreeView and ListView -->
 		<div class="main-content-area" style="flex-grow: 1; display: flex; flex-direction: row; overflow: hidden;">
-			<div class="tree-panel" style="width: 250px; min-width: 150px; flex-shrink: 0; overflow-y: auto; border-right: 1px solid #7F7F7F;">
+			<div class="tree-panel" style="width: 250px; min-width: 150px; flex-shrink: 0; overflow-y: scroll; border-right: 1px solid #7F7F7F;">
 				<treeview @ref="KeyTreeView" style="width: 100%; height: 100%;" />
 			</div>
-			<div class="value-panel" style="flex-grow: 1; overflow-y: auto;">
+			<div class="value-panel" style="flex-grow: 1; overflow-y: scroll;">
 				<listview @ref="ValueListView" style="width: 100%; height: 100%;" />
 			</div>
 		</div>
@@ -68,6 +68,7 @@
 
 	private ContextMenu activeMenu;
 	private string _currentSelectedKeyPath = "";
+	private ContextMenu _treeViewContextMenu; // For the KeyTreeView
 
 
 	protected override void OnAfterTreeRender(bool firstTime)
@@ -81,31 +82,35 @@
 
 	private void InitializeRegistryView()
 	{
-		if (KeyTreeView == null || ValueListView == null) return;
+		if (KeyTreeView == null || ValueListView == null || Registry.Instance == null) return;
 
-		// Setup ListView columns
 		ValueListView.AddColumn("Name", "Name", 150);
 		ValueListView.AddColumn("Type", "Type", 100);
 		ValueListView.AddColumn("Data", "Data", 300);
 		ValueListView.ViewMode = ListView.ListViewMode.Details;
+		ValueListView.OnItemActivated += OnListViewItemActivated;
 
-
-		// Populate TreeView with root hives
 		KeyTreeView.ClearNodes();
+		KeyTreeView.OnNodeRightClick += ShowKeyTreeViewContextMenu; // Add this line
 
-		if (Registry.Instance != null)
+		// Create the single "Computer" root node
+		var computerRootNode = KeyTreeView.AddRootNode("Computer", "computer", "COMPUTER_ROOT_MARKER"); // Special marker for data
+
+		// Add other true root hives under "Computer"
+		var otherRootHives = Registry.Instance.RootHives
+			.OrderBy(h => h.Name);
+
+		foreach (var hive in otherRootHives)
 		{
-			foreach (var hive in Registry.Instance.RootHives.OrderBy(h => h.Name))
+			// Data for these nodes is the RegistryHive
+			var hiveNode = computerRootNode.AddChild(hive.Name, "folder_closed", hive);
+			if (hive.Root.SubKeys.Any())
 			{
-				var rootNode = KeyTreeView.AddRootNode(hive.Name, "folder_closed", hive); // Store hive object in Data
-				// Add a dummy child to make it expandable if it has subkeys (or always for root hives)
-				// We'll load actual children on expand
-				if (hive.Root.SubKeys.Any()) // Check if the root of the hive has subkeys
-				{
-					rootNode.AddChild("Loading...", null, null); // Dummy node
-				}
+				hiveNode.AddChild("Loading...", null, "DUMMY");
 			}
 		}
+
+		computerRootNode.Expand(); // Automatically expand "Computer" node
 
 		KeyTreeView.OnNodeSelected += OnRegistryKeySelected;
 		KeyTreeView.OnNodeExpanded += OnRegistryKeyExpanded;
@@ -113,49 +118,70 @@
 
 	private void OnRegistryKeySelected(TreeView.TreeViewNode node)
 	{
-		if (node == null || node.Data == null)
+		if (node == null)
 		{
-			ValueListView.Items.Clear(); // Clear items if no valid node or data
+			ValueListView.Items.Clear();
 			ValueListView.UpdateItems();
 			_currentSelectedKeyPath = "";
-			// Update Status Bar: node.Text or full path
+			StatusBarLabel.Text = "Ready";
 			return;
 		}
 
 		_currentSelectedKeyPath = GetFullNodePath(node);
-		// Update Status Bar: _currentSelectedKeyPath
+		StatusBarLabel.Text = _currentSelectedKeyPath;
+
+		// If "Computer" root or manual roots like HKLM itself are selected, clear ListView.
+		if (node.Data is string marker &&
+			(marker == "COMPUTER_ROOT_MARKER" || marker == "HKLM_ROOT_MARKER" || marker == "HKU_ROOT_MARKER"))
+		{
+			ValueListView.Items.Clear();
+			ValueListView.UpdateItems();
+			return;
+		}
 
 		PopulateListView(_currentSelectedKeyPath);
 	}
 
 	private void OnRegistryKeyExpanded(TreeView.TreeViewNode node)
 	{
-		if (node == null || node.Data == null) return;
+		if (node == null) return;
 
-		// Remove dummy "Loading..." node if it exists
-		var dummyNode = node.Children.FirstOrDefault(n => n.Text == "Loading...");
+		// If Data is a marker for "Computer", HKLM, or HKU root, their children are already set.
+		if (node.Data is string marker &&
+			(marker == "COMPUTER_ROOT_MARKER" || marker == "HKLM_ROOT_MARKER" || marker == "HKU_ROOT_MARKER"))
+		{
+			var dummy = node.Children.FirstOrDefault(n => n.Data is string s && s == "DUMMY");
+			if (dummy != null) node.RemoveChild(dummy); // Should not have dummy if children are pre-populated
+			return;
+		}
+
+		var dummyNode = node.Children.FirstOrDefault(n => n.Data is string s && s == "DUMMY");
 		if (dummyNode != null)
 		{
 			node.RemoveChild(dummyNode);
 		}
 
-		// Prevent re-populating if already populated (check if children are not just the dummy)
-		if (node.Children.Any(n => n.Text != "Loading...")) return;
+		if (node.Children.Any(n => !(n.Data is string s && s == "DUMMY"))) return; // Already populated
 
+		RegistryKey currentKeyToExpand = null;
 
-		string fullPath = GetFullNodePath(node);
-		RegistryKey currentKeyData = GetRegistryKeyFromPath(fullPath);
-
-		if (currentKeyData != null)
+		if (node.Data is RegistryHive hiveData)
 		{
-			node.ClearChildren(); // Clear any remaining dummy nodes or previous children
-			foreach (var subKeyEntry in currentKeyData.SubKeys.OrderBy(kv => kv.Key))
+			currentKeyToExpand = hiveData.Root;
+		}
+		else if (node.Data is RegistryKey keyData)
+		{
+			currentKeyToExpand = keyData;
+		}
+
+		if (currentKeyToExpand != null)
+		{
+			foreach (var subKeyEntry in currentKeyToExpand.SubKeys.OrderBy(kv => kv.Key))
 			{
 				var childNode = node.AddChild(subKeyEntry.Key, "folder_closed", subKeyEntry.Value);
-				// Add dummy child if this subkey itself has children, to make it expandable
 				if (subKeyEntry.Value.SubKeys.Any())
 				{
-					childNode.AddChild("Loading...", null, null);
+					childNode.AddChild("Loading...", null, "DUMMY");
 				}
 			}
 		}
@@ -164,21 +190,20 @@
 	private string GetFullNodePath(TreeView.TreeViewNode node)
 	{
 		if (node == null) return "";
-
 		var pathParts = new List<string>();
 		var currentNode = node;
+
 		while (currentNode != null)
 		{
-			// For root nodes, their Text is the full hive name (e.g., "HKEY_LOCAL_MACHINE\\SYSTEM")
-			// For child nodes, their Text is just the key name.
-			if (currentNode.ParentNode == null && currentNode.Data is RegistryHive hive) // It's a root hive node
+			// Skip the "Computer" root node text for the actual registry path
+			if (currentNode.Data is string marker && marker == "COMPUTER_ROOT_MARKER")
 			{
-				pathParts.Add(hive.Name); // Use the full hive name from data
+				// If you want "Computer\" at the start of the status bar path, add it here.
+				// For GetRegistryKeyFromPath, we don't want "Computer" as part of the lookup.
+				// pathParts.Add(currentNode.Text); // Uncomment for status bar if desired
+				break; // Stop when we reach the "Computer" node for path construction
 			}
-			else
-			{
-				pathParts.Add(currentNode.Text);
-			}
+			pathParts.Add(currentNode.Text);
 			currentNode = currentNode.ParentNode;
 		}
 		pathParts.Reverse();
@@ -187,29 +212,28 @@
 
 	private RegistryKey GetRegistryKeyFromPath(string fullPath)
 	{
+		// fullPath now comes without "Computer\" prefix due to GetFullNodePath change
 		if (string.IsNullOrEmpty(fullPath) || Registry.Instance == null) return null;
 
-		// This is a simplified way to get the key. Registry.cs needs a method to get a RegistryKey object.
-		// For now, let's assume Registry.cs can provide this.
-		// We need to parse the hive name and the subkey path.
+		var parts = fullPath.Split('\\');
+		if (parts.Length == 0) return null;
 
-		string hiveName = fullPath.Split('\\').First();
-		RegistryHive targetHive = Registry.Instance.RootHives.FirstOrDefault(h => h.Name.Equals(hiveName, StringComparison.OrdinalIgnoreCase));
+		string rootTreeViewNodeName = parts[0]; // This is "HKEY_LOCAL_MACHINE", "HKEY_USERS", or "HKEY_CURRENT_USER", etc.
+
+		RegistryHive targetHive = null;
+		string remainingPath = "";
+
+
+		targetHive = Registry.Instance.RootHives.FirstOrDefault(h => h.Name.Equals(rootTreeViewNodeName, StringComparison.OrdinalIgnoreCase));
+		remainingPath = string.Join("\\", parts.Skip(1));
 
 		if (targetHive == null) return null;
 
-		string subKeyPath = "";
-		int firstSlash = fullPath.IndexOf('\\');
-		if (firstSlash != -1 && firstSlash + 1 < fullPath.Length)
-		{
-			subKeyPath = fullPath.Substring(firstSlash + 1);
-		}
-
 		RegistryKey currentKey = targetHive.Root;
-		if (string.IsNullOrEmpty(subKeyPath)) return currentKey; // It's the root of the hive
+		if (string.IsNullOrEmpty(remainingPath)) return currentKey;
 
-		var parts = subKeyPath.Split('\\');
-		foreach (var part in parts)
+		var subParts = remainingPath.Split('\\', StringSplitOptions.RemoveEmptyEntries);
+		foreach (var part in subParts)
 		{
 			if (currentKey.SubKeys.TryGetValue(part, out RegistryKey nextKey))
 			{
@@ -217,50 +241,253 @@
 			}
 			else
 			{
-				return null; // Path not found
+				return null;
 			}
 		}
 		return currentKey;
 	}
 
 
+
 	private void PopulateListView(string keyPath)
 	{
 		ValueListView.Items.Clear();
 		RegistryKey currentKeyData = GetRegistryKeyFromPath(keyPath);
+		StatusBarLabel.Text = keyPath;
 
 		if (currentKeyData != null)
 		{
-			// (Default) value
-			if (currentKeyData.Values.TryGetValue("", out object defaultValue) || !currentKeyData.Values.Any())
+			bool defaultHandled = false;
+			if (currentKeyData.Values.TryGetValue("", out object defaultValueData))
 			{
-				// In real RegEdit, the (Default) value is often shown even if not explicitly set,
-				// and its type might be REG_SZ with "(value not set)" data.
-				string dataDisplay = defaultValue == null ? "(value not set)" : defaultValue.ToString();
-				if (defaultValue is byte[] byteArray) dataDisplay = BitConverter.ToString(byteArray).Replace("-", " ");
+				string typeStr = DetermineValueTypeString(defaultValueData);
+				string dataDisplay = FormatDisplayData(defaultValueData, typeStr);
 
-				ValueListView.AddItem(new { Name = "(Default)", Type = "REG_SZ", Data = dataDisplay }, // Store data for editing
-									  new List<string> { "(Default)", "REG_SZ", dataDisplay });
+				ValueListView.AddItem(
+					new RegistryValueViewItem { Name = "(Default)", TypeString = typeStr, OriginalData = defaultValueData, DisplayData = dataDisplay },
+					new List<string> { "(Default)", typeStr, dataDisplay }
+				);
+				defaultHandled = true;
+			}
+
+			if (!defaultHandled && !currentKeyData.Values.Any(v => !string.IsNullOrEmpty(v.Key)))
+			{
+				ValueListView.AddItem(
+					new RegistryValueViewItem { Name = "(Default)", TypeString = "REG_SZ", OriginalData = null, DisplayData = "(value not set)" },
+					new List<string> { "(Default)", "REG_SZ", "(value not set)" }
+				);
 			}
 
 			foreach (var valueEntry in currentKeyData.Values.OrderBy(kv => kv.Key))
 			{
-				if (string.IsNullOrEmpty(valueEntry.Key)) continue; // Skip default if already handled or if it was truly empty
+				if (string.IsNullOrEmpty(valueEntry.Key)) continue;
 
-				string typeStr = "REG_SZ"; // Default
-				string dataStr = valueEntry.Value?.ToString() ?? "";
+				string typeStr = DetermineValueTypeString(valueEntry.Value);
+				string dataDisplay = FormatDisplayData(valueEntry.Value, typeStr);
 
-				if (valueEntry.Value is int || valueEntry.Value is uint) { typeStr = "REG_DWORD"; dataStr = $"0x{valueEntry.Value:X8} ({valueEntry.Value})"; }
-				else if (valueEntry.Value is long || valueEntry.Value is ulong) { typeStr = "REG_QWORD"; dataStr = $"0x{valueEntry.Value:X16} ({valueEntry.Value})"; }
-				else if (valueEntry.Value is byte[]) { typeStr = "REG_BINARY"; dataStr = BitConverter.ToString((byte[])valueEntry.Value).Replace("-", " "); }
-				else if (valueEntry.Value is string[]) { typeStr = "REG_MULTI_SZ"; dataStr = string.Join(" ", (string[])valueEntry.Value); }
-				// Add REG_EXPAND_SZ if you implement it
-
-				ValueListView.AddItem(valueEntry, // Store KeyValuePair for editing
-									  new List<string> { valueEntry.Key, typeStr, dataStr });
+				ValueListView.AddItem(
+					new RegistryValueViewItem { Name = valueEntry.Key, TypeString = typeStr, OriginalData = valueEntry.Value, DisplayData = dataDisplay },
+					new List<string> { valueEntry.Key, typeStr, dataDisplay }
+				);
 			}
 		}
 		ValueListView.UpdateItems();
+	}
+
+	private string DetermineValueTypeString(object value)
+	{
+		if (value is int || value is uint) return "REG_DWORD";
+		if (value is long || value is ulong) return "REG_QWORD";
+		if (value is byte[]) return "REG_BINARY";
+		if (value is string[]) return "REG_MULTI_SZ";
+		// Add REG_EXPAND_SZ if you have a specific type for it, otherwise it's REG_SZ
+		return "REG_SZ";
+	}
+
+	private string FormatDisplayData(object value, string typeStr)
+	{
+		if (value == null) return "(value not set)";
+		switch (typeStr)
+		{
+			case "REG_DWORD":
+				return $"0x{Convert.ToUInt32(value):X8} ({Convert.ToUInt32(value)})";
+			case "REG_QWORD":
+				return $"0x{Convert.ToUInt64(value):X16} ({Convert.ToUInt64(value)})";
+			case "REG_BINARY":
+				return BitConverter.ToString((byte[])value).Replace("-", " ");
+			case "REG_MULTI_SZ":
+				return string.Join(" \\0 ", (string[])value); // More typical display for multi_sz
+			case "REG_SZ":
+			case "REG_EXPAND_SZ":
+			default:
+				return value.ToString();
+		}
+	}
+
+	public class RegistryValueViewItem
+	{
+		public string Name { get; set; }
+		public string TypeString { get; set; }
+		public object OriginalData { get; set; }
+		public string DisplayData { get; set; } // The formatted string for the ListView column
+	}
+
+	private void OnListViewItemActivated(ListView.ListViewItem item)
+	{
+		if (item == null || string.IsNullOrEmpty(_currentSelectedKeyPath) || item.Data is not RegistryValueViewItem viewItemData)
+		{
+			// Log an error or handle the case where item.Data is not the expected type
+			Log.Warning("ListViewItem activated with unexpected data type or null data.");
+			return;
+		}
+
+		string valueName = viewItemData.Name;
+		object rawValueData = viewItemData.OriginalData;
+		string valueTypeString = viewItemData.TypeString;
+
+		var editDialog = new EditRegistryValueDialog(valueName, rawValueData, valueTypeString);
+		editDialog.OnSave = (newNameFromDialog, newDataFromDialog) =>
+		{
+			string nameToSet = (valueName == "(Default)") ? "" : newNameFromDialog;
+			string oldNameToDelete = (valueName == "(Default)") ? "" : valueName;
+
+			// If the name changed (and it wasn't "(Default)"), we need to delete the old value first
+			if (nameToSet != oldNameToDelete && !string.IsNullOrEmpty(oldNameToDelete) && oldNameToDelete != "(Default)")
+			{
+				Registry.Instance.DeleteValue(_currentSelectedKeyPath, oldNameToDelete);
+			}
+
+			Registry.Instance.SetValue(_currentSelectedKeyPath, nameToSet, newDataFromDialog);
+			PopulateListView(_currentSelectedKeyPath); // Refresh the ListView
+		};
+		XGUISystem.Instance.Panel.AddChild(editDialog);
+	}
+	private void ShowKeyTreeViewContextMenu(TreeView.TreeViewNode node, MousePanelEvent e)
+	{
+		_treeViewContextMenu?.Delete(true); // Close any existing tree view context menu
+		_treeViewContextMenu = new ContextMenu(this, XGUIPopup.PositionMode.UnderMouse);
+
+		string fullPath = GetFullNodePath(node);
+		bool isComputerNode = node.Data is string marker && marker == "COMPUTER_ROOT_MARKER";
+		bool isHiveNode = node.Data is RegistryHive; // Root hives like HKLM
+
+		// Expand/Collapse (simplified to "Expand" for now)
+		var expandItem = _treeViewContextMenu.AddMenuItem("Expand", () =>
+		{
+			node.Expand(); // This should trigger OnRegistryKeyExpanded if not already expanded
+			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+		});
+		// Disable if it's a leaf or already expanded and has no dummy children
+		bool canExpand = node.Children.Any() && (!node.IsExpanded || node.Children.Any(n => n.Data is string s && s == "DUMMY"));
+		expandItem.SetClass("disabled", !canExpand);
+
+
+		// New (Submenu)
+		var newSubMenu = _treeViewContextMenu.AddSubmenuItem("New", (submenu) =>
+		{
+			submenu.AddMenuItem("Key", () =>
+			{
+				Log.Info($"New Key under: {fullPath}");
+				// Future: Implement actual key creation
+				_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+			});
+			submenu.AddSeparator();
+			submenu.AddMenuItem("String Value", () =>
+			{
+				Log.Info($"New String Value in: {fullPath}");
+				_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+			});
+			submenu.AddMenuItem("Binary Value", () =>
+			{
+				Log.Info($"New Binary Value in: {fullPath}");
+				_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+			});
+			submenu.AddMenuItem("DWORD (32-bit) Value", () =>
+			{
+				Log.Info($"New DWORD Value in: {fullPath}");
+				_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+			});
+			submenu.AddMenuItem("QWORD (64-bit) Value", () =>
+			{
+				Log.Info($"New QWORD Value in: {fullPath}");
+				_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+			});
+			submenu.AddMenuItem("Multi-String Value", () =>
+			{
+				Log.Info($"New Multi-String Value in: {fullPath}");
+				_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+			});
+			submenu.AddMenuItem("Expandable String Value", () =>
+			{
+				Log.Info($"New Expandable String Value in: {fullPath}");
+				_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+			});
+		});
+		if (isComputerNode) newSubMenu.SetClass("disabled", true); // Cannot create new items directly under "Computer"
+
+		// Find
+		_treeViewContextMenu.AddMenuItem("Find...", () =>
+		{
+			Log.Info($"Find starting from: {fullPath}");
+			// Future: Open Find dialog
+			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+		});
+
+		_treeViewContextMenu.AddSeparator();
+
+		// Delete
+		var deleteItem = _treeViewContextMenu.AddMenuItem("Delete", () =>
+		{
+			Log.Info($"Delete: {fullPath}");
+			// Future: Implement delete logic, confirm, then refresh TreeView
+			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+		});
+		if (isComputerNode || isHiveNode) deleteItem.SetClass("disabled", true);
+
+		// Rename
+		var renameItem = _treeViewContextMenu.AddMenuItem("Rename", () =>
+		{
+			Log.Info($"Rename: {fullPath}");
+			// Future: Implement rename logic (e.g., using an input dialog), then refresh TreeView
+			// TreeViewNode does not have a BeginRename like ListViewItem.
+			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+		});
+		if (isComputerNode || isHiveNode) renameItem.SetClass("disabled", true);
+
+		_treeViewContextMenu.AddSeparator();
+
+		// Export
+		_treeViewContextMenu.AddMenuItem("Export...", () =>
+		{
+			Log.Info($"Export: {fullPath}");
+			// Future: Implement export to .reg file
+			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+		});
+		if (isComputerNode) _treeViewContextMenu.Children.Last().SetClass("disabled", true);
+
+
+		// Permissions
+		var permissionsItem = _treeViewContextMenu.AddMenuItem("Permissions...", () =>
+		{
+			Log.Info($"Permissions for: {fullPath}");
+			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+		});
+		if (isComputerNode) permissionsItem.SetClass("disabled", true);
+
+
+		_treeViewContextMenu.AddSeparator();
+
+		// Copy Key Name
+		_treeViewContextMenu.AddMenuItem("Copy Key Name", () =>
+		{
+			Clipboard.SetText(fullPath);
+			Log.Info($"Copied key name: {fullPath}");
+			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
+		});
+		if (isComputerNode && string.IsNullOrEmpty(fullPath)) // "Computer" node itself has no path to copy
+		{
+			_treeViewContextMenu.Children.Last().SetClass("disabled", true);
+		}
 	}
 
 	// --- Menu Handlers (To be implemented) ---
@@ -277,6 +504,7 @@
 		{
 			CloseActiveMenu();
 		}
+		_treeViewContextMenu?.Delete(true); // Close context menu if clicked outside
 	}
 
 	private void CloseActiveMenu()

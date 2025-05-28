@@ -8,8 +8,11 @@ namespace FakeOperatingSystem;
 
 public class RegistryKey
 {
-	public Dictionary<string, RegistryKey> SubKeys { get; set; } = new();
-	public Dictionary<string, object> Values { get; set; } = new();
+	// Initialize with a case-insensitive comparer for SubKeys
+	public Dictionary<string, RegistryKey> SubKeys { get; set; } = new( StringComparer.OrdinalIgnoreCase );
+
+	// Initialize with a case-insensitive comparer for Values
+	public Dictionary<string, object> Values { get; set; } = new( StringComparer.OrdinalIgnoreCase );
 }
 
 public class RegistryHive
