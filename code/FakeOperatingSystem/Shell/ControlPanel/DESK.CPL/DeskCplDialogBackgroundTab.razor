@@ -1,0 +1,205 @@
+@using System;
+@using System.Collections.Generic;
+@using System.IO;
+@using System.Linq;
+@using Sandbox;
+@using Sandbox.UI;
+@using XGUI;
+@using FakeOperatingSystem;
+@using FakeOperatingSystem.OSFileSystem;
+@using FakeDesktop;
+@inherits Panel
+
+<root class="column" style="flex-grow:1; padding:5px;">
+	<div style="justify-content:center;">
+		<div class="computer-frame">
+			<div style="width:152px; height:112px; background-color:#008080;" @ref="PreviewBox">
+				<!-- Preview will be updated here -->
+			</div>
+		</div>
+	</div>
+	<div style="flex-grow:1;"></div>
+	<groupbox title="Wallpaper" style="margin: 4px; padding-left:8px; padding-right:8px;">
+		<label style="margin-bottom:5px; margin-top:2px;">Select an HTML Document or a picture:</label>
+		<div class="row">
+			<listview class="margin-bottom" style="height:96px; flex-grow:1; margin-right:11px;" @ref="BackgroundImagesListView" OnItemSelected="OnWallpaperSelected">
+
+			</listview>
+			<div class="column">
+				<button style="width:75px; height:23px;" class="margin-bottom">Browse...</button>
+				<button style="width:75px; height:23px;" class="margin-bottom">Pattern...</button>
+				<label>Display:</label>
+				<combobox @ref="DisplayModeComboBox">
+					<option value="center">Center</option>
+					<option value="tile">Tile</option>
+					<option value="stretch">Stretch</option>
+				</combobox>
+			</div>
+		</div>
+	</groupbox>
+</root>
+
+@code {
+
+	private ListView BackgroundImagesListView { get; set; }
+	private Panel PreviewBox { get; set; }
+	private ComboBox DisplayModeComboBox { get; set; }
+
+	private const string WallpaperRegistryPath = @"HKEY_CURRENT_USER\Control Panel\Desktop";
+	private const string WallpaperValueName = "Wallpaper";
+	private const string WallpaperStyleValueName = "WallpaperStyle"; // 0 for Center, 1 for Tile (approx), 2 for Stretch
+	private const string TileWallpaperValueName = "TileWallpaper"; // 0 for no tile, 1 for tile
+
+	private string _selectedWallpaperPath = null;
+	public static string SelectedWallpaperPath;
+
+	public override void Tick()
+	{
+		base.Tick();
+
+		// dumb, need to do because of stupid bug in s&box.
+		SelectedWallpaperPath = _selectedWallpaperPath;
+	}
+
+
+	protected override void OnAfterTreeRender(bool firstTime)
+	{
+		base.OnAfterTreeRender(firstTime);
+		if (firstTime)
+		{
+			PopulateWallpaperList();
+			LoadCurrentWallpaperSettings();
+		}
+	}
+
+	private void PopulateWallpaperList()
+	{
+		if (BackgroundImagesListView == null) return;
+
+		BackgroundImagesListView.ClearList(); // Clear existing items
+		BackgroundImagesListView.ViewMode = ListView.ListViewMode.List; // Set to list view mode
+
+		// Add "(None)" option
+		// Using a special path or null for "None"
+		BackgroundImagesListView.AddItem("(None)", new List<string> { "(None)" });
+
+		string wallpaperDirectory = @"C:\Windows\Web\Wallpaper";
+		var vfs = VirtualFileSystem.Instance;
+
+		if (vfs.DirectoryExists(wallpaperDirectory))
+		{
+			var imageFiles = vfs.GetFiles(wallpaperDirectory)
+				.Where(f => IsSupportedImageFile(f))
+				.OrderBy(f => Path.GetFileName(f));
+
+			foreach (var filePath in imageFiles)
+			{
+				var fileName = Path.GetFileName(filePath);
+				// Store full path in Data, display filename
+				BackgroundImagesListView.AddItem(fileName, new List<string> { fileName });
+			}
+		}
+		else
+		{
+			Log.Warning($"Wallpaper directory not found: {wallpaperDirectory}");
+		}
+		BackgroundImagesListView.UpdateItems();
+	}
+
+	private bool IsSupportedImageFile(string filePath)
+	{
+		string extension = Path.GetExtension(filePath).ToLowerInvariant();
+		return extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".bmp" || extension == ".html" || extension == ".htm";
+	}
+
+	private void OnWallpaperSelected(ListView.ListViewItem item)
+	{
+		if (item == null) return;
+
+		if (item.Data is string displayName && displayName == "(None)")
+		{
+			_selectedWallpaperPath = null; // Or a special value like "none"
+			PreviewBox.Style.BackgroundImage = null;
+			PreviewBox.Style.BackgroundColor = Color.Parse("#008080"); // Default teal
+		}
+		else if (item.SubItems.Count > 0 && !string.IsNullOrEmpty(item.SubItems[0]))
+		{
+			_selectedWallpaperPath = item.SubItems[0]; // Full path stored in SubItems[0]
+													   // Update preview (basic version, doesn't handle tile/stretch here)
+													   // For actual image display, you might need to load texture if it's not a direct CSS url
+			if (VirtualFileSystem.Instance.FileExists(_selectedWallpaperPath) && IsSupportedImageFile(_selectedWallpaperPath))
+			{
+				// This is a simplified preview. For HTML, it won't render.
+				// For images, it relies on the path being accessible as a URL or needing conversion to texture.
+				// For a fake OS, you might need a more robust preview mechanism.
+				var file = VirtualFileSystem.Instance.ResolveMountPoint(_selectedWallpaperPath);
+				PreviewBox.Style.BackgroundImage = Texture.Load(file.FileSystem, file.RealPath, false);
+				//PreviewBox.Style.BackgroundSize = "cover"; // Or "contain", "auto"
+				//PreviewBox.Style.BackgroundPosition = "center";
+				//PreviewBox.Style.BackgroundColor = null;
+			}
+		}
+		PreviewBox.Style.Dirty();
+	}
+
+	private void LoadCurrentWallpaperSettings()
+	{
+		if (Registry.Instance == null) return;
+
+		string currentWallpaper = Registry.Instance.GetValue<string>(WallpaperRegistryPath, WallpaperValueName, null);
+		string wallpaperStyle = Registry.Instance.GetValue<string>(WallpaperRegistryPath, WallpaperStyleValueName, "2"); // Default to Stretch
+		string tileWallpaper = Registry.Instance.GetValue<string>(WallpaperRegistryPath, TileWallpaperValueName, "0");
+
+		_selectedWallpaperPath = currentWallpaper;
+
+		// Select in ListView
+		ListView.ListViewItem itemToSelect = null;
+		if (string.IsNullOrEmpty(currentWallpaper) || currentWallpaper.Equals("none", StringComparison.OrdinalIgnoreCase))
+		{
+			itemToSelect = BackgroundImagesListView.Items.FirstOrDefault(i => i.Data is string dataStr && dataStr == "(None)");
+		}
+		else
+		{
+			itemToSelect = BackgroundImagesListView.Items.FirstOrDefault(i => i.SubItems.Count > 0 && i.SubItems[0] == currentWallpaper);
+		}
+
+		if (itemToSelect != null)
+		{
+			BackgroundImagesListView.SelectItem(itemToSelect);
+			// Trigger preview update for the loaded selection
+			OnWallpaperSelected(itemToSelect);
+		}
+		else if (!string.IsNullOrEmpty(currentWallpaper))
+		{
+			// If the wallpaper is set but not in the default list (e.g., custom browsed file)
+			// We can't select it in the list, but we can still show its preview.
+			if (VirtualFileSystem.Instance.FileExists(currentWallpaper) && IsSupportedImageFile(currentWallpaper))
+			{
+				var file = VirtualFileSystem.Instance.ResolveMountPoint(currentWallpaper);
+				PreviewBox.Style.BackgroundImage = Texture.Load(file.FileSystem, file.RealPath, false);
+				//PreviewBox.Style.BackgroundSize = "cover";
+				//PreviewBox.Style.BackgroundPosition = "center";
+				//PreviewBox.Style.BackgroundColor = null;
+				PreviewBox.Style.Dirty();
+			}
+		}
+
+
+		// Set Display ComboBox
+		if (DisplayModeComboBox != null)
+		{
+			if (wallpaperStyle == "2") // Stretch
+			{
+				DisplayModeComboBox.Value = "stretch";
+			}
+			else if (tileWallpaper == "1") // Tile
+			{
+				DisplayModeComboBox.Value = "tile";
+			}
+			else // Center (style 0 and tile 0)
+			{
+				DisplayModeComboBox.Value = "center";
+			}
+		}
+	}
+}

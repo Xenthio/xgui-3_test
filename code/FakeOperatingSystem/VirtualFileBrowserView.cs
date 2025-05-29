@@ -614,14 +614,21 @@ public class VirtualFileBrowserView : FileBrowserView
 			var folder = _shellManager.GetFolder( _currentShellPath );
 			if ( folder != null )
 			{
-				var dialog = new FilePropertiesDialog
+				if ( folder.HandlePropertiesClick != null )
 				{
-					Name = folder.Name,
-					Path = folder.RealPath ?? _currentShellPath,
-					IsDirectory = true,
-					Size = 0 // You can calculate folder size if needed
-				};
-				XGUISystem.Instance.Panel.AddChild( dialog );
+					folder.HandlePropertiesClick.Invoke();
+				}
+				else
+				{
+					var dialog = new FilePropertiesDialog
+					{
+						Name = folder.Name,
+						Path = folder.RealPath ?? _currentShellPath,
+						IsDirectory = true,
+						Size = 0 // You can calculate folder size if needed
+					};
+					XGUISystem.Instance.Panel.AddChild( dialog );
+				}
 			}
 			_currentContextMenu?.Delete();
 		} );

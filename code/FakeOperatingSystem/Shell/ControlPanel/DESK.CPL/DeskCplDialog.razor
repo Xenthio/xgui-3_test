@@ -21,6 +21,9 @@
 			</tab>
 			<tab tabName="background" slot="tab" tabtext="Background" style="flex-direction:column;">
 				<div style="flex-direction:column; flex-grow:1;">
+					<deskcpldialogbackgroundtab>
+
+					</deskcpldialogbackgroundtab>
 				</div>
 			</tab>
 			@* 			<tab tabName="screensaver" slot="tab" tabtext="Screen Saver" style="flex-direction:column;">
@@ -28,20 +31,17 @@
 				</div>
 			</tab> *@
 			<tab tabName="appearance" slot="tab" tabtext="Appearance" style="flex-direction:column;">
-				<div style="flex-direction:column; flex-grow:1; padding:9px; padding-top:5px;">
-					<layoutboxinset style="height:193px; background-color: #008080;">
-						<!-- Preview would be here -->
-					</layoutboxinset>
-					<label>Scheme:</label>
-					<div>
-						<combobox style="width: 197px;">
-							<option value="default">Standard</option>
-						</combobox>
-					</div>
+				<div style="flex-direction:column; flex-grow:1;">
+					<deskcpldialogappearancetab>
+
+					</deskcpldialogappearancetab>
 				</div>
 			</tab>
 			<tab tabName="effects" slot="tab" tabtext="Effects" style="flex-direction:column;">
 				<div style="flex-direction:column; flex-grow:1;">
+					<deskcpldialogeffectstab>
+
+					</deskcpldialogeffectstab>
 				</div>
 			</tab>
 			@* 			<tab tabName="web" slot="tab" tabtext="Web" style="flex-direction:column;">
@@ -50,6 +50,9 @@
 			</tab> *@
 			<tab tabName="settings" slot="tab" tabtext="Settings" style="flex-direction:column;">
 				<div style="flex-direction:column; flex-grow:1;">
+					<deskcpldialogsettingstab>
+
+					</deskcpldialogsettingstab>
 				</div>
 			</tab>
 		</tabcontrol>
@@ -98,9 +101,23 @@
 		}
 	}
 
+	private void ApplyDesktopBackgroundSettings()
+	{
+		if (!string.IsNullOrWhiteSpace(DeskCplDialogBackgroundTab.SelectedWallpaperPath))
+		{
+			Log.Info($"Todo: Applying wallpaper: {DeskCplDialogBackgroundTab.SelectedWallpaperPath}");
+		}
+		else
+		{
+			Log.Warning("DeskCplDialogBackgroundTab's SelectedWallpaperPath is null/empty. Cannot apply wallpaper.");
+		}
+
+	}
+
 	private void OnOKButtonClick()
 	{
 		ApplyThemeSettings();
+		ApplyDesktopBackgroundSettings();
 		Close();
 	}
 
@@ -112,5 +129,6 @@
 	private void OnApplyButtonClick()
 	{
 		ApplyThemeSettings();
+		ApplyDesktopBackgroundSettings();
 	}
 }

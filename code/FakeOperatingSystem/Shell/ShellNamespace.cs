@@ -36,11 +36,12 @@ public class ShellNamespace
 	{
 		Instance = this;
 		_vfs = vfs;
+		_desktopSettingsAppletInstance = new DesktopSettingsApplet();
 
 		// Set up the shell namespace hierarchy
 		InitializeNamespace();
 	}
-
+	private DesktopSettingsApplet _desktopSettingsAppletInstance;
 	private void InitializeNamespace()
 	{
 		// Desktop (root of shell namespace)
@@ -50,7 +51,11 @@ public class ShellNamespace
 			Path = DESKTOP,
 			RealPath = UserProfileHelper.GetDesktopPath(),
 			Type = ShellFolderType.SpecialFolder,
-			IconName = "desktop"
+			IconName = "desktop",
+			HandlePropertiesClick = () => // Assign the custom action here
+			{
+				_desktopSettingsAppletInstance?.Launch();
+			}
 		} );
 
 		// My Computer
@@ -200,16 +205,14 @@ public class ShellNamespace
 
 		string controlPanelPath = $"{DESKTOP}/{MY_COMPUTER}/{CONTROL_PANEL}";
 
-		var displayApplet = new DesktopSettingsApplet();
-
 		RegisterShellFolder( new ShellFolder
 		{
-			Name = displayApplet.Name,
-			Path = $"{controlPanelPath}/{displayApplet.Name}",
+			Name = _desktopSettingsAppletInstance.Name,
+			Path = $"{controlPanelPath}/{_desktopSettingsAppletInstance.Name}",
 			Type = ShellFolderType.ControlPanelApplet,
-			IconName = displayApplet.IconName,
+			IconName = _desktopSettingsAppletInstance.IconName,
 			IsVirtual = true,
-			Applet = displayApplet
+			Applet = _desktopSettingsAppletInstance
 		} );
 
 		foreach ( var (name, icon) in applets )
@@ -441,6 +444,11 @@ public class ShellFolder
 	/// Launches the folder if it is a control panel applet
 	/// </summary>
 	public IControlPanelApplet Applet { get; set; } // null unless ControlPanelApplet
+
+	/// <summary>
+	/// Custom action to execute when "Properties" is clicked for this folder.
+	/// </summary>
+	public Action HandlePropertiesClick { get; set; }
 }
 
 /// <summary>
