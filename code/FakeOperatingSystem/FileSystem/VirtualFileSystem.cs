@@ -22,6 +22,8 @@ public class VirtualFileSystem : IVirtualFileSystem
 	// Default file system for operations not associated with a specific mount
 	private BaseFileSystem _defaultFileSystem;
 
+	public event Action<string> OnFileSystemChanged;
+
 	public VirtualFileSystem( BaseFileSystem defaultFileSystem )
 	{
 		Instance = this;
@@ -625,6 +627,228 @@ public class VirtualFileSystem : IVirtualFileSystem
 
 		return fullPath.ToString();
 	}
+
+	private const string SystemFolderName = "[SYSTEM]";
+	private const string MetadataFilePrefix = "$";
+	private const string AttributesFileName = MetadataFilePrefix + "Attributes"; // $Attributes
+	private const string LabelFileName = MetadataFilePrefix + "Label";       // $Label
+
+	private string SanitizeRelativePathForAttributeFilename( string relativePath )
+	{
+		if ( string.IsNullOrEmpty( relativePath ) )
+		{
+			// This case should ideally be handled before calling,
+			// as attributes for the mount root itself are stored differently.
+			return null;
+		}
+		// Replace directory separators. Consider more robust sanitization for production.
+		// For example, characters like ':', '*', '?', '"', '<', '>', '|' are also invalid in Windows filenames.
+		string sanitized = relativePath.Replace( '/', '_' ).Replace( '\\', '_' );
+
+		// Ensure it doesn't accidentally look like the mount-level attribute files
+		if ( sanitized.Equals( AttributesFileName.Substring( MetadataFilePrefix.Length ), StringComparison.OrdinalIgnoreCase ) ||
+			sanitized.Equals( LabelFileName.Substring( MetadataFilePrefix.Length ), StringComparison.OrdinalIgnoreCase ) )
+		{
+			// Prepend an extra underscore to avoid collision if a file is literally named "Attributes" or "Label" at root
+			sanitized = "_" + sanitized;
+		}
+
+		return MetadataFilePrefix + sanitized; // e.g., "$Users_Alice_file.txt"
+	}
+
+	private string GetItemAttributeFileRealPath( PathResolution pathRes, string normalizedFullVirtualPath, out BaseFileSystem targetFs, out string mountRootRealPath )
+	{
+		targetFs = null;
+		mountRootRealPath = null;
+
+		if ( pathRes.MountPoint == null )
+		{
+			// Item is not under a registered mount point. This MFT-like mechanism won't apply.
+			return null;
+		}
+
+		targetFs = pathRes.MountPoint.FileSystem;
+		mountRootRealPath = pathRes.MountPoint.RealPath; // The real path of the mount point's root directory.
+
+		string itemRelativePath = normalizedFullVirtualPath.Substring( pathRes.MountPoint.Name.Length ).TrimStart( '/' );
+
+		if ( string.IsNullOrEmpty( itemRelativePath ) )
+		{
+			// This is the mount root itself. Its attributes are in MountPoint.Attributes,
+			// not a separate item attribute file.
+			return null;
+		}
+
+		string attributeFileName = SanitizeRelativePathForAttributeFilename( itemRelativePath );
+		if ( attributeFileName == null )
+		{
+			return null; // Should not happen if itemRelativePath was not empty.
+		}
+
+		string systemFolderRealPath = Path.Combine( mountRootRealPath, SystemFolderName );
+		return Path.Combine( systemFolderRealPath, attributeFileName );
+	}
+
+	public VirtualFileAttributes GetAttributes( string path )
+	{
+		if ( string.IsNullOrWhiteSpace( path ) )
+		{
+			return VirtualFileAttributes.Normal; // Or VirtualFileAttributes.None if preferred for non-existent
+		}
+
+		var resolution = ResolveMountPoint( path );
+		string fullVirtualPath = GetFullPath( path ); // Normalize path for consistent processing
+
+		// 1. Check if it's the mount point root itself
+		if ( resolution.MountPoint != null )
+		{
+			string mountRelativePathCheck = fullVirtualPath.Substring( resolution.MountPoint.Name.Length ).TrimStart( '/' );
+			if ( string.IsNullOrEmpty( mountRelativePathCheck ) ) // Path is "C:" or "C:/"
+			{
+				return resolution.MountPoint.Attributes;
+			}
+		}
+
+		// 2. Try to get attributes from the [SYSTEM] folder MFT-like store for mounted items
+		string itemAttributeFileRealPath = GetItemAttributeFileRealPath( resolution, fullVirtualPath, out BaseFileSystem fs, out _ );
+
+		if ( itemAttributeFileRealPath != null && fs != null )
+		{
+			if ( fs.FileExists( itemAttributeFileRealPath ) )
+			{
+				try
+				{
+					string content = fs.ReadAllText( itemAttributeFileRealPath );
+					if ( int.TryParse( content, out int attrValue ) )
+					{
+						return (VirtualFileAttributes)attrValue;
+					}
+					// else: Log error or handle malformed attributes file
+				}
+				catch ( Exception ex )
+				{
+					// Log error, e.g., Log.Warning($"Failed to read attribute file {itemAttributeFileRealPath}: {ex.Message}");
+				}
+			}
+			// Attribute file not found in [SYSTEM] folder, provide defaults based on existence
+			if ( fs.FileExists( resolution.RealPath ) ) // Check actual item existence
+			{
+				return VirtualFileAttributes.Archive; // Default for a file
+			}
+			if ( fs.DirectoryExists( resolution.RealPath ) ) // Check actual item existence
+			{
+				return VirtualFileAttributes.Directory; // Default for a directory
+			}
+			return VirtualFileAttributes.Normal; // Item doesn't exist, and no attribute file
+		}
+		else
+		{
+			// Path is not under a mount point (resolution.MountPoint == null) or it's the mount root (handled above).
+			// Provide basic defaults for items on the _defaultFileSystem not accessed via a mount.
+			if ( resolution.FileSystem.FileExists( resolution.RealPath ) )
+			{
+				return VirtualFileAttributes.Archive;
+			}
+			if ( resolution.FileSystem.DirectoryExists( resolution.RealPath ) )
+			{
+				return VirtualFileAttributes.Directory;
+			}
+		}
+		return VirtualFileAttributes.Normal; // Path does not exist
+	}
+
+	public void SetAttributes( string path, VirtualFileAttributes attributes )
+	{
+		if ( string.IsNullOrWhiteSpace( path ) ) return;
+
+		var resolution = ResolveMountPoint( path );
+		string fullVirtualPath = GetFullPath( path );
+
+		// 1. Handle setting attributes for the mount point root itself
+		if ( resolution.MountPoint != null )
+		{
+			string mountRelativePathCheck = fullVirtualPath.Substring( resolution.MountPoint.Name.Length ).TrimStart( '/' );
+			if ( string.IsNullOrEmpty( mountRelativePathCheck ) )
+			{
+				resolution.MountPoint.Attributes = attributes;
+				string systemFolderPath = Path.Combine( resolution.MountPoint.RealPath, SystemFolderName );
+				string mountAttributesFilePath = Path.Combine( systemFolderPath, AttributesFileName );
+				try
+				{
+					if ( !resolution.MountPoint.FileSystem.DirectoryExists( systemFolderPath ) )
+					{
+						resolution.MountPoint.FileSystem.CreateDirectory( systemFolderPath );
+						// Consider setting [SYSTEM] folder attributes (e.g., Hidden, System) on the underlying FS if possible/desired.
+					}
+					resolution.MountPoint.FileSystem.WriteAllText( mountAttributesFilePath, ((int)attributes).ToString() );
+					NotifyChange( fullVirtualPath );
+				}
+				catch ( Exception ex )
+				{
+					// Log error, e.g., Log.Error($"Failed to save attributes for mount {resolution.MountPoint.Name}: {ex.Message}");
+				}
+				return;
+			}
+		}
+
+		// 2. Try to set attributes in the [SYSTEM] folder MFT-like store for mounted items
+		string itemAttributeFileRealPath = GetItemAttributeFileRealPath( resolution, fullVirtualPath, out BaseFileSystem fs, out string mountRootRealPath );
+
+		if ( itemAttributeFileRealPath != null && fs != null && mountRootRealPath != null )
+		{
+			string systemFolderPathOnFs = Path.Combine( mountRootRealPath, SystemFolderName );
+			try
+			{
+				if ( !fs.DirectoryExists( systemFolderPathOnFs ) )
+				{
+					fs.CreateDirectory( systemFolderPathOnFs );
+					// Consider setting [SYSTEM] folder attributes here too.
+				}
+
+				// Ensure the correct Directory/Archive flag based on item type before saving
+				if ( fs.DirectoryExists( resolution.RealPath ) )
+				{
+					attributes |= VirtualFileAttributes.Directory;
+					attributes &= ~VirtualFileAttributes.Archive; // Directories shouldn't typically have Archive
+				}
+				else if ( fs.FileExists( resolution.RealPath ) )
+				{
+					attributes |= VirtualFileAttributes.Archive;
+					attributes &= ~VirtualFileAttributes.Directory;
+				}
+				// If the item doesn't exist, we're setting attributes for a potential future item.
+				// The caller should ensure Directory/Archive flags are appropriate.
+
+				fs.WriteAllText( itemAttributeFileRealPath, ((int)attributes).ToString() );
+				NotifyChange( GetDirectoryName( fullVirtualPath ) ); // Notify change in parent dir
+				NotifyChange( fullVirtualPath ); // Notify change for the item itself
+			}
+			catch ( Exception ex )
+			{
+				// Log error, e.g., Log.Error($"Failed to save attribute file {itemAttributeFileRealPath}: {ex.Message}");
+			}
+		}
+		else
+		{
+			// Path is not under a mount point or is the mount root (already handled).
+			// Currently, no mechanism to set custom attributes for non-mounted _defaultFileSystem items.
+			// If underlying fs.SetAttributes(resolution.RealPath, attributes) existed, it could be called here.
+			// For now, this is a no-op for such paths.
+			// Log.Warning($"SetAttributes: Path '{fullVirtualPath}' is not on a mount point or is a mount root; custom item attributes not stored via [SYSTEM] MFT.");
+		}
+	}
+
+	public bool HasAttribute( string path, VirtualFileAttributes attribute )
+	{
+		VirtualFileAttributes attributes = GetAttributes( path );
+		return (attributes & attribute) == attribute;
+	}
+
+
+	public void NotifyChange( string path )
+	{
+		OnFileSystemChanged?.Invoke( path );
+	}
 }
 
 /// <summary>
@@ -638,7 +862,8 @@ public class MountPoint
 	public string Name { get; set; }
 
 	/// <summary>
-	/// The label of the mount point (e.g., "C:", "FS:A:")
+	/// The label of the mount point (e.g., "System", "Data Drive")
+	/// Defaults to Name if not specified by a $Label file.
 	/// </summary>
 	public string Label { get; set; }
 
@@ -651,6 +876,11 @@ public class MountPoint
 	/// The file system to use for this mount point
 	/// </summary>
 	public BaseFileSystem FileSystem { get; set; }
+
+	/// <summary>
+	/// Attributes of the mount point itself (e.g., ReadOnly, System).
+	/// </summary>
+	public VirtualFileAttributes Attributes { get; set; } = VirtualFileAttributes.Directory;
 }
 
 /// <summary>
