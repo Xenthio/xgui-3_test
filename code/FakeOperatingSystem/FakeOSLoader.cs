@@ -110,7 +110,7 @@ public class FakeOSLoader : Component
 				var user = new UserAccount
 				{
 					UserName = username,
-					PasswordHash = password, // Hash in real code!
+					PasswordHash = UserManager.HashPassword( password ), // Hash in real code!
 					ProfilePath = $@"C:\Documents and Settings\{username}\",
 					RegistryHivePath = $@"C:\Documents and Settings\{username}\NTUSER.DAT"
 				};

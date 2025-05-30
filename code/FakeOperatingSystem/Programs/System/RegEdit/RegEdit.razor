@@ -270,7 +270,7 @@
 				defaultHandled = true;
 			}
 
-			if (!defaultHandled && !currentKeyData.Values.Any(v => !string.IsNullOrEmpty(v.Key)))
+			if (!defaultHandled)
 			{
 				ValueListView.AddItem(
 					new RegistryValueViewItem { Name = "(Default)", TypeString = "REG_SZ", OriginalData = null, DisplayData = "(value not set)" },

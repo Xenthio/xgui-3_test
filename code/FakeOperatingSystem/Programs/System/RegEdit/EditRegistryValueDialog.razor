@@ -249,7 +249,7 @@
 		}
 		catch (Exception ex)
 		{
-			MessageBoxUtility.ShowCustom("Error", $"Invalid data format for {_valueType}:\n{ex.Message}", MessageBoxIcon.Warning, MessageBoxButtons.OK);
+			MessageBoxUtility.ShowCustom($"Invalid data format for {_valueType}:\n{ex.Message}", "Error", MessageBoxIcon.Warning, MessageBoxButtons.OK);
 			return;
 		}
 

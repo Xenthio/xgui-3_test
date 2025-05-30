@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization; // Required for parsing numbers robustly
+using System.Linq; // Required for Enumerable.Empty and .ToList()
 using System.Text.Json;
 
 namespace FakeOperatingSystem;
@@ -101,6 +102,14 @@ public class Registry
 			_componentHiveFilePaths[$"{hklmHive.Name}\\SOFTWARE"] = softwareFilePath;
 		}
 
+		string samFilePath = @"C:\Windows\System32\config\SAM";
+		RegistryKey samKey = LoadKeyFromFile( samFilePath );
+		if ( samKey != null )
+		{
+			hklmRootKey.SubKeys["SAM"] = samKey;
+			_componentHiveFilePaths[$"{hklmHive.Name}\\SAM"] = samFilePath;
+		}
+
 		string networkFilePath = @"C:\Windows\System32\config\NETWORK";
 		RegistryKey networkKey = LoadKeyFromFile( networkFilePath );
 		if ( networkKey != null )
@@ -108,7 +117,7 @@ public class Registry
 			hklmRootKey.SubKeys["NETWORK"] = networkKey;
 			_componentHiveFilePaths[$"{hklmHive.Name}\\NETWORK"] = networkFilePath;
 		}
-		// Add SAM, SECURITY, HARDWARE similarly if you have files for them and update _componentHiveFilePaths.
+		// Add SECURITY, HARDWARE similarly if you have files for them and update _componentHiveFilePaths.
 
 		// --- HKEY_USERS ---
 		var hkuRootKey = new RegistryKey();
@@ -178,11 +187,17 @@ public class Registry
 			RegistryKey userSpecificDataRoot = LoadKeyFromFile( userHiveFilePath );
 			if ( userSpecificDataRoot != null )
 			{
-				hkuHive.Root.SubKeys[userName] = userSpecificDataRoot;
+				hkuHive.Root.SubKeys[userName] = userSpecificDataRoot; // User SID or Name as key
 				_componentHiveFilePaths[$"{hkuHive.Name}\\{userName}"] = userHiveFilePath;
 			}
 		}
 	}
+
+	// Made public for UserManager
+	public (RegistryHive hive, string subPath) ResolvePathToHiveAndSubpath( string keyPath ) => Resolve( keyPath );
+	// Made public for UserManager
+	public RegistryKey GetRegistryKey( RegistryKey root, string keyPath, bool create ) => GetKey( root, keyPath, create );
+
 
 	private (RegistryHive hive, string subPath) Resolve( string keyPath )
 	{
@@ -279,7 +294,7 @@ public class Registry
 			var parts = subPath.Split( new[] { '\\' }, StringSplitOptions.RemoveEmptyEntries );
 			if ( parts.Length > 0 )
 			{
-				string componentKeyName = parts[0]; // e.g., "SYSTEM", "SOFTWARE", ".DEFAULT", or a username
+				string componentKeyName = parts[0]; // e.g., "SYSTEM", "SOFTWARE", ".DEFAULT", or a username, or "SAM"
 				string fullComponentPath = $"{hive.Name}\\{componentKeyName}";
 
 				if ( _componentHiveFilePaths.TryGetValue( fullComponentPath, out string componentFilePath ) )
@@ -348,7 +363,7 @@ public class Registry
 		}
 	}
 
-	public void DeleteKey( string keyPath )
+	public void DeleteKey( string keyPath, bool recursive = true ) // Added recursive, though current logic implies it
 	{
 		var (hive, subPath) = Resolve( keyPath );
 		var parts = subPath.Split( '\\', StringSplitOptions.RemoveEmptyEntries );
@@ -392,20 +407,32 @@ public class Registry
 					string fullComponentPath = $"{hive.Name}\\{componentKeyName}";
 					if ( _componentHiveFilePaths.TryGetValue( fullComponentPath, out string componentFilePath ) )
 					{
-						VirtualFileSystem.Instance.DeleteFile( componentFilePath );
+						// If the component file itself should be deleted when the key HKLM\SAM is deleted.
+						// VirtualFileSystem.Instance.DeleteFile( componentFilePath );
+						// _componentHiveFilePaths.Remove( fullComponentPath );
+						// Log.Info( $"Registry: Deleted component key '{componentKeyName}' from '{hive.Name}' and its backing file '{componentFilePath}'." );
+						// For now, just save the parent (HKLM_VIRTUAL.hive) which reflects the removal of the SAM subkey from its structure.
+						// The actual SAM file would still exist unless explicitly deleted.
+						// However, our model is that HKLM is virtual and its children (SYSTEM, SAM) are the files.
+						// So, if HKLM\SAM is deleted, the SAM file should be deleted.
+						if ( VirtualFileSystem.Instance.FileExists( componentFilePath ) )
+						{
+							VirtualFileSystem.Instance.DeleteFile( componentFilePath );
+							Log.Info( $"Registry: Deleted backing file '{componentFilePath}' for component key '{componentKeyName}'." );
+						}
 						_componentHiveFilePaths.Remove( fullComponentPath );
-						Log.Info( $"Registry: Deleted component key '{componentKeyName}' from '{hive.Name}' and its backing file '{componentFilePath}'." );
+
 					}
 					else
 					{
 						Log.Warning( $"Registry: Deleted component key '{componentKeyName}' from '{hive.Name}', but its backing file path was not found or not managed." );
 					}
 				}
-				// Check if we deleted a subkey within a component (e.g., HKLM\SYSTEM\SomeSubKey)
+				// Check if we deleted a subkey within a component (e.g., HKLM\SAM\SomeSubKey)
 				// parts.Length will be > 0 because subPath was not empty.
 				else if ( parts.Length > 0 )
 				{
-					string componentKeyName = parts[0]; // The top-level component, e.g., "SYSTEM"
+					string componentKeyName = parts[0]; // The top-level component, e.g., "SAM"
 					string fullComponentPath = $"{hive.Name}\\{componentKeyName}";
 					if ( _componentHiveFilePaths.TryGetValue( fullComponentPath, out string componentFilePath ) )
 					{
@@ -451,5 +478,30 @@ public class Registry
 			current = next;
 		}
 		return current;
+	}
+
+	public IEnumerable<string> GetSubKeyNames( string keyPath )
+	{
+		var (hive, subPath) = Resolve( keyPath );
+		var key = GetKey( hive.Root, subPath, false ); // Do not create if not exists
+		if ( key != null )
+		{
+			return key.SubKeys.Keys.ToList(); // Return a copy
+		}
+		return Enumerable.Empty<string>();
+	}
+
+	public bool KeyExists( string keyPath )
+	{
+		try
+		{
+			var (hive, subPath) = Resolve( keyPath );
+			var key = GetKey( hive.Root, subPath, false );
+			return key != null;
+		}
+		catch ( Exception ) // Catch "Hive not found" from Resolve
+		{
+			return false;
+		}
 	}
 }

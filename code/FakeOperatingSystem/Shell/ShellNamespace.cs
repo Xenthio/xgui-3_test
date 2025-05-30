@@ -239,51 +239,63 @@ public class ShellNamespace
 	public ShellFolder GetFolder( string path )
 	{
 		if ( string.IsNullOrEmpty( path ) )
-			return _shellFolders[DESKTOP];
+			path = DESKTOP; // Default to Desktop if path is empty
 
 		path = NormalizePath( path );
 
+		// 1. Direct match in _shellFolders (exact registered path)
 		if ( _shellFolders.TryGetValue( path, out var folder ) )
+		{
 			return folder;
+		}
 
-		// Look for a drive entry whose Path is a prefix of the requested path
-		foreach ( var drive in _shellFolders.Values.Where( f => f.Type == ShellFolderType.Drive ) )
+		// 2. Check if it's a sub-path of a registered folder with a RealPath
+		//    Iterate from longest possible parent path to shortest.
+		string tempPath = path;
+		int lastSlashIndex;
+		while ( (lastSlashIndex = tempPath.LastIndexOf( '/' )) != -1 ) // Check for -1 to handle paths without '/'
 		{
-			// Ensure trailing slash for correct prefix matching
-			string drivePrefix = drive.Path.EndsWith( "/" ) ? drive.Path : drive.Path + "/";
-			if ( path.StartsWith( drivePrefix, StringComparison.OrdinalIgnoreCase ) )
+			string parentCandidatePath = tempPath.Substring( 0, lastSlashIndex );
+			if ( string.IsNullOrEmpty( parentCandidatePath ) ) // Avoid issues if path starts with / or is just "Item"
 			{
-				// Get the subpath after the drive
-				string subPath = path.Substring( drivePrefix.Length );
-				string vfsPath = string.IsNullOrEmpty( subPath ) ? drive.RealPath : $"{drive.RealPath}/{subPath}";
-
-				if ( _vfs.DirectoryExists( vfsPath ) )
-				{
-					return new ShellFolder
-					{
-						Name = Path.GetFileName( vfsPath ),
-						Path = path,
-						RealPath = vfsPath,
-						Type = ShellFolderType.Directory,
-						IconName = "folder"
-					};
-				}
+				// This case might occur if path was "Desktop" and it wasn't found directly,
+				// or if path was "SomeItem" (no slashes).
+				// If parentCandidatePath becomes empty, it means we've gone above "Desktop" or a root-level item.
+				break;
 			}
-		}
 
-		// Fallback: treat as a VFS path directly
-		if ( _vfs.DirectoryExists( path ) )
-		{
-			return new ShellFolder
+			if ( _shellFolders.TryGetValue( parentCandidatePath, out ShellFolder parentShellFolder ) )
 			{
-				Name = Path.GetFileName( path ),
-				Path = path,
-				RealPath = path,
-				Type = ShellFolderType.Directory,
-				IconName = "folder"
-			};
+				if ( !string.IsNullOrEmpty( parentShellFolder.RealPath ) )
+				{
+					// We found a registered parent with a RealPath.
+					// The remainder of 'path' is the relative path from this parent.
+					string relativePath = path.Substring( parentCandidatePath.Length ).TrimStart( '/' );
+					string potentialRealPath = Path.Combine( parentShellFolder.RealPath, relativePath );
+
+					if ( _vfs.DirectoryExists( potentialRealPath ) )
+					{
+						return new ShellFolder
+						{
+							Name = System.IO.Path.GetFileName( potentialRealPath ), // Use System.IO.Path for consistency
+							Path = path, // The original requested shell path
+							RealPath = potentialRealPath,
+							Type = ShellFolderType.Directory, // Assume directory if found this way
+							IconName = "folder", // Default folder icon
+							IsVirtual = false
+						};
+					}
+				}
+				// If parentShellFolder has no RealPath, or if the potentialRealPath doesn't exist as a directory,
+				// we stop searching up this particular branch.
+				break;
+			}
+			tempPath = parentCandidatePath; // Continue searching with the next parent up
 		}
 
+		// If after all checks, no specific shell folder is found, return null.
+		// The original fallback that treated 'path' as a direct VFS path was problematic
+		// because 'path' is a shell namespace path.
 		return null;
 	}
 
