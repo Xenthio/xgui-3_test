@@ -43,26 +43,26 @@
 	</ItemGroup>
 
   <PropertyGroup>
-	<OutputPath>E:\SteamLibrary\steamapps\common\sbox/.vs/output/</OutputPath>
-	<DocumentationFile>E:\SteamLibrary\steamapps\common\sbox/.vs/output/xmovement.unittest.xml</DocumentationFile>
+	<OutputPath>E:\steamlibrary\steamapps\common\sbox/.vs/output/</OutputPath>
+	<DocumentationFile>E:\steamlibrary\steamapps\common\sbox/.vs/output/xmovement.unittest.xml</DocumentationFile>
 	<RootNamespace>Sandbox</RootNamespace>
 	<Nullable>disable</Nullable>
   </PropertyGroup>
 
 	<ItemGroup>
-		<Analyzer Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.CodeUpgrader.dll"/>
-		<Analyzer Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.Generator.dll" Condition="$(DesignTimeBuild) != 'true'"/>
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.System.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Engine.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Filesystem.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Game.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Reflection.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Mounting.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Tools.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Compiling.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Microsoft.CodeAnalysis.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Microsoft.CodeAnalysis.CSharp.dll" />
-		<Reference Include="E:\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Bind.dll" />
+		<Analyzer Include="E:\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.CodeUpgrader.dll"/>
+		<Analyzer Include="E:\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.Generator.dll" Condition="$(DesignTimeBuild) != 'true'"/>
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.System.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Engine.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Filesystem.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Game.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Reflection.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Mounting.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Tools.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Compiling.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Microsoft.CodeAnalysis.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Microsoft.CodeAnalysis.CSharp.dll" />
+		<Reference Include="E:\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Bind.dll" />
 	</ItemGroup>
 
   <ItemGroup>

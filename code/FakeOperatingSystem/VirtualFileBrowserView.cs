@@ -703,14 +703,22 @@ public class VirtualFileBrowserView : FileBrowserView
 
 	public void MoveFile( string oldPath, string newPath )
 	{
-		if ( !_vfs.FileExists( oldPath ) )
+		try
 		{
-			Log.Warning( $"File not found for moving: {oldPath}" );
-			return;
+			if ( !_vfs.FileExists( oldPath ) )
+			{
+				Log.Warning( $"File not found for moving: {oldPath}" );
+				return;
+			}
+			var content = _vfs.ReadAllBytes( oldPath );
+			_vfs.WriteAllBytes( newPath, content ); // Simpler write
+			_vfs.DeleteFile( oldPath );
 		}
-		var content = _vfs.ReadAllBytes( oldPath );
-		_vfs.WriteAllBytes( newPath, content ); // Simpler write
-		_vfs.DeleteFile( oldPath );
+		catch ( Exception ex )
+		{
+			Log.Error( $"Error moving file from {oldPath} to {newPath}: {ex.Message}" );
+		}
+
 	}
 
 	public void MoveDirectory( string oldPath, string newPath )
@@ -722,6 +730,27 @@ public class VirtualFileBrowserView : FileBrowserView
 		}
 		CopyDirectoryRecursive( oldPath, newPath );
 		_vfs.DeleteDirectory( oldPath, true );
+	}
+
+	public void MoveToRecycleBin( string path )
+	{
+		if ( !_vfs.FileExists( path ) && !_vfs.DirectoryExists( path ) )
+		{
+			Log.Warning( $"Path not found for moving to recycle bin: {path}" );
+			return;
+		}
+		var recycleBinPath = Path.Combine( @"C:\Recycled", System.IO.Path.GetFileName( path ) ); // Use System.IO.Path
+		if ( _vfs.DirectoryExists( path ) )
+		{
+			CopyDirectoryRecursive( path, recycleBinPath );
+			_vfs.DeleteDirectory( path, true );
+		}
+		else
+		{
+			var content = _vfs.ReadAllBytes( path );
+			_vfs.WriteAllBytes( recycleBinPath, content );
+			_vfs.DeleteFile( path );
+		}
 	}
 
 	private void CopyDirectoryRecursive( string sourceDir, string destDir )
@@ -885,7 +914,8 @@ public class VirtualFileBrowserView : FileBrowserView
 					if ( shellItem == null ) goto EndGhost;
 					var targetShellFolder = targetView._shellManager.GetFolder( targetView._currentShellPath );
 					if ( targetShellFolder?.RealPath == null ) goto EndGhost;
-					string newPath = Path.Combine( targetShellFolder.RealPath, crossDraggedItem.Name );
+					var crossDraggedItemName = Path.GetFileName( crossDraggedItem.FullPath );
+					string newPath = Path.Combine( targetShellFolder.RealPath, crossDraggedItemName );
 					if ( crossDraggedItem.IsDirectory ) MoveDirectory( shellItem.RealPath, newPath );
 					else MoveFile( shellItem.RealPath, newPath );
 					if ( !targetView.AutoArrangeIcons && targetView.ListView.ViewMode == XGUI.ListView.ListViewMode.Icons )
@@ -894,7 +924,7 @@ public class VirtualFileBrowserView : FileBrowserView
 						var dropPos = e.ScreenPosition - new Vector2( targetListViewRect.Left, targetListViewRect.Top ) - grabOffset;
 						dropPos.x = Math.Max( 0, dropPos.x ); dropPos.y = Math.Max( 0, dropPos.y );
 						if ( !targetView._iconPositions.ContainsKey( targetView._currentShellPath ) ) targetView._iconPositions[targetView._currentShellPath] = new();
-						string newShellPath = targetView._currentShellPath.TrimEnd( '/', '\\' ) + "/" + crossDraggedItem.Name;
+						string newShellPath = targetView._currentShellPath.TrimEnd( '/', '\\' ) + "/" + crossDraggedItemName;
 						targetView._iconPositions[targetView._currentShellPath][newShellPath] = dropPos;
 						targetView.SaveIconPositions( targetView._currentShellPath );
 					}
@@ -917,7 +947,7 @@ public class VirtualFileBrowserView : FileBrowserView
 						if ( shellItem == null ) return; // Early exit
 						var targetShellItem = _shellManager.GetItems( _currentShellPath ).FirstOrDefault( i => i.Path == targetFolder.FullPath );
 						if ( targetShellItem == null ) return; // Early exit
-						string newPath = Path.Combine( targetShellItem.RealPath, draggedItem.Name );
+						string newPath = Path.Combine( targetShellItem.RealPath, Path.GetFileName( draggedItem.FullPath ) );
 						if ( draggedItem.IsDirectory ) MoveDirectory( shellItem.RealPath, newPath );
 						else MoveFile( shellItem.RealPath, newPath );
 						Refresh();

@@ -81,6 +81,9 @@ public class Registry
 	{
 		Instance = this;
 
+		// --- HKEY_CLASSES_ROOT ---
+		_hives["HKEY_CLASSES_ROOT"] = new RegistryHive( "HKEY_CLASSES_ROOT", @"C:\Windows\System32\config\CLASSES.DAT" );
+
 		// --- HKEY_LOCAL_MACHINE ---
 		var hklmRootKey = new RegistryKey();
 		var hklmHive = new RegistryHive( "HKEY_LOCAL_MACHINE", hklmRootKey, @"C:\Windows\System32\config\HKLM_VIRTUAL.hive" );

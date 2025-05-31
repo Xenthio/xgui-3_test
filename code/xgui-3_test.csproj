@@ -39,21 +39,21 @@
 	</ItemGroup>
 
   <PropertyGroup>
-	<OutputPath>..\..\..\SteamLibrary\steamapps\common\sbox/.vs/output/</OutputPath>
-	<DocumentationFile>..\..\..\SteamLibrary\steamapps\common\sbox/.vs/output/xgui-3_test.xml</DocumentationFile>
+	<OutputPath>..\..\..\steamlibrary\steamapps\common\sbox/.vs/output/</OutputPath>
+	<DocumentationFile>..\..\..\steamlibrary\steamapps\common\sbox/.vs/output/xgui-3_test.xml</DocumentationFile>
 	<RootNamespace>Sandbox</RootNamespace>
 	<Nullable>disable</Nullable>
   </PropertyGroup>
 
 	<ItemGroup>
-		<Analyzer Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.CodeUpgrader.dll"/>
-		<Analyzer Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed\Sandbox.Generator.dll" Condition="$(DesignTimeBuild) != 'true'"/>
-		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.System.dll" />
-		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Engine.dll" />
-		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Filesystem.dll" />
-		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Game.dll" />
-		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Reflection.dll" />
-		<Reference Include="..\..\..\SteamLibrary\steamapps\common\sbox\bin\managed/Sandbox.Mounting.dll" />
+		<Analyzer Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.CodeUpgrader.dll"/>
+		<Analyzer Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.Generator.dll" Condition="$(DesignTimeBuild) != 'true'"/>
+		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.System.dll" />
+		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Engine.dll" />
+		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Filesystem.dll" />
+		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Game.dll" />
+		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Reflection.dll" />
+		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed/Sandbox.Mounting.dll" />
 	</ItemGroup>
 
   <ItemGroup>
