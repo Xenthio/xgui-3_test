@@ -427,18 +427,20 @@ public class VirtualFileBrowserView : FileBrowserView
 	public override void AddFileToView( string file, bool isFullPath = false, string nameOverride = "" )
 	{
 		string fullPath = isFullPath ? file : Path.Combine( CurrentPath ?? "", file );
-		string displayName = nameOverride == "" ? System.IO.Path.GetFileName( fullPath ) : nameOverride; // Use System.IO.Path
+		string displayName = nameOverride == "" ? System.IO.Path.GetFileName( fullPath ) : nameOverride;
 		string extension = System.IO.Path.GetExtension( displayName );
 		string nameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension( displayName );
 
+		// Only hide extension if the type is known (has a FileAssociation)
 		if ( _hideFileExtensions && !string.IsNullOrEmpty( extension ) )
 		{
-			// For simplicity, we'll hide all extensions if the flag is set.
-			// A more advanced version would check against FileAssociationManager for "known" types.
-			displayName = nameWithoutExtension;
+			var assoc = FileAssociationManager.Instance?.GetAssociation( extension );
+			if ( assoc != null )
+			{
+				displayName = nameWithoutExtension;
+			}
 		}
 
-		// Call base.AddFileToView with the potentially modified displayName as the nameOverride
 		base.AddFileToView( file, isFullPath, displayName );
 	}
 
