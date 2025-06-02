@@ -1,5 +1,4 @@
-﻿using FakeDesktop;
-using FakeOperatingSystem.OSFileSystem;
+﻿using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.Shell;
 using Sandbox;
 using System.Linq;
@@ -16,7 +15,6 @@ public class FakeOSLoader : Component
 	public static bool UserSystemEnabled = true; // Set to false for single-user mode
 
 	public static FakeOSLoader Instance;
-	OldVirtualFileSystem _oldVirtualFileSystem;
 	public VirtualFileSystem VirtualFileSystem;
 	public ShellNamespace ShellNamespace;
 	ProcessManager _processManager;
@@ -50,7 +48,6 @@ public class FakeOSLoader : Component
 	public async Task Boot() // Changed to async Task
 	{
 		Instance = this;
-		_oldVirtualFileSystem = new OldVirtualFileSystem( FileSystem.Data, "FakeSystemRoot" );
 		Registry = new Registry();
 		UserManager = new UserManager();
 		UserManager.LoadUsers(); // Load existing users first
