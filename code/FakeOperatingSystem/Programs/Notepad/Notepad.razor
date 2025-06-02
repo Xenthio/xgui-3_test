@@ -15,7 +15,7 @@
 	  class="notepad-window">
 
 	<div class="window-content">
-		<div>
+		<div style="flex-shrink: 0">
 			<!-- Menu Bar -->
 			<div class="toolbar menu-toolbar">
 				<button @ref=FileMenuButton class="menu-item" onclick=@ShowFileMenu>File</button>
@@ -27,12 +27,14 @@
 		</div>
 
 		<!-- Content Area -->
-		<div class="content-area column" style="flex-grow: 1;">
-			<TextEntry @ref=TextArea class="text-area" multiline=true Text="@TextContent" OnTextEdited="@OnTextEdited" />
-		</div> 
+		<layoutboxinset>
+			<scrollpanel class="content-area column" style="flex-grow: 1;">
+				<TextEntry @ref=TextArea class="text-area" multiline=true Text="@TextContent" OnTextEdited="@OnTextEdited" />
+			</scrollpanel> 
+		</layoutboxinset>
 
 		<!-- Status Bar -->
-		<div class="status-bar">
+		<div class="status-bar" style="flex-shrink: 0">
 			<div class="status-text">@StatusText</div>
 		</div>
 	</div> 
