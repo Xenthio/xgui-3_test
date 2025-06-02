@@ -24,17 +24,23 @@
 			<toolbar @ref=AddressToolbar class="address-toolbar" style="flex-shrink:0" draggable="true"></toolbar>
 		</toolbarcontainer>
 
-		<div class="row padding-top padding-bottom" style="overflow:hidden; flex-grow:1">
+		<div class="row padding-top" style="overflow:hidden; flex-grow:1">
 			<filebrowsertree @ref=BrowserTree class="browser-tree" style="width:30%"></filebrowsertree>
 			<div class="splitter"></div>
 			<virtualfilebrowserview @ref=BrowserView class="browser-view" style="width:70%"></virtualfilebrowserview>
 		</div>
-		<div class="status-bar layout-inset" style="flex-shrink:0;">
-			<div class="status-text">@StatusText</div>
-		</div>
 
-		<resizer>
-		</resizer>
+		@if (ShowStatusBar)
+		{
+			<div class="margin-top column" style="flex-shrink:0">
+				<div class="status-bar layout-inset" style="flex-shrink:0;">
+					<div class="status-text">@StatusText</div>
+				</div>
+				<resizer>
+				</resizer>
+			</div>
+
+		}
 	</div>
 </root>
 
@@ -45,6 +51,13 @@
 	private ComboBox FilesystemSelector;
 
 	private string CurrentPath = "";
+
+	//public bool ShowCommandBar { get; set; } = true;
+	//public bool ShowAddressBar { get; set; } = true;
+	//public bool ShowLinksBar { get; set; } = false;
+	//public bool ShowRadioBar { get; set; } = false;
+
+	public bool ShowStatusBar { get; set; } = true;
 
 	// New property for initial path
 	public string InitialPath { get; set; }
@@ -84,7 +97,7 @@
 
 				// window title of open folder name
 				Title = $"{System.IO.Path.GetFileName(path)}";
-				var icon = FileIconHelper.GetFolderIcon(path, OldVirtualFileSystem.Instance, 16);
+				var icon = FileIconHelper.GetFolderIcon(path, 16);
 				TitleBar.TitleIcon.Style.SetBackgroundImage(icon);
 
 				OnNavigate(path);
@@ -118,23 +131,23 @@
 			return "";
 
 		// Get the entry to check its type
-		var entry = OldVirtualFileSystem.Instance.GetEntry(virtualPath);
+		var entry = ShellNamespace.Instance.GetFolder(virtualPath);
 		if (entry == null)
 			return virtualPath;
 
 		// Transform the path based on where we are in the virtual filesystem
-		if (virtualPath == OldVirtualFileSystem.DESKTOP)
+		if (virtualPath == ShellNamespace.DESKTOP)
 		{
 			return "Desktop";
 		}
-		else if (virtualPath == $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}")
+		else if (virtualPath == $"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}")
 		{
 			return "My Computer";
 		}
-		else if (virtualPath.StartsWith($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/"))
+		else if (virtualPath.StartsWith($"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}/"))
 		{
 			// Handle paths inside My Computer
-			string relativePath = virtualPath.Substring(($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/").Length);
+			string relativePath = virtualPath.Substring(($"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}/").Length);
 
 			// Check if we're in a drive
 			if (relativePath.Contains('/'))
@@ -156,22 +169,178 @@
 				return relativePath;
 			}
 		}
-		else if (virtualPath.StartsWith($"{OldVirtualFileSystem.DESKTOP}/"))
+		else if (virtualPath.StartsWith($"{ShellNamespace.DESKTOP}/"))
 		{
 			// Handle paths directly under Desktop
-			return virtualPath.Substring(($"{OldVirtualFileSystem.DESKTOP}/").Length);
+			return virtualPath.Substring(($"{ShellNamespace.DESKTOP}/").Length);
 		}
 
 		// Default case - return the original path
 		return virtualPath;
 	}
 
+	protected override void SetupFileMenu(ContextMenu menu)
+	{
+		BrowserView?.CreateFileNewMenu(menu);
+		menu.AddMenuItem("Open", () => Log.Info("Open Item")).SetClass("disabled", true);
+		menu.AddSeparator();
+		menu.AddMenuItem("Close", () => Close());
+	}
+	protected override void SetupEditMenu(ContextMenu menu)
+	{
+		menu.AddMenuItem("Undo", () => Log.Info("Cut")).SetClass("disabled", true);
+		menu.AddSeparator();
+		menu.AddMenuItem("Cut", () => Log.Info("Cut")).SetClass("disabled", true);
+		menu.AddMenuItem("Copy", () => Log.Info("Copy")).SetClass("disabled", true);
+		menu.AddMenuItem("Paste", () => Log.Info("Paste")).SetClass("disabled", true);
+		menu.AddMenuItem("Paste Shortcut", () => Log.Info("Paste Shortcut")).SetClass("disabled", true);
+		menu.AddSeparator();
+		menu.AddMenuItem("Select All", () => Log.Info("Select All"));
+	}
+
 	protected override void SetupViewMenu(ContextMenu menu)
 	{
-		menu.AddMenuItem("Icons", () => SetViewMode(FileBrowserViewMode.Icons));
-		menu.AddMenuItem("List", () => SetViewMode(FileBrowserViewMode.List));
-		menu.AddMenuItem("Details", () => SetViewMode(FileBrowserViewMode.Details));
+		menu.AddSubmenuItem("Toolbars", submenu =>
+		{
+			submenu.AddCheckItem(
+				"Command Bar",
+				() => CommandToolbar.ComputedStyle.Display == DisplayMode.Flex,
+				() =>
+				{
+					if (CommandToolbar.ComputedStyle.Display == DisplayMode.Flex)
+					{
+						CommandToolbar.Style.Display = DisplayMode.None;
+					}
+					else
+					{
+						CommandToolbar.Style.Display = DisplayMode.Flex;
+					}
+					StateHasChanged();
+					menu.Delete();
+				}
+			);
+			submenu.AddCheckItem(
+				"Address Bar",
+				() => AddressToolbar.ComputedStyle.Display == DisplayMode.Flex,
+				() =>
+				{
+					if (AddressToolbar.ComputedStyle.Display == DisplayMode.Flex)
+					{
+						AddressToolbar.Style.Display = DisplayMode.None;
+					}
+					else
+					{
+						AddressToolbar.Style.Display = DisplayMode.Flex;
+					}
+					StateHasChanged();
+					menu.Delete();
+				}
+			);
+			submenu.AddCheckItem(
+				"Links Bar",
+				() => false,
+				() =>
+				{
+					StateHasChanged();
+					menu.Delete();
+				}
+			).SetClass("disabled", true);
+			submenu.AddCheckItem(
+				"Radio Bar",
+				() => false,
+				() =>
+				{
+					StateHasChanged();
+					menu.Delete();
+				}
+			).SetClass("disabled", true);
+			submenu.AddSeparator();
+			submenu.AddCheckItem("Text Labels", () => true, () => Log.Info("Text Labels")).SetClass("disabled", true);
+		});
+		menu.AddCheckItem(
+			"Status Bar",
+			() => ShowStatusBar,
+			() =>
+			{
+				ShowStatusBar = !ShowStatusBar;
+				StateHasChanged();
+				menu.Delete();
+			}
+		);
+		menu.AddSubmenuItem("Explorer Bar", submenu =>
+		{
+			submenu.AddCheckItem(
+				"Search",
+				() => false,
+				() => Log.Info("Show Search Pane")
+			).SetClass("disabled", true);
+			submenu.AddCheckItem(
+				"Favorites",
+				() => false,
+				() => Log.Info("Show Favourites Pane")
+			).SetClass("disabled", true);
+			submenu.AddCheckItem(
+				"History",
+				() => false,
+				() => Log.Info("Show History Pane")
+			).SetClass("disabled", true);
+			submenu.AddCheckItem(
+				"Folders",
+				() => BrowserTree.ComputedStyle.Display == DisplayMode.Flex,
+				() =>
+				{
+					if (BrowserTree.ComputedStyle.Display == DisplayMode.Flex)
+					{
+						BrowserTree.Style.Display = DisplayMode.None;
+					}
+					else
+					{
+						BrowserTree.Style.Display = DisplayMode.Flex;
+					}
+					StateHasChanged();
+					menu.Delete();
+				}
+			);
+			submenu.AddSeparator();
+			submenu.AddMenuItem("Tip of the Day", () => Log.Info("Tip of the Day"));
+		});
 		menu.AddSeparator();
+		menu.AddRadioItem(
+			"Large Icons",
+			() => BrowserView?.ViewMode == FileBrowserViewMode.Icons,
+			() => { SetViewMode(FileBrowserViewMode.Icons); menu.Delete(); }
+		);
+		menu.AddRadioItem(
+			"List",
+			() => BrowserView?.ViewMode == FileBrowserViewMode.List,
+			() => { SetViewMode(FileBrowserViewMode.List); menu.Delete(); }
+		);
+		menu.AddRadioItem(
+			"Details",
+			() => BrowserView?.ViewMode == FileBrowserViewMode.Details,
+			() => { SetViewMode(FileBrowserViewMode.Details); menu.Delete(); }
+		);
+		menu.AddSeparator();
+		menu.AddSubmenuItem("Arrange Icons", submenu =>
+		{
+			submenu.AddMenuItem("By Name", () => { BrowserView?.ArrangeIcons(); });
+			submenu.AddMenuItem("By Type", () => { });
+			submenu.AddMenuItem("By Size", () => { });
+			submenu.AddMenuItem("By Date", () => { });
+			submenu.AddSeparator();
+			var autoArrangeItem = submenu.AddCheckItem(
+				"Auto Arrange",
+				() => BrowserView?.AutoArrangeIcons ?? false,
+				() =>
+				{
+					BrowserView?.SetAutoArrangeIcons(!BrowserView?.AutoArrangeIcons ?? true);
+				}
+			);
+		});
+		menu.AddMenuItem("Line Up Icons", () => { BrowserView?.LineUpIconsToGrid(); });
+		menu.AddSeparator();
+		menu.AddMenuItem("Refresh", () => { BrowserView?.Refresh(); menu.Delete(); });
+		menu.AddMenuItem("Folder Options...", () => Log.Info("Folder Options"));
 	}
 
 	protected override void SetupMenuToolbar()
@@ -188,6 +357,13 @@
 			menu.AddMenuItem("Desktop", () => BrowserView.NavigateToShellPath(ShellNamespace.DESKTOP));
 			menu.AddMenuItem("My Computer", () => BrowserView.NavigateToShellPath($"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}"));
 			menu.AddMenuItem("My Documents", () => BrowserView.NavigateToShellPath($"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_DOCUMENTS}"));
+		});
+
+
+		// Add Help menu
+		MenuToolbar.AddMenuItem("Help", (menu) =>
+		{
+			menu.AddMenuItem("About", () => Log.Info("About"));
 		});
 	}
 
@@ -227,10 +403,21 @@
 			() => { /* main button click */ },
 			menu =>
 			{
-				menu.AddMenuItem("Large Icons", () => SetViewMode(FileBrowserViewMode.Icons));
-				//menu.AddMenuItem("Small Icons", () => SetViewMode(FileBrowserViewMode.SmallIcons));
-				menu.AddMenuItem("Details", () => SetViewMode(FileBrowserViewMode.Details));
-				menu.AddMenuItem("List", () => SetViewMode(FileBrowserViewMode.List));
+				menu.AddRadioItem(
+					"Large Icons",
+					() => BrowserView?.ViewMode == FileBrowserViewMode.Icons,
+					() => { SetViewMode(FileBrowserViewMode.Icons); menu.Delete(); }
+				);
+				menu.AddRadioItem(
+					"List",
+					() => BrowserView?.ViewMode == FileBrowserViewMode.List,
+					() => { SetViewMode(FileBrowserViewMode.List); menu.Delete(); }
+				);
+				menu.AddRadioItem(
+					"Details",
+					() => BrowserView?.ViewMode == FileBrowserViewMode.Details,
+					() => { SetViewMode(FileBrowserViewMode.Details); menu.Delete(); }
+				);
 			}
 		);
 	}
@@ -256,7 +443,6 @@
 				button.SetClass("active", isActive);
 			}
 
-			BrowserView.Refresh();
 			BrowserView.UpdateViewMode();
 		}
 	}
@@ -297,16 +483,16 @@
 	{
 		// Check for simple cases first
 		if (input.Equals("Desktop", StringComparison.OrdinalIgnoreCase))
-			return OldVirtualFileSystem.DESKTOP;
+			return ShellNamespace.DESKTOP;
 
 		if (input.Equals("My Computer", StringComparison.OrdinalIgnoreCase))
-			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}";
+			return $"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}";
 
 		if (input.Equals("My Documents", StringComparison.OrdinalIgnoreCase))
-			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_DOCUMENTS}";
+			return $"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_DOCUMENTS}";
 
 		if (input.Equals("Recycle Bin", StringComparison.OrdinalIgnoreCase))
-			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.RECYCLE_BIN}";
+			return $"{ShellNamespace.DESKTOP}/{ShellNamespace.RECYCLE_BIN}";
 
 		// Check if input starts with a drive letter
 		if (input.Length >= 2 && input[1] == ':')
@@ -315,23 +501,23 @@
 			string pathAfterDrive = input.Length > 2 ? input.Substring(2) : "";
 
 			// Drive path in My Computer
-			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/{driveLetter}{pathAfterDrive}";
+			return $"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}/{driveLetter}{pathAfterDrive}";
 		}
 
 		// Check if it's a special folder in My Computer
-		if (OldVirtualFileSystem.Instance.GetEntry($"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/{input}") != null)
+		if (ShellNamespace.Instance.GetFolder($"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}/{input}") != null)
 		{
-			return $"{OldVirtualFileSystem.DESKTOP}/{OldVirtualFileSystem.MY_COMPUTER}/{input}";
+			return $"{ShellNamespace.DESKTOP}/{ShellNamespace.MY_COMPUTER}/{input}";
 		}
 
 		// Check if it's a direct child of Desktop
-		if (OldVirtualFileSystem.Instance.GetEntry($"{OldVirtualFileSystem.DESKTOP}/{input}") != null)
+		if (ShellNamespace.Instance.GetFolder($"{ShellNamespace.DESKTOP}/{input}") != null)
 		{
-			return $"{OldVirtualFileSystem.DESKTOP}/{input}";
+			return $"{ShellNamespace.DESKTOP}/{input}";
 		}
 
 		// If it's a full virtual path already, use it directly
-		if (OldVirtualFileSystem.Instance.GetEntry(input) != null)
+		if (ShellNamespace.Instance.GetFolder(input) != null)
 		{
 			return input;
 		}

@@ -6,7 +6,7 @@ namespace FakeDesktop;
 /// <summary>
 /// Represents a file type association in the virtual file system
 /// </summary>
-public class FileAssociation
+public class OldFileAssociation
 {
 	/// <summary>
 	/// The file extension this association applies to (e.g., ".txt")
@@ -37,12 +37,12 @@ public class FileAssociation
 	/// The actions that can be performed on this file type
 	/// </summary>
 	public Dictionary<string, FileAction> Actions { get; set; } = new Dictionary<string, FileAction>();
-	public static Dictionary<string, FileAssociation> Associations { get; set; } = new Dictionary<string, FileAssociation>();
+	public static Dictionary<string, OldFileAssociation> Associations { get; set; } = new Dictionary<string, OldFileAssociation>();
 
 	/// <summary>
 	/// Create a new file association
 	/// </summary>
-	public FileAssociation( string extension, string friendlyName, string iconName, string defaultProgram, bool shouldShowInShellCreateNew = false )
+	public OldFileAssociation( string extension, string friendlyName, string iconName, string defaultProgram, bool shouldShowInShellCreateNew = false )
 	{
 		Extension = extension.StartsWith( "." ) ? extension : "." + extension;
 		FriendlyName = friendlyName;

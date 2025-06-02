@@ -7,7 +7,7 @@ TaskBar {
 		border-bottom: 0px;
 
 		&::before {
-			position:absolute;
+			position: absolute;
 			border-left: 0px;
 			border-right: 0px;
 			border-bottom: 0px;
@@ -37,7 +37,7 @@ TaskBar {
 
 		.quick-access {
 			align-items: center;
-			height: 100%;
+			align-self: stretch;
 
 			.quick-access-btn {
 				background-color: transparent;
@@ -70,13 +70,14 @@ TaskBar {
 
 		.open-windows {
 			align-items: center;
-			height: 100%;
+			align-self: stretch;
 
 			.window-btn {
 				justify-content: flex-start;
 				height: 22px;
 				width: 158px;
 				margin-right: 3px;
+
 				.label {
 					text-overflow: ellipsis;
 				}
@@ -91,7 +92,12 @@ TaskBar {
 			position: relative;
 			margin: 0px;
 			margin-right: 4px;
+			align-self: stretch;
 			left: 0px;
+			top: 0px;
+			bottom: 0px;
+			margin-top: 2px;
+			margin-bottom: 2px;
 		}
 
 		.spacer {
@@ -102,7 +108,7 @@ TaskBar {
 			padding-left: 1px;
 			padding-right: 1px;
 			align-items: center;
-			height: 100%;
+			align-self: stretch;
 
 			.tray-btn {
 				background-color: transparent;

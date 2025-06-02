@@ -23,39 +23,39 @@
 		<!-- Main Pane -->
 		<div class="startmenu-right-pane">
 			<div class="ContextMenu column">
-				<button class="MenuItem" @ref=ProgramsButton onmouseover=@OpenProgramsMenu>
+				<panel class="MenuItem" @ref=ProgramsButton onmouseover=@OpenProgramsMenu>
 					<img class="ItemIcon" src="XGUI/Resources/95/prog_folder_icon_24.png"/>
 					Programs
 					<iconpanel class="ItemArrow">arrow_right</iconpanel>
-				</button>
-				<button class="MenuItem" @ref=DocumentsButton onmouseover=@OpenDocumentsMenu>
+				</panel>
+				<panel class="MenuItem" @ref=DocumentsButton onmouseover=@OpenDocumentsMenu>
 					<img class="ItemIcon" src="XGUI/Resources/95/doc_folder_icon_24.png" />
 					Documents
 					<iconpanel class="ItemArrow">arrow_right</iconpanel>
-				</button>
-				<button class="MenuItem" @ref=SettingsButton onmouseover=@OpenSettingsMenu>
+				</panel>
+				<panel class="MenuItem" @ref=SettingsButton onmouseover=@OpenSettingsMenu>
 					<img class="ItemIcon" src="XGUI/Resources/95/settings_icon_24.png" />
 					Settings
 					<iconpanel class="ItemArrow">arrow_right</iconpanel>
-				</button>
-				<button class="MenuItem" @ref=FindButton onmouseover=@OpenFindMenu>
+				</panel>
+				<panel class="MenuItem" @ref=FindButton onmouseover=@OpenFindMenu>
 					<img class="ItemIcon" src="XGUI/Resources/95/find_icon_24.png" />
 					Find
 					<iconpanel class="ItemArrow">arrow_right</iconpanel>
-				</button>
-				<button class="MenuItem" @ref=HelpButton onmouseover=@CloseActiveMenu>
+				</panel>
+				<panel class="MenuItem" @ref=HelpButton onmouseover=@CloseActiveMenu>
 					<img class="ItemIcon" src="XGUI/Resources/95/help_icon_24.png" />
 					Help
-				</button>
-				<button class="MenuItem" @ref=RunButton onmouseover=@CloseActiveMenu>
+				</panel>
+				<panel class="MenuItem" @ref=RunButton onmouseover=@CloseActiveMenu>
 					<img class="ItemIcon" src="XGUI/Resources/95/run_icon_24.png" />
 					Run...
-				</button>
+				</panel>
 				<hr />
-				<button class="MenuItem" @ref=ShutdownButton onmouseover=@CloseActiveMenu onclick=@OpenShutdownMenu>
+				<panel class="MenuItem" @ref=ShutdownButton onmouseover=@CloseActiveMenu onclick=@OpenShutdownMenu>
 					<img class="ItemIcon" src="XGUI/Resources/95/shutdown_icon_24.png" />
 					Shut down...
-				</button>
+				</panel>
 			</div>
 		</div>
 	</div>
@@ -65,13 +65,13 @@
 	public Button OwnerStartButton;
 
 	// References to menu buttons
-	public Button ProgramsButton;
-	public Button DocumentsButton;
-	public Button SettingsButton;
-	public Button FindButton;
-	public Button HelpButton;
-	public Button RunButton;
-	public Button ShutdownButton;
+	public Panel ProgramsButton;
+	public Panel DocumentsButton;
+	public Panel SettingsButton;
+	public Panel FindButton;
+	public Panel HelpButton;
+	public Panel RunButton;
+	public Panel ShutdownButton;
 
 	// Currently active menu
 	private ContextMenu activeMenu;

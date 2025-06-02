@@ -1,9 +1,11 @@
 @using System;
 @using System.Collections.Generic;
 @using System.Linq;
+@using FakeOperatingSystem.OSFileSystem
 @using FakeOperatingSystem.User
 @using Sandbox;
 @using Sandbox.UI;
+@using System.IO
 @using XGUI;
 @using FakeDesktop;
 @using FakeOperatingSystem;
@@ -84,7 +86,7 @@
 		_quickAccessItems.Clear();
 
 		// Get the VirtualFileSystem instance
-		var virtualFileSystem = OldVirtualFileSystem.Instance;
+		var virtualFileSystem = VirtualFileSystem.Instance;
 		if (virtualFileSystem == null)
 			return;
 
@@ -92,43 +94,61 @@
 		string quickLaunchPath = UserProfileHelper.GetQuickLaunchPath();
 
 		// Check if the folder exists
-		var quickLaunchEntry = virtualFileSystem.GetEntry(quickLaunchPath);
-		if (quickLaunchEntry == null)
+		if (virtualFileSystem.FileExists(quickLaunchPath))
 			return;
 
 		Log.Info("Loading Quick Access Items");
 		// Get folder contents
-		var contents = virtualFileSystem.GetDirectoryContents(quickLaunchPath);
+		var contents = virtualFileSystem.GetFiles(quickLaunchPath);
+
 
 		// Add each item to the quick launch items
 		foreach (var entry in contents)
 		{
-			Log.Info($"Adding Quick Access Item: {entry.Name} ({entry.Type})");
 			int iconSize = 16;
 			string iconPath;
-
-			if (entry.Type == OldVirtualFileSystem.EntryType.Directory ||
-				entry.Type == OldVirtualFileSystem.EntryType.SpecialFolder)
-			{
-				iconPath = FileIconHelper.GetFolderIcon(entry.Path, virtualFileSystem, iconSize);
-				_quickAccessItems.Add(new QuickAccessItem(
-					entry.Name,
-					entry.Path,
-					iconPath,
-					true
-				));
-			}
-			else
-			{
-				iconPath = FileIconHelper.GetFileIcon(entry.Path, virtualFileSystem, iconSize);
-				_quickAccessItems.Add(new QuickAccessItem(
-					entry.Name,
-					entry.Path,
-					iconPath,
-					false
-				));
-			}
+			var entryName = Path.GetFileNameWithoutExtension(entry);
+			Log.Info($"Adding Quick Access Item: {entryName}"); 
+			iconPath = FileIconHelper.GetFileIcon(entry, iconSize);
+			_quickAccessItems.Add(new QuickAccessItem(
+				entryName,
+				entry,
+				iconPath,
+				true
+			));
 		}
+		// Todo, readd folder back.
+
+		// Add each item to the quick launch items
+		// Old Reference Code for OldVirtualFileSystem
+		// foreach (var entry in contents)
+		// {
+		// 	Log.Info($"Adding Quick Access Item: {entry.Name} ({entry.Type})");
+		// 	int iconSize = 16;
+		// 	string iconPath;
+
+		// 	if (entry.Type == OldVirtualFileSystem.EntryType.Directory ||
+		// 		entry.Type == OldVirtualFileSystem.EntryType.SpecialFolder)
+		// 	{
+		// 		iconPath = FileIconHelper.GetFolderIcon(entry.Path, iconSize);
+		// 		_quickAccessItems.Add(new QuickAccessItem(
+		// 			entry.Name,
+		// 			entry.Path,
+		// 			iconPath,
+		// 			true
+		// 		));
+		// 	}
+		// 	else
+		// 	{
+		// 		iconPath = FileIconHelper.GetFileIcon(entry.Path, iconSize);
+		// 		_quickAccessItems.Add(new QuickAccessItem(
+		// 			entry.Name,
+		// 			entry.Path,
+		// 			iconPath,
+		// 			false
+		// 		));
+		// 	}
+		// }
 	}
 
 	// Method to open quick access item

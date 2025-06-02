@@ -36,7 +36,7 @@ public class OldVirtualFileSystem
 	private Dictionary<string, List<VirtualEntry>> _cachedDirectoryContents = new();
 
 	// File associations for handling file types
-	private Dictionary<string, FileAssociation> _fileAssociations = new Dictionary<string, FileAssociation>( StringComparer.OrdinalIgnoreCase );
+	private Dictionary<string, OldFileAssociation> _fileAssociations = new Dictionary<string, OldFileAssociation>( StringComparer.OrdinalIgnoreCase );
 
 	public static OldVirtualFileSystem Instance { get; private set; } = null!;
 
@@ -65,25 +65,25 @@ public class OldVirtualFileSystem
 	private void SetupDefaultFileAssociations()
 	{
 		// Text files
-		var txtAssociation = new FileAssociation( ".txt", "Text Document", "txt", "notepad.exe", shouldShowInShellCreateNew: true );
+		var txtAssociation = new OldFileAssociation( ".txt", "Text Document", "txt", "notepad.exe", shouldShowInShellCreateNew: true );
 		RegisterFileAssociation( txtAssociation );
 
 		// HTML files
-		var htmlAssociation = new FileAssociation( ".html", "HTML Document", "html", "iexplore.exe" );
+		var htmlAssociation = new OldFileAssociation( ".html", "HTML Document", "html", "iexplore.exe" );
 		htmlAssociation.AddAction( "edit", "Edit", "notepad.exe" );
 		RegisterFileAssociation( htmlAssociation );
 
 		// WAD files (for Doom)
-		var wadAssociation = new FileAssociation( ".wad", "Doom WAD File", "wad", "doom95.exe" );
+		var wadAssociation = new OldFileAssociation( ".wad", "Doom WAD File", "wad", "doom95.exe" );
 		RegisterFileAssociation( wadAssociation );
 
 		// Shortcuts
-		var lnkAssociation = new FileAssociation( ".lnk", "Shortcut", "lnk", null );
+		var lnkAssociation = new OldFileAssociation( ".lnk", "Shortcut", "lnk", null );
 		// Shortcuts are handled specially in the file browser
 		RegisterFileAssociation( lnkAssociation );
 
 		// Ini files
-		var iniAssociation = new FileAssociation( ".ini", "INI File", "ini", "notepad.exe" );
+		var iniAssociation = new OldFileAssociation( ".ini", "INI File", "ini", "notepad.exe" );
 		iniAssociation.AddAction( "edit", "Edit", "notepad.exe" );
 		RegisterFileAssociation( iniAssociation );
 
@@ -818,12 +818,12 @@ public class OldVirtualFileSystem
 	/// Registers a file association for a specific file extension
 	/// </summary>
 	/// <param name="association"></param>
-	public void RegisterFileAssociation( FileAssociation association )
+	public void RegisterFileAssociation( OldFileAssociation association )
 	{
 		_fileAssociations[association.Extension] = association;
 	}
 
-	public FileAssociation GetFileAssociation( string extension )
+	public OldFileAssociation GetFileAssociation( string extension )
 	{
 		if ( string.IsNullOrEmpty( extension ) )
 			return null;

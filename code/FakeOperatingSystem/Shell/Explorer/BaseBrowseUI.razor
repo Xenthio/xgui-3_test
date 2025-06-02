@@ -84,32 +84,19 @@
 		// Base menu setup
 		MenuToolbar.AddMenuItem("File", (menu) =>
 		{
-			menu.AddMenuItem("New", () => Log.Info("New Item"));
-			menu.AddMenuItem("Open", () => Log.Info("Open Item"));
-			menu.AddSeparator();
-			menu.AddMenuItem("Close", () => Close());
+			SetupFileMenu(menu);
 		});
 
 		// Add Edit menu
 		MenuToolbar.AddMenuItem("Edit", (menu) =>
 		{
-			menu.AddMenuItem("Cut", () => Log.Info("Cut"));
-			menu.AddMenuItem("Copy", () => Log.Info("Copy"));
-			menu.AddMenuItem("Paste", () => Log.Info("Paste"));
-			menu.AddSeparator();
-			menu.AddMenuItem("Select All", () => Log.Info("Select All"));
+			SetupEditMenu(menu);
 		});
 
 		// Add View menu - to be overridden by derived classes
 		MenuToolbar.AddMenuItem("View", (menu) =>
 		{
 			SetupViewMenu(menu);
-		});
-
-		// Add Help menu
-		MenuToolbar.AddMenuItem("Help", (menu) =>
-		{
-			menu.AddMenuItem("About", () => Log.Info("About"));
 		});
 
 		// Throbber
@@ -130,6 +117,24 @@
 	protected virtual void SetupViewMenu(ContextMenu menu)
 	{
 		// To be implemented by derived classes
+	}
+
+	protected virtual void SetupEditMenu(ContextMenu menu)
+	{
+		// To be implemented by derived classes
+		menu.AddMenuItem("Cut", () => Log.Info("Cut"));
+		menu.AddMenuItem("Copy", () => Log.Info("Copy"));
+		menu.AddMenuItem("Paste", () => Log.Info("Paste"));
+		menu.AddSeparator();
+		menu.AddMenuItem("Select All", () => Log.Info("Select All"));
+	}
+	protected virtual void SetupFileMenu(ContextMenu menu)
+	{
+		// To be implemented by derived classes
+		menu.AddMenuItem("New", () => Log.Info("New Item"));
+		menu.AddMenuItem("Open", () => Log.Info("Open Item"));
+		menu.AddSeparator();
+		menu.AddMenuItem("Close", () => Close());
 	}
 
 	protected Panel ForwardButton;
@@ -157,7 +162,7 @@
 	{
 		// Add address label
 		var addressLabel = new Label();
-		addressLabel.Text = "Address:";
+		addressLabel.Text = "Address";
 		addressLabel.AddClass("address-label");
 		AddressToolbar.AddItem(addressLabel);
 

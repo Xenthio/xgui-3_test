@@ -365,8 +365,9 @@ public class UserManager
 		string quickLaunchDir = Path.Combine( user.ProfilePath, "Application Data", "Microsoft", "Internet Explorer", "Quick Launch" );
 		VirtualFileSystem.Instance.CreateDirectory( quickLaunchDir );
 		await Task.Yield();
-		CreateShortcut( Path.Combine( quickLaunchDir, "Show Desktop.scf" ), "#!/bin/sh\n[Shell]\nCommand=2\nIconFile=explorer.exe,3\n[Taskbar]\nCommand=ToggleDesktop", "Show Desktop" ); // .scf content for Show Desktop
+		CreateShortcut( Path.Combine( quickLaunchDir, "Show Desktop.scf" ), "[Shell]\nCommand=2\nIconFile=explorer.exe,3\n[Taskbar]\nCommand=ToggleDesktop", "Show Desktop" ); // .scf content for Show Desktop
 		CreateShortcut( Path.Combine( quickLaunchDir, "Internet Explorer.lnk" ), "C:/Program Files/Internet Explorer/Iexplore.exe" );
+		CreateShortcut( Path.Combine( quickLaunchDir, "Outlook Express.lnk" ), "C:/Program Files/Outlook Express/outlook.exe" );
 		await Task.Yield();
 	}
 

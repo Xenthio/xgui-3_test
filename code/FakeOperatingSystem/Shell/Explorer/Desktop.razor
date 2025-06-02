@@ -10,64 +10,44 @@
 @inherits XGUIPanel
 
 <root>
-    <virtualfilebrowserview @ref=BrowserView class="browser-view" style="width:70%"></virtualfilebrowserview>
-    @{
+	<virtualfilebrowserview @ref=BrowserView class="browser-view" style="width:70%"></virtualfilebrowserview>
+	@{
 		BrowserView.ListView.ItemContainer.Style.FlexDirection = FlexDirection.Column;
-    }
+	}
 </root>
 
 @code {
-    private VirtualFileBrowserView BrowserView;
+	private VirtualFileBrowserView BrowserView;
 
-    protected override void OnAfterTreeRender(bool firstTime)
-    {
-        base.OnAfterTreeRender(firstTime);
+	protected override void OnAfterTreeRender(bool firstTime)
+	{
+		base.OnAfterTreeRender(firstTime);
 
-        if (firstTime)
-        {
+		// Can Navigate is set to false to prevent navigation within the browser view
+		BrowserView.CanNavigate = false;
+		if (firstTime)
+		{
 			BrowserView.DefaultDirection = FlexDirection.Column;
 			BrowserView.AutoArrangeIcons = false;
-            BrowserView.IconPositionsFileName = ".iconpositions_desktop";
+			BrowserView.IconPositionsFileName = ".iconpositions_desktop";
 
-            // Initialize browser view with virtual file system
-            BrowserView.Initialize(VirtualFileSystem.Instance, ShellNamespace.Instance, FileSystem.Data);
+			// Initialize browser view with virtual file system
+			BrowserView.Initialize(VirtualFileSystem.Instance, ShellNamespace.Instance, FileSystem.Data);
 
-            // Intercept directory opening to launch Explorer instead of navigating
-            BrowserView.OpenDirectoryEnabled = false;
-            BrowserView.OnDirectoryOpened += HandleDirectoryOpened;
+			// Set default view mode
+			BrowserView.ViewMode = FileBrowserViewMode.Icons;
 
-            // Set default view mode
-            BrowserView.ViewMode = FileBrowserViewMode.Icons;
+			// Navigate to Desktop - this will stay fixed
+			BrowserView.NavigateToShellPath(ShellNamespace.DESKTOP, sound: false);
+		}
+	}
 
-            // Navigate to Desktop - this will stay fixed
-            BrowserView.NavigateToShellPath(ShellNamespace.DESKTOP, sound: false);
-        }
-    }
-
-    private void HandleDirectoryOpened(string path)
-    {
-        // Prevent navigation for the desktop view itself
-        var entry = OldVirtualFileSystem.Instance.GetEntry(path);
-
-        if (entry != null && path != ShellNamespace.DESKTOP)
-        {
-            Log.Info($"Desktop: Opening directory in Explorer: {path}");
-
-            // Launch Explorer with this path
-            LaunchExplorerWithPath(path);
-
-            // Prevent the desktop from navigating away
-            // by navigating back to the desktop
-            BrowserView.NavigateToShellPath(ShellNamespace.DESKTOP, sound: false);
-        }
-    }
-
-    private void LaunchExplorerWithPath(string virtualPath)
-    {
-        // Launch the Explorer application with the specified virtual path
-        ProcessManager.Instance.OpenExecutable("C:\\Windows\\explorer.exe", new Win32LaunchOptions()
-        {
-            Arguments = $"{virtualPath}",
-        });
-    }
+	private void LaunchExplorerWithPath(string virtualPath)
+	{
+		// Launch the Explorer application with the specified virtual path
+		ProcessManager.Instance.OpenExecutable("C:\\Windows\\explorer.exe", new Win32LaunchOptions()
+		{
+			Arguments = $"{virtualPath}",
+		});
+	}
 }

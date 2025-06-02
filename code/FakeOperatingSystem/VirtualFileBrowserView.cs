@@ -130,21 +130,6 @@ public class VirtualFileBrowserView : FileBrowserView
 		// Load and apply folder-specific settings
 		LoadFolderSpecificSettings( shellPath );
 
-
-		if ( folder.Type == ShellFolderType.ControlPanelApplet )
-		{
-			Log.Info( $"Opening Control Panel applet: {folder.Name}" );
-			folder.Applet?.Launch();
-			return;
-		}
-
-		if ( folder.Type == ShellFolderType.ShellExecute )
-		{
-			Log.Info( $"Executing shell command: {folder.Name}" );
-			Shell.ShellExecute( folder.RealPath );
-			return;
-		}
-
 		if ( sound ) PlaySingleClickSound();
 		_currentContextMenu?.Delete();
 
@@ -213,10 +198,43 @@ public class VirtualFileBrowserView : FileBrowserView
 	public bool OpenDirectoryEnabled = true;
 	public bool OpenFileEnabled = true;
 
+	/// <summary>
+	/// Prevents navigation to other directories when set to false, directories will be opened in Explorer instead.
+	/// </summary>
+	public bool CanNavigate = true;
+
 	public virtual void HandleDirectoryOpened( string path )
 	{
+		var folder = _shellManager.GetFolder( path );
+		if ( folder == null )
+		{
+			Log.Warning( $"Shell path not found: {path}" );
+			return;
+		}
+
+		if ( folder.Type == ShellFolderType.ControlPanelApplet )
+		{
+			Log.Info( $"Opening Control Panel applet: {folder.Name}" );
+			folder.Applet?.Launch();
+			return;
+		}
+
+		if ( folder.Type == ShellFolderType.ShellExecute )
+		{
+			Log.Info( $"Executing shell command: {folder.Name}" );
+			Shell.ShellExecute( folder.RealPath );
+			return;
+		}
+
 		if ( !OpenDirectoryEnabled )
 			return;
+
+		if ( !CanNavigate )
+		{
+			var entry = VirtualFileSystem.Instance.ResolvePath( path );
+			LaunchExplorerWithPath( entry );
+			return;
+		}
 
 		PlayDoubleClickSoundNoFirstClick();
 		if ( _usingVirtualMode )
@@ -254,6 +272,16 @@ public class VirtualFileBrowserView : FileBrowserView
 				Shell.ShellExecute( shellItem.RealPath );
 			}
 		}
+	}
+
+
+	private void LaunchExplorerWithPath( string virtualPath )
+	{
+		// Launch the Explorer application with the specified virtual path
+		ProcessManager.Instance.OpenExecutable( "C:\\Windows\\explorer.exe", new Win32LaunchOptions()
+		{
+			Arguments = $"{virtualPath}",
+		} );
 	}
 
 	async void PlayDoubleClickSoundNoFirstClick()
@@ -431,6 +459,11 @@ public class VirtualFileBrowserView : FileBrowserView
 				var iconPanel = listViewItem.IconPanel;
 				var size = ViewMode == FileBrowserViewMode.Icons ? 32 : 16;
 
+				if ( item.Type == ShellFolderType.Shortcut || fileItem.FullPath.EndsWith( ".lnk" ) )
+				{
+					listViewItem.AddClass( "shortcut" );
+				}
+
 				string icon = "";
 				if ( isDirectory )
 				{
@@ -533,9 +566,36 @@ public class VirtualFileBrowserView : FileBrowserView
 
 		_currentContextMenu.AddSubmenuItem( "View", submenu =>
 		{
-			submenu.AddMenuItem( "Icons", () => { ViewMode = FileBrowserViewMode.Icons; SaveFolderSpecificSetting( _currentShellPath, FolderViewModeValueName, (int)FileBrowserViewMode.Icons ); Refresh(); } );
-			submenu.AddMenuItem( "List", () => { ViewMode = FileBrowserViewMode.List; SaveFolderSpecificSetting( _currentShellPath, FolderViewModeValueName, (int)FileBrowserViewMode.List ); Refresh(); } );
-			submenu.AddMenuItem( "Details", () => { ViewMode = FileBrowserViewMode.Details; SaveFolderSpecificSetting( _currentShellPath, FolderViewModeValueName, (int)FileBrowserViewMode.Details ); Refresh(); } );
+			submenu.AddRadioItem(
+				"Large Icons",
+				() => ViewMode == FileBrowserViewMode.Icons,
+				() =>
+				{
+					ViewMode = FileBrowserViewMode.Icons;
+					SaveFolderSpecificSetting( _currentShellPath, FolderViewModeValueName, (int)FileBrowserViewMode.Icons );
+					Refresh();
+				}
+			);
+			submenu.AddRadioItem(
+				"List",
+				() => ViewMode == FileBrowserViewMode.List,
+				() =>
+				{
+					ViewMode = FileBrowserViewMode.List;
+					SaveFolderSpecificSetting( _currentShellPath, FolderViewModeValueName, (int)FileBrowserViewMode.List );
+					Refresh();
+				}
+			);
+			submenu.AddRadioItem(
+				"Details",
+				() => ViewMode == FileBrowserViewMode.Details,
+				() =>
+				{
+					ViewMode = FileBrowserViewMode.Details;
+					SaveFolderSpecificSetting( _currentShellPath, FolderViewModeValueName, (int)FileBrowserViewMode.Details );
+					Refresh();
+				}
+			);
 		} );
 
 		_currentContextMenu.AddSeparator();
@@ -549,23 +609,48 @@ public class VirtualFileBrowserView : FileBrowserView
 			submenu.AddMenuItem( "By Size", () => { } );
 			submenu.AddMenuItem( "By Date", () => { } );
 			submenu.AddSeparator();
-			var autoArrangeItem = submenu.AddMenuItem( $"Auto Arrange ({(AutoArrangeIcons ? "On" : "Off")})", () =>
-			{
-				AutoArrangeIcons = !AutoArrangeIcons;
-				SaveFolderSpecificSetting( _currentShellPath, FolderAutoArrangeValueName, AutoArrangeIcons ? 1 : 0 );
-				// Update the menu item text directly - this is a bit of a hack for immediate UI feedback
-				// A better way would be to rebuild the context menu or have the MenuItem support dynamic text.
-				// For now, we rely on Refresh to rebuild if the menu is reopened.
-				ArrangeIcons(); // Apply immediately
-				Refresh(); // To rebuild items based on new AutoArrange state
-			} );
+			var autoArrangeItem = submenu.AddCheckItem(
+				"Auto Arrange",
+				() => AutoArrangeIcons,
+				() =>
+				{
+					SetAutoArrangeIcons( !AutoArrangeIcons );
+				}
+			);
 		} );
 		_currentContextMenu.AddMenuItem( "Line Up Icons", () => { LineUpIconsToGrid(); } );
 		_currentContextMenu.AddSeparator();
 		_currentContextMenu.AddMenuItem( "Refresh", () => { Refresh(); _currentContextMenu?.Delete(); } );
 		_currentContextMenu.AddSeparator();
 
-		_currentContextMenu.AddSubmenuItem( "New", submenu =>
+		CreateFileNewMenu( _currentContextMenu );
+
+		_currentContextMenu.AddSeparator();
+		_currentContextMenu.AddMenuItem( "Properties", () =>
+		{
+			var folder = _shellManager.GetFolder( _currentShellPath );
+			if ( folder != null )
+			{
+				if ( folder.HandlePropertiesClick != null ) folder.HandlePropertiesClick.Invoke();
+				else
+				{
+					var dialog = new FilePropertiesDialog { Name = folder.Name, Path = folder.RealPath ?? _currentShellPath, IsDirectory = true, Size = 0 };
+					XGUISystem.Instance.Panel.AddChild( dialog );
+				}
+			}
+			_currentContextMenu?.Delete();
+		} );
+	}
+
+	/// <summary>
+	/// Creates a "New" submenu in the provided context menu for creating new files or folders.
+	/// </summary>
+	/// <param name="menu"></param>
+	/// <returns>The created panel</returns>
+	public Panel CreateFileNewMenu( ContextMenu menu )
+	{
+		if ( menu == null ) return null;
+		var b = menu.AddSubmenuItem( "New", submenu =>
 		{
 			var associations = FileAssociationManager.Instance.GetAllAssociations();
 			if ( associations != null )
@@ -587,7 +672,7 @@ public class VirtualFileBrowserView : FileBrowserView
 						_vfs.CreateDirectory( newFolderPath );
 						Refresh();
 					}
-					_currentContextMenu?.Delete();
+					menu?.Delete();
 				} );
 				submenu.AddSeparator();
 				foreach ( var assoc in associations.OrderBy( a => a.FriendlyName ) )
@@ -612,26 +697,21 @@ public class VirtualFileBrowserView : FileBrowserView
 							_vfs.WriteAllText( newFilePath, "" ); // Create empty file
 							Refresh();
 						}
-						_currentContextMenu?.Delete();
+						menu?.Delete();
 					} );
 				}
 			}
 		} );
-		_currentContextMenu.AddSeparator();
-		_currentContextMenu.AddMenuItem( "Properties", () =>
-		{
-			var folder = _shellManager.GetFolder( _currentShellPath );
-			if ( folder != null )
-			{
-				if ( folder.HandlePropertiesClick != null ) folder.HandlePropertiesClick.Invoke();
-				else
-				{
-					var dialog = new FilePropertiesDialog { Name = folder.Name, Path = folder.RealPath ?? _currentShellPath, IsDirectory = true, Size = 0 };
-					XGUISystem.Instance.Panel.AddChild( dialog );
-				}
-			}
-			_currentContextMenu?.Delete();
-		} );
+		return b; // Return the submenu item for further customization if needed
+	}
+
+	public void SetAutoArrangeIcons( bool autoArrange )
+	{
+		if ( AutoArrangeIcons == autoArrange ) return;
+		AutoArrangeIcons = autoArrange;
+		SaveFolderSpecificSetting( _currentShellPath, FolderAutoArrangeValueName, AutoArrangeIcons ? 1 : 0 );
+		ArrangeIcons();
+		Refresh();
 	}
 
 	private void ShowItemContextMenu( FileItem item, MousePanelEvent e )
@@ -885,6 +965,23 @@ public class VirtualFileBrowserView : FileBrowserView
 						labelClone.Classes = label.Classes;
 						ghost.AddChild( labelClone );
 					}
+					else if ( panel is Panel textPanel )
+					{
+						var textPanelClone = new Panel();
+						// we need to also copy the label inside.
+						foreach ( var child in textPanel.Children )
+						{
+							if ( child is Label textLabel )
+							{
+								var labelClone = new Label();
+								labelClone.Text = textLabel.Text;
+								labelClone.Classes = textLabel.Classes;
+								textPanelClone.AddChild( labelClone );
+							}
+						}
+						textPanelClone.Classes = textPanel.Classes;
+						ghost.AddChild( textPanelClone );
+					}
 				}
 			}
 			XGUISystem.Instance.Panel.AddChild( ghostRoot );
@@ -976,7 +1073,7 @@ public class VirtualFileBrowserView : FileBrowserView
 		};
 	}
 	public bool AutoArrangeIcons = true; // Default value, will be overridden by folder-specific settings
-	private void ArrangeIcons()
+	public void ArrangeIcons()
 	{
 		if ( ListView.ViewMode != XGUI.ListView.ListViewMode.Icons )
 			return;
@@ -1011,7 +1108,7 @@ public class VirtualFileBrowserView : FileBrowserView
 		SaveIconPositions( shellPath );
 	}
 
-	private void LineUpIconsToGrid()
+	public void LineUpIconsToGrid()
 	{
 		if ( ListView.ViewMode != XGUI.ListView.ListViewMode.Icons ) return;
 		var shellPath = _currentShellPath;
