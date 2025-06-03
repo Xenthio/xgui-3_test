@@ -1021,6 +1021,8 @@ public class VirtualFileBrowserView : FileBrowserView
 					{
 						var targetListViewRect = targetView.ListView.Box.Rect;
 						var dropPos = e.ScreenPosition - new Vector2( targetListViewRect.Left, targetListViewRect.Top ) - grabOffset;
+						// account for scroll offset
+						dropPos.x += targetView.ListView.ItemContainer.ScrollOffset.x; dropPos.y += targetView.ListView.ItemContainer.ScrollOffset.y;
 						dropPos.x = Math.Max( 0, dropPos.x ); dropPos.y = Math.Max( 0, dropPos.y );
 						if ( !targetView._iconPositions.ContainsKey( targetView._currentShellPath ) ) targetView._iconPositions[targetView._currentShellPath] = new();
 						string newShellPath = targetView._currentShellPath.TrimEnd( '/', '\\' ) + "/" + crossDraggedItemName;
@@ -1059,6 +1061,10 @@ public class VirtualFileBrowserView : FileBrowserView
 					var parentRect = item.Parent?.Box.Rect ?? Box.Rect;
 					float newLeft = e.ScreenPosition.x - parentRect.Left - grabOffset.x; // Use parentRect.Left
 					float newTop = e.ScreenPosition.y - parentRect.Top - grabOffset.y;   // Use parentRect.Top
+
+					// account for scroll offset
+					newLeft += ListView.ItemContainer.ScrollOffset.x;
+					newTop += ListView.ItemContainer.ScrollOffset.y;
 					item.Style.Left = newLeft; item.Style.Top = newTop;
 					if ( item.Data is FileItem fileItem )
 					{
