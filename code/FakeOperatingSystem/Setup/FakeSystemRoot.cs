@@ -73,8 +73,11 @@ public class FakeSystemRoot
 		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Program Files" );
 		// Program Files with proper application folders
 		SetupProgramFiles();
-
 		await Task.Delay( 20 ); // Give UI time to render
+
+		_setupDialog.UpdateStatus( "Registering applications..." );
+		SetupApplicationRegistryEntries(); // Call the new method
+		await Task.Delay( 20 );
 
 		_setupDialog.Complete();
 	}
@@ -113,6 +116,46 @@ public class FakeSystemRoot
 		string steamDir = $"{programFilesDir}/Steam";
 		FileSystem.Data.CreateDirectory( steamDir );
 		NativeProgram.CompileIntoExe( typeof( SteamProgram ), $"{steamDir}/steam.exe" );
+	}
+	/// <summary>
+	/// Sets up registry entries for known applications.
+	/// </summary>
+	private static void SetupApplicationRegistryEntries()
+	{
+		if ( Registry.Instance == null )
+		{
+			new Registry();
+			if ( Registry.Instance == null )
+			{
+				Log.Warning( "Registry instance not available for setting up application entries." );
+				return;
+			}
+		}
+
+		string applicationsRoot = @"HKEY_CLASSES_ROOT\Applications";
+
+		// Notepad
+		string notepadExe = "notepad.exe";
+		string notepadPath = "C:/Windows/notepad.exe"; // Make sure this matches the path in SetupWindowsFiles
+		Registry.Instance.SetValue( Path.Combine( applicationsRoot, notepadExe ), "", "Notepad" );
+		Registry.Instance.SetValue( Path.Combine( applicationsRoot, notepadExe, "shell", "open", "command" ), "", $"\"{notepadPath}\" \"%1\"" );
+		// Optionally, add an icon path if your system supports it here
+		// Registry.Instance.SetValue(Path.Combine(applicationsRoot, notepadExe), "DefaultIcon", notepadPath + ",0");
+
+
+		// Paint
+		string mspaintExe = "mspaint.exe";
+		string mspaintPath = "C:/Windows/mspaint.exe"; // Make sure this matches the path in SetupWindowsFiles
+		Registry.Instance.SetValue( Path.Combine( applicationsRoot, mspaintExe ), "", "Paint" );
+		Registry.Instance.SetValue( Path.Combine( applicationsRoot, mspaintExe, "shell", "open", "command" ), "", $"\"{mspaintPath}\" \"%1\"" );
+
+		// Internet Explorer
+		string iexploreExe = "iexplore.exe";
+		string iexplorePath = "C:/Program Files/Internet Explorer/iexplore.exe"; // Make sure this matches the path in SetupProgramFiles
+		Registry.Instance.SetValue( Path.Combine( applicationsRoot, iexploreExe ), "", "Internet Explorer" );
+		Registry.Instance.SetValue( Path.Combine( applicationsRoot, iexploreExe, "shell", "open", "command" ), "", $"\"{iexplorePath}\" \"%1\"" );
+
+		Log.Info( "Registered default applications in the registry." );
 	}
 
 	/// <summary>

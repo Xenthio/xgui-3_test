@@ -280,6 +280,7 @@
 
 			foreach (var valueEntry in currentKeyData.Values.OrderBy(kv => kv.Key))
 			{
+				//Log.Info($"Adding value: {valueEntry.Key} with data type {valueEntry.Value?.GetType().Name ?? "null"}");
 				if (string.IsNullOrEmpty(valueEntry.Key)) continue;
 
 				string typeStr = DetermineValueTypeString(valueEntry.Value);

@@ -1,15 +1,4 @@
 OpenWithDialog {
-	// Inherits from .window1 styles
-
-	.app-list-container {
-		ListView {
-			// Styles for the ListView itself if needed
-			.listview-item {
-				padding: 4px 4px;
-				cursor: pointer;  
-			}
-		}
-	}
 
 	.button-row {
 		// Standard button row styling

@@ -74,7 +74,7 @@ public class FileAssociationManager
 		string extKeyPath = $"{HKCR}\\{ext}";
 
 		// Create the extension key if it doesn't exist
-		Registry.Instance.SetValue( extKeyPath, "(Default)", "" ); // Ensure key exists
+		Registry.Instance.SetValue( extKeyPath, "", null ); // Ensure key exists
 
 		Registry.Instance.SetValue( extKeyPath, "FriendlyName", association.FriendlyName );
 		Registry.Instance.SetValue( extKeyPath, "IconName", association.IconName );
@@ -104,7 +104,7 @@ public class FileAssociationManager
 
 			string commandKeyPath = $"{verbKeyPath}\\command";
 			string commandValue = $"{action.Program} {action.Arguments}";
-			Registry.Instance.SetValue( commandKeyPath, "(Default)", commandValue );
+			Registry.Instance.SetValue( commandKeyPath, "", commandValue );
 		}
 		Log.Info( $"FileAssociationManager: Registered association for '{ext}' in the registry." );
 	}
@@ -139,7 +139,7 @@ public class FileAssociationManager
 			{
 				string verbKeyPath = $"{shellKeyPath}\\{verb}";
 				string commandKeyPath = $"{verbKeyPath}\\command";
-				string commandValue = Registry.Instance.GetValue<string>( commandKeyPath, "(Default)", null );
+				string commandValue = Registry.Instance.GetValue<string>( commandKeyPath, "", null );
 
 				if ( !string.IsNullOrEmpty( commandValue ) )
 				{
