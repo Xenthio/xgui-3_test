@@ -1,0 +1,214 @@
+@using FakeDesktop
+@using FakeOperatingSystem;
+@using FakeOperatingSystem.Shell;
+@using Sandbox.UI;
+@using XGUI;
+@using System;
+@using System.Linq;
+@using System.Collections.Generic;
+@using System.IO;
+
+@attribute [StyleSheet]
+@inherits Window
+
+<root title="Open With"
+	  width="450" height="350"
+	  minwidth="350" minheight="300"
+	  class="open-with-dialog window1">
+
+	<div class="window-content" style="padding: 10px; flex-direction: column; gap: 10px;">
+		<Label @ref="InfoLabel" style="margin-bottom: 10px;" />
+
+		<Label Text="Choose the program you want to use:" style="font-weight: bold; margin-bottom: 5px;" />
+		<div class="app-list-container" style="flex-grow: 1;">
+			<ListView style="flex-grow: 1;" @ref="AppListView" />
+		</div>
+
+		<div style="margin-top: 10px;">
+			<check @ref="AlwaysUseCheckBox"></check>
+		</div>
+
+		<div class="button-row" style="flex-direction: row; justify-content: flex-end; margin-top: 10px;">
+			<Button class="button-primary margin-right" onclick=@OnOkClick>OK</Button>
+			<Button class="margin-right" onclick=@OnCancelClick>Cancel</Button>
+			<Button onclick=@OnBrowseClick style="margin-left: 15px;">Browse...</Button>
+		</div>
+	</div>
+</root>
+
+@code {
+	public string TargetFilePath { get; set; }
+	private string _targetExtension;
+
+	private Label InfoLabel;
+	private ListView AppListView;
+	private CheckBox AlwaysUseCheckBox;
+
+	// Action: selected program path, set as default
+	public Action<string, bool> OnProgramSelectedAndConfirmed { get; set; }
+
+	protected override void OnAfterTreeRender(bool firstTime)
+	{
+		base.OnAfterTreeRender(firstTime);
+		if (firstTime)
+		{
+			if (string.IsNullOrEmpty(TargetFilePath))
+			{
+				Log.Error("OpenWithDialog: TargetFilePath not set.");
+				Close();
+				return;
+			}
+
+			_targetExtension = Path.GetExtension(TargetFilePath)?.TrimStart('.').ToLowerInvariant();
+			if (string.IsNullOrEmpty(_targetExtension))
+			{
+				Log.Error($"OpenWithDialog: Could not determine extension for {TargetFilePath}.");
+				// Potentially allow opening extension-less files by choosing any app, but for now, let's assume an extension is needed.
+				Close();
+				return;
+			}
+
+			InfoLabel.Text = $"How do you want to open this file: {Path.GetFileName(TargetFilePath)}?";
+			AlwaysUseCheckBox.LabelText = $"Always use this app to open .{_targetExtension} files";
+
+			SetupAppListView();
+			PopulateAppList();
+		}
+	}
+
+	AppEntry _selectedAppEntry;
+
+	private void SetupAppListView()
+	{
+		AppListView.AddColumn("Program", "Program", 250); // Will contain icon and name
+		AppListView.ViewMode = ListView.ListViewMode.List; // Simple list view
+		AppListView.OnItemSelected += (item) =>
+		{
+			_selectedAppEntry = item?.Data as AppEntry; 
+		};
+		//AppListView.MultiSelect = false;
+	}
+
+	private void PopulateAppList()
+	{
+		if (AppListView == null || string.IsNullOrEmpty(_targetExtension)) return;
+		AppListView.Items.Clear();
+
+		var currentAssociation = FileAssociationManager.Instance?.GetAssociation(_targetExtension);
+		var appEntries = new List<AppEntry>();
+
+		// 1. Add Default Program from current association (if any)
+		if (currentAssociation?.DefaultProgram != null)
+		{
+			string defaultAppName = GetAppNameFromPath(currentAssociation.DefaultProgram);
+			if (currentAssociation.Actions.TryGetValue("open", out var openAction) && openAction.Program == currentAssociation.DefaultProgram)
+			{
+				defaultAppName = openAction.DisplayName ?? defaultAppName;
+			}
+			appEntries.Add(new AppEntry { Name = $"{defaultAppName} (Default)", ProgramPath = currentAssociation.DefaultProgram, IsCurrentDefault = true });
+		}
+
+		// 2. Add other registered actions for this extension
+		if (currentAssociation?.Actions != null)
+		{
+			foreach (var action in currentAssociation.Actions.Values)
+			{
+				if (action.Program != currentAssociation.DefaultProgram) // Avoid duplicating the default
+				{
+					if (!appEntries.Any(ae => ae.ProgramPath.Equals(action.Program, StringComparison.OrdinalIgnoreCase)))
+					{
+						appEntries.Add(new AppEntry { Name = action.DisplayName ?? GetAppNameFromPath(action.Program), ProgramPath = action.Program });
+					}
+				}
+			}
+		}
+
+		// 3. Add some common/generic programs as fallbacks (customize this list as needed)
+		var genericPrograms = new List<(string Name, string Path)>
+		{
+			("Notepad", "C:/Windows/notepad.exe"),
+			// ("Paint", "C:/Windows/system32/mspaint.exe"), // Example
+			// ("Internet Explorer", "C:/Program Files/Internet Explorer/iexplore.exe") // Example
+		};
+
+		foreach (var prog in genericPrograms)
+		{
+			if (!appEntries.Any(ae => ae.ProgramPath.Equals(prog.Path, StringComparison.OrdinalIgnoreCase)))
+			{
+				appEntries.Add(new AppEntry { Name = prog.Name, ProgramPath = prog.Path });
+			}
+		}
+		
+		ListView.ListViewItem firstSelectableItem = null;
+
+		foreach (var app in appEntries.OrderByDescending(a => a.IsCurrentDefault))
+		{
+			AppListView.AddItem(app, new List<string> { app.Name });
+			// TODO: Add icon to ListViewItem using FileIconHelper.GetIconForExecutable(app.ProgramPath)
+			// For example:
+			// var iconPanel = listViewItem.GetOrCreateIconPanel(); // Assuming ListViewItem has such a method or you add it
+			// iconPanel.SetIcon(XGUIIconSystem.GetFileIcon(Path.GetExtension(app.ProgramPath)), XGUIIconSystem.IconType.FileType, 16); // Or a generic app icon
+
+			if (app.IsCurrentDefault && firstSelectableItem == null)
+			{
+				//firstSelectableItem = listViewItem;
+			}
+		}
+		AppListView.UpdateItems();
+		
+		if (firstSelectableItem != null)
+		{
+			AppListView.SelectItem(firstSelectableItem);
+		} else if (AppListView.Items.Any())
+		{
+			AppListView.SelectItem(AppListView.Items.First());
+		}
+	}
+
+	private string GetAppNameFromPath(string programPath)
+	{
+		if (string.IsNullOrEmpty(programPath)) return "Unknown Application";
+		return Path.GetFileNameWithoutExtension(programPath);
+	}
+
+
+	private void OnOkClick()
+	{
+		if (_selectedAppEntry == null)
+		{
+			MessageBoxUtility.ShowCustom("Please select a program from the list.", "No Program Selected", MessageBoxIcon.Warning, MessageBoxButtons.OK);
+			return;
+		}
+
+		OnProgramSelectedAndConfirmed?.Invoke(_selectedAppEntry.ProgramPath, AlwaysUseCheckBox.Checked);
+		Close();
+	}
+
+	private void OnCancelClick()
+	{
+		Close();
+	}
+
+	private void OnBrowseClick()
+	{
+		// For a full implementation, this would open a file dialog filtered for executables.
+		// The selected executable path would then be used.
+		// For now, we'll just show a message.
+		MessageBoxUtility.ShowCustom("Browse functionality is not yet implemented. Please select from the list.", "Browse", MessageBoxIcon.Information, MessageBoxButtons.OK);
+		Log.Info("OpenWithDialog: Browse clicked - functionality not implemented.");
+	}
+
+	private class AppEntry
+	{
+		public string Name { get; set; }
+		public string ProgramPath { get; set; }
+		public bool IsCurrentDefault { get; set; }
+		// public string IconPath { get; set; } // Future: For displaying icons
+	}
+
+	public override void OnClose()
+	{
+		// Ensure any custom cleanup if needed
+		base.Delete(); // Or base.Close() if that's the XGUI way for non-modal windows that should be destroyed
+	}
+}

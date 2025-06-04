@@ -721,19 +721,143 @@ public class VirtualFileBrowserView : FileBrowserView
 		if ( item == null ) return;
 		_currentContextMenu?.Delete();
 		_currentContextMenu = new ContextMenu( this, ContextMenu.PositionMode.UnderMouse );
-		_currentContextMenu.AddMenuItem( "Open", () =>
+
+		var shellItem = _shellManager.GetItems( _currentShellPath ).FirstOrDefault( i => i.Path == item.FullPath );
+		string realPath = shellItem?.RealPath ?? item.FullPath; // Prefer realPath for operations
+
+		// Get file association
+		string extension = System.IO.Path.GetExtension( item.Name ); // Use item.Name which might have original extension
+		if ( string.IsNullOrEmpty( extension ) && !item.IsDirectory && shellItem?.RealPath != null )
 		{
-			if ( item.IsDirectory ) HandleDirectoryOpened( item.FullPath );
-			else HandleFileOpened( item.FullPath );
-			_currentContextMenu?.Delete();
-		} );
-		_currentContextMenu.AddSeparator();
+			// If item.Name had extension hidden, try to get it from realPath
+			extension = System.IO.Path.GetExtension( shellItem.RealPath );
+		}
+
+		FileAssociation association = null;
+		if ( !item.IsDirectory && !string.IsNullOrEmpty( extension ) )
+		{
+			association = FileAssociationManager.Instance?.GetAssociation( extension );
+		}
+
+		bool hasAddedSpecificActions = false;
+
+		// Populate actions from FileAssociation
+		if ( association?.Actions != null && association.Actions.Any() )
+		{
+			// Make "Open" the first item if it exists and is the default program's action
+			if ( association.Actions.TryGetValue( "open", out var openAction ) )
+			{
+				// Bold the default action (usually "Open")
+				// Note: ContextMenu.AddMenuItem doesn't directly support bold.
+				// This might require custom styling or a modified AddMenuItem.
+				// For now, we'll just add it. A common approach is to make the default action the first one.
+				_currentContextMenu.AddMenuItem( openAction.DisplayName ?? "Open", () =>
+				{
+					association.ExecuteAction( "open", realPath );
+					_currentContextMenu?.Delete();
+				} );
+				hasAddedSpecificActions = true;
+			}
+
+			// Add other actions, sorted perhaps, or in a specific order
+			foreach ( var actionEntry in association.Actions.OrderBy( a => a.Key == "open" ? 0 : 1 ).ThenBy( a => a.Value.DisplayName ) )
+			{
+				if ( actionEntry.Key.Equals( "open", StringComparison.OrdinalIgnoreCase ) && hasAddedSpecificActions )
+				{
+					// Already added "open" if it was the default.
+					continue;
+				}
+
+				var fileAction = actionEntry.Value;
+				_currentContextMenu.AddMenuItem( fileAction.DisplayName ?? actionEntry.Key, () =>
+				{
+					association.ExecuteAction( actionEntry.Key, realPath );
+					_currentContextMenu?.Delete();
+				} );
+				hasAddedSpecificActions = true;
+			}
+		}
+		else if ( item.IsDirectory ) // Default actions for directories
+		{
+			_currentContextMenu.AddMenuItem( "Open", () =>
+			{
+				HandleDirectoryOpened( item.FullPath );
+				_currentContextMenu?.Delete();
+			} );
+			hasAddedSpecificActions = true;
+		}
+		else // Fallback for files with no specific associations or if "Open" wasn't primary
+		{
+			_currentContextMenu.AddMenuItem( "Open", () =>
+			{
+				HandleFileOpened( item.FullPath ); // Generic open
+				_currentContextMenu?.Delete();
+			} );
+			hasAddedSpecificActions = true;
+		}
+
+
+		if ( !item.IsDirectory ) // Only show "Open with..." for files
+		{
+			_currentContextMenu.AddMenuItem( "Open with...", () =>
+			{
+				var openWithDialog = new OpenWithDialog { TargetFilePath = realPath };
+				openWithDialog.OnProgramSelectedAndConfirmed = ( selectedProgram, setAsDefault ) =>
+				{
+					Log.Info( $"Open With: Selected '{selectedProgram}', Set as default: {setAsDefault}" );
+
+					// 1. Execute the program
+					ProcessManager.Instance.OpenExecutable( selectedProgram, new Win32LaunchOptions { Arguments = $"\"{realPath}\"" } );
+
+					// 2. If "setAsDefault" is true, update the registry
+					if ( setAsDefault && !string.IsNullOrEmpty( extension ) )
+					{
+						var currentAssoc = FileAssociationManager.Instance?.GetAssociation( extension );
+						if ( currentAssoc != null )
+						{
+							// Update the DefaultProgram property of the association
+							// This assumes FileAssociation has a DefaultProgram setter or a method to update it,
+							// and RegisterAssociation will save the changes.
+							currentAssoc.DefaultProgram = selectedProgram;
+
+							// Also, ensure the "open" action points to this program.
+							// The FileAssociationManager.RegisterAssociation should ideally handle creating/updating
+							// the "open" action based on the DefaultProgram.
+							// If not, you might need to manually adjust or add the "open" action here.
+							currentAssoc.AddAction( "open", "Open", selectedProgram, "\"%1\"" ); // Ensure "open" action is correct
+
+							FileAssociationManager.Instance.RegisterAssociation( currentAssoc );
+							Log.Info( $"Set '{selectedProgram}' as default for '{extension}' files." );
+						}
+						else
+						{
+							// Create a new association if one doesn't exist
+							// This is less common from "Open With" but possible
+							string friendlyName = $"{extension.ToUpper()} File"; // Basic friendly name
+							var newAssoc = new FileAssociation( extension, friendlyName, extension /*iconName*/, selectedProgram );
+							newAssoc.AddAction( "open", "Open", selectedProgram, "\"%1\"" );
+							FileAssociationManager.Instance.RegisterAssociation( newAssoc );
+							Log.Info( $"Created new association and set '{selectedProgram}' as default for '{extension}' files." );
+						}
+					}
+				};
+				XGUISystem.Instance.Panel.AddChild( openWithDialog ); // Add dialog to the main UI panel
+				_currentContextMenu?.Delete();
+			} );
+		}
+
+
+		if ( hasAddedSpecificActions )
+		{
+			_currentContextMenu.AddSeparator();
+		}
+
+		// Standard items like Delete, Rename, Properties
 		_currentContextMenu.AddMenuItem( "Delete", () =>
 		{
-			var shellItem = _shellManager.GetItems( _currentShellPath ).FirstOrDefault( i => i.Path == item.FullPath );
 			if ( shellItem?.RealPath != null )
 			{
-				if ( item.IsDirectory ) _vfs.DeleteDirectory( shellItem.RealPath, true ); // Recursive delete for directories
+				if ( item.IsDirectory ) _vfs.DeleteDirectory( shellItem.RealPath, true );
 				else _vfs.DeleteFile( shellItem.RealPath );
 				Refresh();
 			}
@@ -748,13 +872,23 @@ public class VirtualFileBrowserView : FileBrowserView
 				{
 					if ( !string.IsNullOrWhiteSpace( newName ) && newName != item.Name )
 					{
-						var shellItem = _shellManager.GetItems( _currentShellPath ).FirstOrDefault( i => i.Path == item.FullPath );
-						if ( shellItem?.RealPath != null )
+						var currentShellItem = _shellManager.GetItems( _currentShellPath ).FirstOrDefault( i => i.Path == item.FullPath );
+						if ( currentShellItem?.RealPath != null )
 						{
-							string parentDir = System.IO.Path.GetDirectoryName( shellItem.RealPath ); // Use System.IO.Path
-							string newRealPath = Path.Combine( parentDir, newName ); // VFS Path.Combine
-							if ( item.IsDirectory ) MoveDirectory( shellItem.RealPath, newRealPath );
-							else MoveFile( shellItem.RealPath, newRealPath );
+							string parentDir = System.IO.Path.GetDirectoryName( currentShellItem.RealPath );
+							string newFileName = newName;
+							// Ensure the new name has an extension if the original did (and it's not a directory)
+							if ( !item.IsDirectory )
+							{
+								string originalExtension = System.IO.Path.GetExtension( item.Name ); // Original name from FileItem
+								if ( string.IsNullOrEmpty( System.IO.Path.GetExtension( newName ) ) && !string.IsNullOrEmpty( originalExtension ) )
+								{
+									newFileName += originalExtension;
+								}
+							}
+							string newRealPath = Path.Combine( parentDir, newFileName );
+							if ( item.IsDirectory ) MoveDirectory( currentShellItem.RealPath, newRealPath );
+							else MoveFile( currentShellItem.RealPath, newRealPath );
 							Refresh();
 						}
 					}
@@ -765,7 +899,6 @@ public class VirtualFileBrowserView : FileBrowserView
 		_currentContextMenu.AddSeparator();
 		_currentContextMenu.AddMenuItem( "Properties", () =>
 		{
-			var shellItem = _shellManager.GetItems( _currentShellPath ).FirstOrDefault( i => i.Path == item.FullPath );
 			if ( shellItem != null )
 			{
 				var isDir = item.IsDirectory;
@@ -777,7 +910,6 @@ public class VirtualFileBrowserView : FileBrowserView
 				}
 				var dialog = new FilePropertiesDialog { Name = item.Name, Path = shellItem.RealPath ?? item.FullPath, IsDirectory = isDir, Size = size };
 				XGUISystem.Instance.Panel.AddChild( dialog );
-				// Centering logic can be added here if needed, or handled by FilePropertiesDialog itself
 			}
 			_currentContextMenu?.Delete();
 		} );

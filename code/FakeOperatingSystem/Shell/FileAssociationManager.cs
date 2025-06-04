@@ -52,13 +52,13 @@ public class FileAssociationManager
 
 		// Ini files
 		var iniAssociation = new FileAssociation( ".ini", "INI File", "ini", "C:/Windows/notepad.exe" );
-		iniAssociation.AddAction( "edit", "Edit", "notepad.exe" );
+		iniAssociation.AddAction( "edit", "Edit", "C:/Windows/notepad.exe" );
 		RegisterAssociation( iniAssociation );
 
 		// BAT files
 		var batAssociation = new FileAssociation( ".bat", "Batch File", "bat", "C:/Windows/system32/cmd.exe" );
 		batAssociation.AddAction( "open", "Open", "C:/Windows/system32/cmd.exe", "/C %1" ); // Note: DefaultProgram in constructor handles the primary open
-		batAssociation.AddAction( "edit", "Edit", "notepad.exe" );
+		batAssociation.AddAction( "edit", "Edit", "C:/Windows/notepad.exe" );
 		RegisterAssociation( batAssociation );
 	}
 
