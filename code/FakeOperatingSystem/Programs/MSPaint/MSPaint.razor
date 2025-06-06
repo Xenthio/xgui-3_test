@@ -1,6 +1,8 @@
 ﻿@using System
 @using System.Collections.Generic
 @using System.Linq
+@using FakeDesktop
+@using FakeOperatingSystem.OSFileSystem
 @using Sandbox
 @using Sandbox.UI
 @using XGUI
@@ -47,7 +49,7 @@
 				<scrollpanel>
 					<div class="canvas" style="padding:3px;">
 						<panel @ref=ImagePanel @onmousedown=@MouseDownCanvas @onmousemove=@MouseMoveCanvas @onmouseup=@MouseUpCanvas class="image" style="background-color:white; image-rendering: pixelated; transform: scale(@CanvasScale);">
-							<panel @ref=PreviewPanel class="preview-overlay" style="position: absolute; top: 0; left: 0; pointer-events: none;"></panel>
+							<panel @ref=PreviewPanel class="preview-overlay" style="position: absolute; top: 0; left: 0; pointer-events: none; image-rendering: pixelated;"></panel>
 						</panel>
 					</div>
 				</scrollpanel>
@@ -1081,10 +1083,10 @@
 		// Create menu - position below button
 		activeMenu = new ContextMenu(FileMenuButton, XGUIPopup.PositionMode.BelowLeft);
 
-		activeMenu.AddMenuItem("New", () => { Log.Info("New"); activeMenu.Delete(); });
-		activeMenu.AddMenuItem("Open", () => { Log.Info("Open"); activeMenu.Delete(); });
-		activeMenu.AddMenuItem("Save", () => { Log.Info("Save"); activeMenu.Delete(); });
-		activeMenu.AddMenuItem("Save As...", () => { Log.Info("Save As..."); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("New", () => { NewFile(); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Open...", () => { OpenFile(); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Save", () => { SaveFile(); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Save As...", () => { SaveFile(true); activeMenu.Delete(); });
 		activeMenu.AddSeparator();
 		activeMenu.AddMenuItem("Print Preview", () => { Log.Info("Print Preview"); activeMenu.Delete(); });
 		activeMenu.AddMenuItem("Page Setup", () => { Log.Info("Page Setup"); activeMenu.Delete(); });
@@ -1166,5 +1168,212 @@
 		activeMenu = new ContextMenu(HelpMenuButton, XGUIPopup.PositionMode.BelowLeft);
 		activeMenu.AddMenuItem("View Help", () => { Log.Info("View Help"); activeMenu.Delete(); });
 		activeMenu.AddMenuItem("About MS-Paint", () => { Log.Info("About MS-Paint"); activeMenu.Delete(); });
+	}
+
+	// ---- File Operations ----
+	private string CurrentFilePath;
+	private bool HasUnsavedChanges = false;
+
+	private string WindowTitle => string.IsNullOrEmpty(CurrentFilePath)
+		? (HasUnsavedChanges ? "*Untitled - Paint" : "Untitled - Paint")
+		: (HasUnsavedChanges ? $"*{System.IO.Path.GetFileName(CurrentFilePath)} - Paint" : $"{System.IO.Path.GetFileName(CurrentFilePath)} - Paint");
+
+	// ---- File Operations Methods ----
+
+	private void NewFile()
+	{
+		if (HasUnsavedChanges && !ConfirmDiscardChanges())
+			return;
+
+		_canvas.Clear(Color32.White);
+		CurrentFilePath = null;
+		HasUnsavedChanges = false;
+
+		// Reset the undo/redo stacks
+		undoStack.Clear();
+		redoStack.Clear();
+		PushUndoState();
+
+		StateHasChanged(); // Update the window title
+	}
+
+	private void OpenFile(string path = null)
+	{
+		if (HasUnsavedChanges && !ConfirmDiscardChanges())
+			return;
+
+		if (string.IsNullOrEmpty(path))
+		{
+			// TODO: Open file dialog
+			// For now, just use a default path for testing
+			path = "C:/My Documents/image.bmp";
+		}
+
+		try
+		{
+			if (VirtualFileSystem.Instance.FileExists(path))
+			{
+				var imageBytes = VirtualFileSystem.Instance.ReadAllBytes(path);
+				LoadImageFromBytes(imageBytes);
+
+				CurrentFilePath = path;
+				HasUnsavedChanges = false;
+
+				// Reset the undo/redo stacks and save the current state
+				undoStack.Clear();
+				redoStack.Clear();
+				PushUndoState();
+
+				StateHasChanged(); // Update the window title
+			}
+			else
+			{
+				Log.Error($"File not found: {path}");
+			}
+		}
+		catch (Exception ex)
+		{
+			Log.Error($"Error opening file: {ex.Message}");
+		}
+	}
+
+	private void SaveFile(bool saveAs = false)
+	{
+		string path = CurrentFilePath;
+
+		if (string.IsNullOrEmpty(path) || saveAs)
+		{
+			// TODO: Show save file dialog
+			// For now, use a default path if none is set
+			if (string.IsNullOrEmpty(path))
+			{
+				path = "C:/My Documents/image.bmp";
+			}
+		}
+
+		try
+		{
+			// Ensure directory exists
+			string directory = System.IO.Path.GetDirectoryName(path);
+			if (!string.IsNullOrEmpty(directory) && !VirtualFileSystem.Instance.DirectoryExists(directory))
+			{
+				VirtualFileSystem.Instance.CreateDirectory(directory);
+			}
+
+			// Save the image
+			var imageBytes = SaveImageToBytes();
+			VirtualFileSystem.Instance.WriteAllBytes(path, imageBytes);
+
+			CurrentFilePath = path;
+			HasUnsavedChanges = false;
+			StateHasChanged(); // Update the window title
+		}
+		catch (Exception ex)
+		{
+			Log.Error($"Error saving file: {ex.Message}");
+		}
+	}
+
+	private bool ConfirmDiscardChanges()
+	{
+		bool result = false;
+		string filename = string.IsNullOrEmpty(CurrentFilePath) ? "Untitled" : System.IO.Path.GetFileName(CurrentFilePath);
+
+		// Show a MessageBox to ask the user what to do
+		MessageBoxUtility.WarningConfirmWithCancel(
+			$"Save changes to {filename}?",
+			"Paint",
+			(response) =>
+			{
+				if (response == MessageBoxResult.Yes)
+				{
+					SaveFile();
+					result = true;
+				}
+				else if (response == MessageBoxResult.No)
+				{
+					// Discard changes
+					result = true;
+				}
+				else
+				{
+					// Cancel operation
+					result = false;
+				}
+			});
+
+		return result;
+	}
+
+	// Simple BMP-like format for now
+	private byte[] SaveImageToBytes()
+	{
+		// Get the raw pixel data
+		var pixels = _canvas.ImageTexture.GetPixels().ToArray();
+		int width = _canvas.ImageTexture.Width;
+		int height = _canvas.ImageTexture.Height;
+
+		using var ms = new System.IO.MemoryStream();
+		using var writer = new System.IO.BinaryWriter(ms);
+
+		// Write a simple header (format: "BMP1" + width + height)
+		writer.Write(new char[] { 'B', 'M', 'P', '1' });
+		writer.Write(width);
+		writer.Write(height);
+
+		// Write the pixel data (RGBA format)
+		foreach (var pixel in pixels)
+		{
+			writer.Write(pixel.r);
+			writer.Write(pixel.g);
+			writer.Write(pixel.b);
+			writer.Write(pixel.a);
+		}
+
+		return ms.ToArray();
+	}
+
+	private void LoadImageFromBytes(byte[] data)
+	{
+		using var ms = new System.IO.MemoryStream(data);
+		using var reader = new System.IO.BinaryReader(ms);
+
+		try
+		{
+			// Read the header
+			var magic = new string(reader.ReadChars(4));
+			if (magic != "BMP1")
+			{
+				Log.Error("Invalid image format");
+				return;
+			}
+
+			int width = reader.ReadInt32();
+			int height = reader.ReadInt32();
+
+			// Resize the canvas if needed
+			if (width != _canvas.ImageTexture.Width || height != _canvas.ImageTexture.Height)
+			{
+				_canvas.Resize(width, height);
+			}
+
+			// Read the pixel data
+			var pixels = new Color32[width * height];
+			for (int i = 0; i < pixels.Length; i++)
+			{
+				byte r = reader.ReadByte();
+				byte g = reader.ReadByte();
+				byte b = reader.ReadByte();
+				byte a = reader.ReadByte();
+				pixels[i] = new Color32(r, g, b, a);
+			}
+
+			// Update the canvas
+			_canvas.ImageTexture.Update(pixels);
+		}
+		catch (Exception ex)
+		{
+			Log.Error($"Error loading image: {ex.Message}");
+		}
 	}
 }
