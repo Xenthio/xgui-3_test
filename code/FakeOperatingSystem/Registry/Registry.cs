@@ -63,6 +63,13 @@ public class RegistryHive
 		if ( string.IsNullOrEmpty( FilePath ) ) // Don't save if no file path
 			return;
 
+		// if path doesn't exist, create the directory structure
+		var directory = System.IO.Path.GetDirectoryName( FilePath );
+		if ( !string.IsNullOrEmpty( directory ) && !VirtualFileSystem.Instance.DirectoryExists( directory ) )
+		{
+			VirtualFileSystem.Instance.CreateDirectory( directory );
+		}
+
 		var json = JsonSerializer.Serialize( Root, new JsonSerializerOptions { WriteIndented = true } );
 		VirtualFileSystem.Instance.WriteAllText( FilePath, json );
 	}
@@ -506,5 +513,30 @@ public class Registry
 		{
 			return false;
 		}
+	}
+
+	/// <summary>
+	/// Retrieves all value names and their data from a specified registry key.
+	/// </summary>
+	/// <param name="keyPath">The full path of the registry key.</param>
+	/// <returns>A dictionary containing the value names and their data. Returns an empty dictionary if the key is not found or has no values.</returns>
+	public IReadOnlyDictionary<string, object> GetValues( string keyPath )
+	{
+		try
+		{
+			var (hive, subPath) = Resolve( keyPath );
+			var key = GetKey( hive.Root, subPath, false ); // Do not create if not exists
+
+			if ( key != null )
+			{
+				// Return a read-only copy to prevent external modification of the internal dictionary
+				return key.Values.ToDictionary( kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase );
+			}
+		}
+		catch ( Exception ex ) // Catch "Hive not found" from Resolve or other potential issues
+		{
+			Log.Warning( $"Registry: Error getting values for key '{keyPath}': {ex.Message}" );
+		}
+		return new Dictionary<string, object>( StringComparer.OrdinalIgnoreCase ); // Return empty dictionary on failure or if key not found
 	}
 }

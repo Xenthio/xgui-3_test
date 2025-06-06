@@ -24,7 +24,7 @@ public abstract class BaseProcess
 	public ProcessStatus Status { get; set; } = ProcessStatus.Running;
 	public int? ParentProcessId { get; set; }
 	public DateTime StartTime { get; set; } = DateTime.Now;
-	public List<Window> OwnedWindows { get; } = new();
+	public List<XGUIPanel> OwnedWindows { get; } = new();
 
 	// --- Console support ---
 	public bool IsConsoleProcess { get; protected set; }

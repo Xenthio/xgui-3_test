@@ -355,6 +355,9 @@ public class CommandProgram : NativeProgram
 
 			//if ( EchoEnabled ) StandardOutput.WriteLine( line );
 
+			// replace environment variables in the command line
+			line = EnvironmentManager.ExpandEnvironmentVariables( line );
+
 			var commandLine = line.Trim();
 			if ( string.IsNullOrEmpty( commandLine ) )
 				continue;
@@ -886,6 +889,8 @@ public class CommandProgram : NativeProgram
 		{
 			string currentLine = rawLine.TrimStart(); // Trim leading whitespace
 
+			currentLine = EnvironmentManager.ExpandEnvironmentVariables( currentLine ); // Expand environment variables
+
 			// Skip genuinely empty lines (after TrimStart, could still be all whitespace if not using Trim())
 			if ( string.IsNullOrWhiteSpace( currentLine ) )
 			{
@@ -978,7 +983,15 @@ public class CommandProgram : NativeProgram
 		bool isBatchFile = false;
 
 		// Search Locations: 1. Current Directory, 2. System Directory
-		List<string> searchDirs = new List<string> { cd, "C:/Windows/System32/" };
+		List<string> searchDirs = new List<string> { cd };
+
+		// add PATH directories if available
+		string pathEnv = EnvironmentManager.GetEnvironmentVariable( "PATH" );
+		var pathDirs = pathEnv?.Split( new[] { ';' }, StringSplitOptions.RemoveEmptyEntries ) ?? Array.Empty<string>();
+		if ( pathDirs.Length > 0 )
+		{
+			searchDirs.AddRange( pathDirs.Select( dir => ResolvePath( cd, dir ) ) );
+		}
 
 		foreach ( string fileToAttempt in filesToTry )
 		{

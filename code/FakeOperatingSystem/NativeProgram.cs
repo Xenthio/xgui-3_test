@@ -126,11 +126,11 @@ public abstract class NativeProgram
 
 		// Ensure directory exists using VirtualFileSystem.Instance
 		string directory = Path.GetDirectoryName( path );
-		if ( !FileSystem.Data.DirectoryExists( directory ) )
-			FileSystem.Data.CreateDirectory( directory );
+		if ( !VirtualFileSystem.Instance.DirectoryExists( directory ) )
+			VirtualFileSystem.Instance.CreateDirectory( directory );
 
 		// Write to file using VirtualFileSystem.Instance
-		using var stream = FileSystem.Data.OpenWrite( path );
+		using var stream = VirtualFileSystem.Instance.OpenWrite( path );
 		stream.Write( combinedBytes, 0, combinedBytes.Length );
 
 		Log.Info( $"Created fake executable at {path} for program type {typeName}" );

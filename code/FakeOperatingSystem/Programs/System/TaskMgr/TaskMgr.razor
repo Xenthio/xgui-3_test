@@ -44,10 +44,10 @@
 </root>
 
 @code {
-		Button FileMenuButton;
-		Button OptionsMenuButton;
-		Button ViewMenuButton;
-		Button HelpMenuButton;
+	Button FileMenuButton;
+	Button OptionsMenuButton;
+	Button ViewMenuButton;
+	Button HelpMenuButton;
 
 	// Currently active menu
 	private ContextMenu activeMenu;
@@ -83,6 +83,15 @@
 		}
 	} 
 
+	private void ShowRunDialog()
+	{
+		var runDialog = new TaskMgrRunDialog();
+		// Add the dialog to the main UI panel (typically XGUISystem.Instance.Panel or this.Parent if TaskMgr is already on it)
+		// Assuming TaskMgr is a child of XGUISystem.Instance.Panel or similar root.
+		XGUISystem.Instance?.Panel?.AddChild(runDialog);
+		// runDialog.Focus(); // This is now handled in RunDialog.OnFirstRender
+	}
+
 	// Menu handlers
 	private void ShowFileMenu()
 	{
@@ -94,7 +103,7 @@
 		// Create menu - position below button
 		activeMenu = new ContextMenu(FileMenuButton, XGUIPopup.PositionMode.BelowLeft);
 
-		activeMenu.AddMenuItem("New Task (Run...)", (() => Log.Info("New Task"))); 
+		activeMenu.AddMenuItem("New Task (Run...)", () => { ShowRunDialog(); activeMenu.Delete();});
 		activeMenu.AddSeparator();
 		activeMenu.AddMenuItem("Exit Task Manager", () => Delete());
 	}

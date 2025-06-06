@@ -38,11 +38,23 @@ public class VirtualFileSystem : IVirtualFileSystem
 
 	public void RegisterMountPoint( string mountName, string path, BaseFileSystem fileSystem = null )
 	{
+		// Ensure directory exists for the mount point, creating it if necessary
+		if ( fileSystem == null )
+		{
+			fileSystem = _defaultFileSystem;
+		}
+		if ( !fileSystem.DirectoryExists( path ) )
+		{
+			Log.Warning( $"Mount point path '{path}' does not exist. Creating it." );
+			fileSystem.CreateDirectory( path );
+		}
+		Log.Info( $"Registering mount point '{mountName}' at path '{path}' with file system '{fileSystem.GetType().Name}'." );
+
 		_mountPoints[mountName] = new MountPoint
 		{
 			Name = mountName,
 			RealPath = path,
-			FileSystem = fileSystem ?? _defaultFileSystem
+			FileSystem = fileSystem
 		};
 	}
 

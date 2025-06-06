@@ -33,11 +33,12 @@ public class FakeOSLoader : Component
 	public async Task Startup() // Changed to async Task
 	{
 
-		// Do core OS file setup (no file copying setup process or ui for now)
-		await FakeSystemRoot.TryCreateSystemRoot();
-
 		// Initialize the virtual file system
 		VirtualFileSystem = new VirtualFileSystem( FileSystem.Data );
+
+		// Do core OS file setup (no file copying setup process or ui for now)
+		await FakeSystemRoot.EnsureSystemRootExists( VirtualFileSystem, Registry );
+
 
 		await Boot();
 	}
@@ -118,6 +119,10 @@ public class FakeOSLoader : Component
 				var allUsers = @"C:\Documents and Settings\All Users";
 				if ( !vfs.DirectoryExists( allUsers ) )
 					vfs.CreateDirectory( allUsers );
+
+				// Load the user hive into the registry
+				Registry.LoadUserHive( user.UserName, user.RegistryHivePath );
+
 				await UserManager.SetupUserProfile( user ); // Await here
 				UserManager.Login( username, password ); // This should ideally also set CurrentUser for ContinueBoot
 
@@ -202,8 +207,6 @@ public class FakeOSLoader : Component
 		FileAssociationManager.Initialize( VirtualFileSystem );
 		ThemeResources.ReloadAll();
 		_processManager.OpenExecutable( "C:/Windows/explorer.exe", new Win32LaunchOptions() );
-		Scene.GetSystem<XGUISystem>().Panel.AddChild<TaskBar>();
-		Scene.GetSystem<XGUISystem>().Panel.AddChild<Desktop>();
 		var soundpath = XGUISoundSystem.GetSound( "LOGON" );
 		var soundfile = SoundFile.Load( soundpath );
 		Sound.PlayFile( soundfile );

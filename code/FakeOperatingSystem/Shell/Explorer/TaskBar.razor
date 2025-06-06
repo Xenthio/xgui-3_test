@@ -178,9 +178,11 @@
 			// NativeProcess: has OwnedWindows
 			if (process is FakeOperatingSystem.NativeProcess nativeProc)
 			{
-				foreach (var win in nativeProc.OwnedWindows)
+				foreach (var panel in nativeProc.OwnedWindows)
 				{
-					if (win != null && win.IsValid && (win.IsVisible || win.IsMinimised))
+					if (panel == this)
+						continue; // Skip the taskbar itself
+					if (panel is Window win && win != null && win.IsValid && (win.IsVisible || win.IsMinimised))
 					{
 						windows.Add(new WindowInfo
 						{

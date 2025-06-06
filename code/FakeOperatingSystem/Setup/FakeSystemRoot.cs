@@ -1,231 +1,66 @@
-﻿using FakeDesktop;
-using FakeOperatingSystem;
+﻿using FakeOperatingSystem;
+using FakeOperatingSystem.OSFileSystem; // Required for IVirtualFileSystem
+using FakeOperatingSystem.Setup;    // Required for OsSetup
 using Sandbox;
-using System.IO;
 using System.Threading.Tasks;
-using XGUI;
 
-public class FakeSystemRoot
+public static class FakeSystemRoot // Keep it static as an entry point
 {
-	protected static SetupDialog _setupDialog;
 	/// <summary>
-	/// calls CreateSystemRoot if the systemroot in FileSystem.Data doesn't exist.
+	/// Checks if setup is needed and runs it.
+	/// This would typically be called by FakeOSLoader.
 	/// </summary>
-	public static async Task TryCreateSystemRoot()
+	public static async Task EnsureSystemRootExists( IVirtualFileSystem vfs, Registry registry )
 	{
-		if ( !FileSystem.Data.DirectoryExists( "FakeSystemRoot" ) )
+		// A simple check. In a real VFS, "C:/Windows" would map to your "FakeSystemRoot/Windows"
+		if ( !vfs.DirectoryExists( "C:/Windows" ) )
 		{
-			await CreateSystemRoot();
+			Log.Info( "Performing initial FakeOS setup..." );
+			var setup = new OSSetup( vfs, registry ); // Pass existing registry if available, OsSetup can create if null
+			await setup.RunInitialSetup();
+			Log.Info( "FakeOS setup complete." );
+		}
+		else
+		{
+			Log.Info( "FakeOS system root found." );
 		}
 	}
 
-	public static async Task CreateSystemRoot()
-	{
-		_setupDialog = new SetupDialog();
-		XGUISystem.Instance.Panel.AddChild( _setupDialog );
-
-
-		await Task.Delay( 20 ); // Give UI time to render
-
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot" );
-		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/My Documents" );
-		//FileSystem.Data.WriteAllText( "FakeSystemRoot/My Documents/desktop.ini", "[.XGUIInfo]\nIcon=mydocuments\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,3\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=3" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Recycled" );
-		FileSystem.Data.WriteAllText( "FakeSystemRoot/Recycled/desktop.ini", "[.XGUIInfo]\nIcon=recyclebinfull\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,10\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=10" );
-
-		SetupRootFiles();
-
-		// Windows
-		_setupDialog.UpdateStatus( "Setting up Windows files..." );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows" );
-		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/All Users" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Downloaded Program Files" );
-		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Downloaded Program Files/desktop.ini", "[.XGUIInfo]\nIcon=downloadedprogramfiles\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,5\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=5" );
-		//FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Favorites" );
-		//FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Favorites/desktop.ini", "[.XGUIInfo]\nIcon=favourites\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,2\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=2" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Fonts" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Help" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/History" );
-		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/History/desktop.ini", "[.XGUIInfo]\nIcon=history\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,4\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=4" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Media" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Offline Web Pages" );
-		FileSystem.Data.WriteAllText( "FakeSystemRoot/Windows/Offline Web Pages/desktop.ini", "[.XGUIInfo]\nIcon=offlinepages\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\webcheck.dll,1\nIconFile=C:\\WINDOWS\\system32\\webcheck.dll\nIconIndex=1" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32/drivers" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/System32/config" );
-
-		// System and bundled applications in Windows directory
-		SetupWindowsFiles();
-		await Task.Delay( 20 ); // Give UI time to render
-
-		// Desktop Folders
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Desktop" );
-
-		_setupDialog.UpdateStatus( "Installing Start Menu Items..." );
-		// Start Menu
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Start Menu" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Start Menu/Programs" );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Windows/Start Menu/Start Up" );
-		await Task.Delay( 20 ); // Give UI time to render
-
-		_setupDialog.UpdateStatus( "Setting up Program files..." );
-		FileSystem.Data.CreateDirectory( "FakeSystemRoot/Program Files" );
-		// Program Files with proper application folders
-		SetupProgramFiles();
-		await Task.Delay( 20 ); // Give UI time to render
-
-		_setupDialog.UpdateStatus( "Registering applications..." );
-		SetupApplicationRegistryEntries(); // Call the new method
-		await Task.Delay( 20 );
-
-		_setupDialog.Complete();
-	}
-
-	public static void SetupRootFiles()
-	{
-		string rootDir = "FakeSystemRoot";
-		FileSystem.Data.WriteAllText( $"{rootDir}/Autoexec.bat", "@echo off\n win" );
-		FileSystem.Data.WriteAllText( $"{rootDir}/Config.sys", "DEVICE=C:\\WINDOWS\\HIMEM.SYS\nDEVICE=C:\\WINDOWS\\EMM386.EXE" );
-		FileSystem.Data.WriteAllText( $"{rootDir}/MSDOS.SYS", "[Paths]\nWinDir=C:\\WINDOWS\nWinBootDir=C:\\WINDOWS\nHostWinBootDrv=C\n\n[Options]\nBootMulti=1\nBootGUI=1\nDoubleBuffer=1\nAutoScan=1\nWinVer=4.10.2222" );
-		FileSystem.Data.WriteAllText( $"{rootDir}/boot.ini", "[boot loader]\nTimeout=30\nDefault=multi(0)disk(0)rdisk(0)partition(1)\\WINDOWS\n[operating systems]\nmulti(0)disk(0)rdisk(0)partition(1)\\WINDOWS=\"Microsoft Windows 98 Hybrid NT Edition\" /fastdetect" );
-	}
-
-	/// <summary>
-	/// Create program folders and files in Program Files directory
-	/// </summary>
-	private static void SetupProgramFiles()
-	{
-		string programFilesDir = "FakeSystemRoot/Program Files";
-
-		// Internet Explorer folder
-		string ieDir = $"{programFilesDir}/Internet Explorer";
-		FileSystem.Data.CreateDirectory( ieDir );
-		NativeProgram.CompileIntoExe( typeof( IExploreProgram ), $"{ieDir}/Iexplore.exe" );
-
-		// Ultimate Doom for Windows 95
-		string doomDir = $"{programFilesDir}/Ultimate Doom for Windows 95";
-		FileSystem.Data.CreateDirectory( doomDir );
-		NativeProgram.CompileIntoExe( typeof( Doom95Program ), $"{doomDir}/doom95.exe" );
-
-		// Outlook Express
-		string outlookDir = $"{programFilesDir}/Outlook Express";
-		NativeProgram.CompileIntoExe( typeof( OutlookExpressProgram ), $"{outlookDir}/outlook.exe" );
-
-		// Steam (modern app not in Windows 98, but included for fun)
-		string steamDir = $"{programFilesDir}/Steam";
-		FileSystem.Data.CreateDirectory( steamDir );
-		NativeProgram.CompileIntoExe( typeof( SteamProgram ), $"{steamDir}/steam.exe" );
-	}
-	/// <summary>
-	/// Sets up registry entries for known applications.
-	/// </summary>
-	private static void SetupApplicationRegistryEntries()
-	{
-		if ( Registry.Instance == null )
-		{
-			new Registry();
-			if ( Registry.Instance == null )
-			{
-				Log.Warning( "Registry instance not available for setting up application entries." );
-				return;
-			}
-		}
-
-		string applicationsRoot = @"HKEY_CLASSES_ROOT\Applications";
-
-		// Notepad
-		string notepadExe = "notepad.exe";
-		string notepadPath = "C:/Windows/notepad.exe"; // Make sure this matches the path in SetupWindowsFiles
-		Registry.Instance.SetValue( Path.Combine( applicationsRoot, notepadExe ), "", "Notepad" );
-		Registry.Instance.SetValue( Path.Combine( applicationsRoot, notepadExe, "shell", "open", "command" ), "", $"\"{notepadPath}\" \"%1\"" );
-		// Optionally, add an icon path if your system supports it here
-		// Registry.Instance.SetValue(Path.Combine(applicationsRoot, notepadExe), "DefaultIcon", notepadPath + ",0");
-
-
-		// Paint
-		string mspaintExe = "mspaint.exe";
-		string mspaintPath = "C:/Windows/mspaint.exe"; // Make sure this matches the path in SetupWindowsFiles
-		Registry.Instance.SetValue( Path.Combine( applicationsRoot, mspaintExe ), "", "Paint" );
-		Registry.Instance.SetValue( Path.Combine( applicationsRoot, mspaintExe, "shell", "open", "command" ), "", $"\"{mspaintPath}\" \"%1\"" );
-
-		// Internet Explorer
-		string iexploreExe = "iexplore.exe";
-		string iexplorePath = "C:/Program Files/Internet Explorer/iexplore.exe"; // Make sure this matches the path in SetupProgramFiles
-		Registry.Instance.SetValue( Path.Combine( applicationsRoot, iexploreExe ), "", "Internet Explorer" );
-		Registry.Instance.SetValue( Path.Combine( applicationsRoot, iexploreExe, "shell", "open", "command" ), "", $"\"{iexplorePath}\" \"%1\"" );
-
-		Log.Info( "Registered default applications in the registry." );
-	}
-
-	/// <summary>
-	/// Setup applications that belong in the Windows directory
-	/// </summary>
-	private static void SetupWindowsFiles()
-	{
-		string windowsDir = "FakeSystemRoot/Windows";
-
-		// Windows Explorer (system application)
-		NativeProgram.CompileIntoExe( typeof( ExplorerProgram ), $"{windowsDir}/explorer.exe" );
-
-		// Notepad (system application)
-		NativeProgram.CompileIntoExe( typeof( NotepadProgram ), $"{windowsDir}/notepad.exe" );
-
-		// Paint (system application)
-		NativeProgram.CompileIntoExe( typeof( PaintProgram ), $"{windowsDir}/mspaint.exe" );
-
-		// winver (system application)
-		NativeProgram.CompileIntoExe( typeof( WinVerProgram ), $"{windowsDir}/System32/winver.exe" );
-
-		// taskmgr (system application)
-		NativeProgram.CompileIntoExe( typeof( TaskMgrProgram ), $"{windowsDir}/System32/taskmgr.exe" );
-
-		// conhost (system application)
-		NativeProgram.CompileIntoExe( typeof( ConsoleHostProgram ), $"{windowsDir}/System32/conhost.exe" );
-
-		// cmd (system application)
-		NativeProgram.CompileIntoExe( typeof( CommandProgram ), $"{windowsDir}/System32/cmd.exe" );
-
-		// edit (system application)
-		NativeProgram.CompileIntoExe( typeof( EditProgram ), $"{windowsDir}/System32/edit.exe" );
-
-		// regedit (system application)
-		NativeProgram.CompileIntoExe( typeof( RegEditProgram ), $"{windowsDir}/regedit.exe" );
-	}
-
-	/// <summary>
-	/// Creates a shortcut file pointing to a target program
-	/// </summary>
-	private static void CreateShortcut( string shortcutPath, string targetPath, string iconName = "",
-									 string arguments = "", string workingDir = "" )
-	{
-		// Create the shortcut descriptor
-		var shortcut = new ShortcutDescriptor(
-			targetPath,
-			string.IsNullOrEmpty( workingDir ) ? Path.GetDirectoryName( targetPath ) : workingDir,
-			arguments,
-			iconName
-		);
-
-		// Write to file
-		FileSystem.Data.WriteAllText(
-			shortcutPath,
-			shortcut.ToFileContent()
-		);
-	}
-
+	// Console commands can remain here for now, but they'll use the new setup logic.
+	// They might need access to the VFS and Registry instances from FakeOSLoader.
+	// For simplicity, these might be better invoked after FakeOSLoader has initialized VFS and Registry.
 
 	[ConCmd( "xguitest_force_recreate_system_root" )]
-	public static void ForceRecreateSystemRoot()
+	public static async void ForceRecreateSystemRootCommand()
 	{
-		FileSystem.Data.DeleteDirectory( "FakeSystemRoot", true );
-		CreateSystemRoot();
+		if ( VirtualFileSystem.Instance == null )
+		{
+			Log.Error( "Cannot force recreate system root: VirtualFileSystem not initialized." );
+			return;
+		}
+		// This command implies deleting the VFS content and re-running setup.
+		// Deleting "C:/" in VFS should clear the mapped "FakeSystemRoot" in FileSystem.Data
+		Log.Info( "Forcing system root recreation..." );
+		VirtualFileSystem.Instance.DeleteDirectory( "C:/", true ); // Example: Deletes all under C:/ in VFS
+
+		// Re-run setup. This assumes Registry.Instance might also need to be reset or re-initialized.
+		// If Registry holds onto old hive objects, it might need a ClearHives() or similar method.
+		// Or, FakeOSLoader could re-initialize both VFS and Registry before calling this.
+		var setup = new OSSetup( VirtualFileSystem.Instance, null ); // Pass null for registry to re-initialize
+		await setup.RunInitialSetup();
+		Log.Info( "System root recreation complete." );
 	}
 
-
 	[ConCmd( "xguitest_delete_system_root" )]
-	public static void DeleteSystemRoot()
+	public static void DeleteSystemRootCommand()
 	{
-		FileSystem.Data.DeleteDirectory( "FakeSystemRoot", true );
+		if ( VirtualFileSystem.Instance == null )
+		{
+			Log.Error( "Cannot delete system root: VirtualFileSystem not initialized." );
+			return;
+		}
+		Log.Info( "Deleting system root via VFS C:/ ..." );
+		VirtualFileSystem.Instance.DeleteDirectory( "C:/", true );
+		Log.Info( "System root deleted. FakeOS will likely be non-functional until next setup/reboot." );
 	}
 }

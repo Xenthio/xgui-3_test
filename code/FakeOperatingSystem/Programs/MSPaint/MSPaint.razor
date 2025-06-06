@@ -1,0 +1,328 @@
+﻿@using System
+@using Sandbox
+@using Sandbox.UI
+@using XGUI
+@namespace FakeOperatingSystem
+@attribute [StyleSheet]
+@inherits Window
+
+<root title="MS-Paint" minwidth="300" minheight="200" defaultwidth="800" defaultheight="600" style="width: 800px; height: 600px;" theme="Computer95">
+	<div class="window-content">
+		<div>
+			<!-- Menu Bar -->
+			<div class="toolbar menu-toolbar">
+				<button @ref=FileMenuButton class="menu-item" onclick=@ShowFileMenu>File</button>
+				<button @ref=EditMenuButton class="menu-item" onclick=@ShowEditMenu>Edit</button>
+				<button @ref=ViewMenuButton class="menu-item" onclick=@ShowViewMenu>View</button>
+				<button @ref=ImageMenuButton class="menu-item" onclick=@ShowImageMenu>Image</button>
+				<button @ref=ColoursMenuButton class="menu-item" onclick=@ShowColoursMenu>Colors</button>
+				<button @ref=HelpMenuButton class="menu-item" onclick=@ShowHelpMenu>Help</button>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="tools row">
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="free_select"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="rectangle_select"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="eraser"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="fill"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="eye_dropper"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="magnifying_glass"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="pencil"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="paintbrush"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="spraypaint"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="text_tool"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="line_tool"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="curve_tool"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="rectangle_tool"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="polygon_tool"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="circle_tool"></xguiiconpanel></button>
+				<button class="tool-button"><xguiiconpanel iconsize=16 iconname="round_rectangle_tool"></xguiiconpanel></button>
+
+			</div>
+			<layoutboxinset class="canvas-area" style="flex-grow: 1;">
+				<!-- Canvas for drawing will be here -->
+				<scrollpanel>
+					<div class="canvas" style="width: 100%; height: 100%; background-color: #808080; padding:3px;">
+						<panel @ref=ImagePanel @onmousedown=@MouseDownCanvas @onmousemove=@MouseMoveCanvas @onmouseup=@MouseUpCanvas class="image" style="background-color:white;">
+
+						</panel>
+					</div>
+				</scrollpanel>
+			</layoutboxinset>
+		</div>
+	</div>
+</root>
+
+@code {
+	Button FileMenuButton;
+	Button EditMenuButton;
+	Button ViewMenuButton;
+	Button ImageMenuButton;
+	Button ColoursMenuButton;
+	Button HelpMenuButton;
+
+	Panel ImagePanel;
+
+	Texture imageTexture;
+
+	protected override void OnAfterTreeRender(bool firstTime)
+	{
+		base.OnAfterTreeRender(firstTime);
+
+		if (firstTime)
+		{
+			ImagePanel.Style.Width = 512;
+			ImagePanel.Style.Height = 384;
+
+			imageTexture = Texture.Create(512, 384, ImageFormat.RGBA8888).Finish();
+		}
+	}
+	public override void Tick()
+	{
+		base.Tick();
+		ImagePanel.Style.BackgroundImage = imageTexture;
+		ImagePanel.Style.Width = imageTexture.Width;
+		ImagePanel.Style.Height = imageTexture.Height;
+	}
+
+	bool _isMouseDown = false;
+	float _imageScale = 1.0f;
+	Color32 _currentColour = Color32.Black;
+	Vector2 _lastMousePosition;
+
+	public void MouseDownCanvas(PanelEvent e)
+	{
+		if (e is not MousePanelEvent mouseEvent)
+			return; // Ensure we have the correct event type
+		if (mouseEvent.MouseButton == MouseButtons.Left)
+		{
+			imageTexture.Update(_currentColour, mouseEvent.LocalPosition.x / _imageScale, mouseEvent.LocalPosition.y / _imageScale);
+			_isMouseDown = true;
+		}
+		else if (mouseEvent.MouseButton == MouseButtons.Right)
+		{
+			//todo contxet menu perhaps?
+		}
+		else
+		{
+			_isMouseDown = true;
+		}
+		CloseActiveMenu();
+	}
+
+	public void MouseMoveCanvas(PanelEvent e)
+	{
+		if (e is not MousePanelEvent mouseEvent)
+			return; // Ensure we have the correct event type
+		if (!_isMouseDown)
+		{
+			_lastMousePosition = mouseEvent.LocalPosition;
+			return; // Only handle mouse move if the mouse is down
+		}
+
+		//imageTexture.Update(_currentColour, mouseEvent.LocalPosition.x, mouseEvent.LocalPosition.y);
+
+		// Draw line from last position to current position
+		if (_lastMousePosition != Vector2.Zero)
+		{
+			var startX = (int)(_lastMousePosition.x / _imageScale);
+			var startY = (int)(_lastMousePosition.y / _imageScale);
+			var endX = (int)(mouseEvent.LocalPosition.x / _imageScale);
+			var endY = (int)(mouseEvent.LocalPosition.y / _imageScale);
+			// Draw a line on the texture
+			DrawLine(imageTexture, startX, startY, endX, endY, _currentColour);
+		}
+
+		ImagePanel.StateHasChanged();
+		_lastMousePosition = mouseEvent.LocalPosition;
+	}
+
+	private void DrawLine(Texture texture, int startX, int startY, int endX, int endY, Color32 color)
+	{
+		if (texture == null)
+			return;
+		int width = texture.Width;
+		int height = texture.Height;
+		startX = Math.Clamp(startX, 0, width - 1);
+		startY = Math.Clamp(startY, 0, height - 1);
+		endX = Math.Clamp(endX, 0, width - 1);
+		endY = Math.Clamp(endY, 0, height - 1);
+		// Draw the line using Bresenham's algorithm or similar
+		int dx = Math.Abs(endX - startX);
+		int dy = Math.Abs(endY - startY);
+		int sx = (startX < endX) ? 1 : -1;
+		int sy = (startY < endY) ? 1 : -1;
+		int err = dx - dy;
+		while (true)
+		{
+			texture.Update(color, startX, startY);
+			if (startX == endX && startY == endY)
+				break;
+			int err2 = err * 2;
+			if (err2 > -dy)
+			{
+				err -= dy;
+				startX += sx;
+			}
+			if (err2 < dx)
+			{
+				err += dx;
+				startY += sy;
+			}
+		}
+	}
+
+	public void MouseUpCanvas(PanelEvent e)
+	{
+		if (e is not MousePanelEvent mouseEvent)
+			return;
+		if (mouseEvent.MouseButton == MouseButtons.Left)
+		{
+			_isMouseDown = false;
+		}
+		else if (mouseEvent.MouseButton == MouseButtons.Right)
+		{
+		}
+		else
+		{
+			_isMouseDown = false;
+		}
+	}
+
+	// Currently active menu
+	private ContextMenu activeMenu;
+
+	protected override void OnMouseDown(MousePanelEvent e)
+	{
+		base.OnMouseDown(e);
+
+		// Only close if mouse is not over a menu button or menu
+		if (activeMenu != null &&
+			!FileMenuButton.HasHovered &&
+			!EditMenuButton.HasHovered &&
+			!ViewMenuButton.HasHovered &&
+			!HelpMenuButton.HasHovered &&
+			!activeMenu.HasHovered)
+		{
+			CloseActiveMenu();
+		}
+	}
+
+	private void CloseActiveMenu()
+	{
+		if (activeMenu != null)
+		{
+			// Remove "active" class from all menu buttons
+			FileMenuButton?.SetClass("active", false);
+			EditMenuButton?.SetClass("active", false);
+			ViewMenuButton?.SetClass("active", false);
+			HelpMenuButton?.SetClass("active", false);
+
+			activeMenu.Delete(true);
+			activeMenu = null;
+		}
+	}
+
+	// Menu handlers
+	private void ShowFileMenu()
+	{
+		CloseActiveMenu();
+
+		// Set this button as active
+		FileMenuButton.SetClass("active", true);
+
+		// Create menu - position below button
+		activeMenu = new ContextMenu(FileMenuButton, XGUIPopup.PositionMode.BelowLeft);
+
+		activeMenu.AddMenuItem("New", () => { Log.Info("New"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Open", () => { Log.Info("Open"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Save", () => { Log.Info("Save"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Save As...", () => { Log.Info("Save As..."); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Print Preview", () => { Log.Info("Print Preview"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Page Setup", () => { Log.Info("Page Setup"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Print", () => { Log.Info("Print"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Send", () => { Log.Info("Send"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Set As Wallpaper (Tiled)", () => { Log.Info("wallpaper tiled"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Set As Wallpaper (Centred)", () => { Log.Info("wallpaper centre"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Recent File", () => { Log.Info("Recent File"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Exit", () => Delete());
+	}
+
+	private void ShowEditMenu()
+	{
+		CloseActiveMenu();
+		// Set this button as active
+		EditMenuButton.SetClass("active", true);
+		// Create menu - position below button
+		activeMenu = new ContextMenu(EditMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Undo", () => { Log.Info("Undo"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Repeat", () => { Log.Info("Repeat"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Cut", () => { Log.Info("Cut"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Copy", () => { Log.Info("Copy"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Paste", () => { Log.Info("Paste"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Clear Selection", () => { Log.Info("Clear Selection"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Select All", () => { Log.Info("Select All"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Copy To...", () => { Log.Info("Copy To..."); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Paste From...", () => { Log.Info("Paste From..."); activeMenu.Delete(); });
+	}
+
+	private void ShowViewMenu()
+	{
+		CloseActiveMenu();
+		// Set this button as active
+		ViewMenuButton.SetClass("active", true);
+		// Create menu - position below button
+		activeMenu = new ContextMenu(ViewMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Zoom In", () => { Log.Info("Zoom In"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Zoom Out", () => { Log.Info("Zoom Out"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Show Grid", () => { Log.Info("Show Grid"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Toolbars", () => { Log.Info("Toolbars"); activeMenu.Delete(); });
+	}
+
+	private void ShowImageMenu()
+	{
+		CloseActiveMenu();
+		// Set this button as active
+		ImageMenuButton.SetClass("active", true);
+		// Create menu - position below button
+		activeMenu = new ContextMenu(ImageMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Attributes", () => { Log.Info("Attributes"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Stretch/Skew", () => { Log.Info("Stretch/Skew"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Invert Colors", () => { Log.Info("Invert Colors"); activeMenu.Delete(); });
+		activeMenu.AddSeparator();
+		activeMenu.AddMenuItem("Clear Image", () => { Log.Info("Clear Image"); activeMenu.Delete(); });
+	}
+
+	private void ShowColoursMenu()
+	{
+		CloseActiveMenu();
+		// Set this button as active
+		ColoursMenuButton.SetClass("active", true);
+		// Create menu - position below button
+		activeMenu = new ContextMenu(ColoursMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("Edit Colors...", () => { Log.Info("Edit Colors..."); activeMenu.Delete(); });
+	}
+
+	private void ShowHelpMenu()
+	{
+		CloseActiveMenu();
+		// Set this button as active
+		HelpMenuButton.SetClass("active", true);
+		// Create menu - position below button
+		activeMenu = new ContextMenu(HelpMenuButton, XGUIPopup.PositionMode.BelowLeft);
+		activeMenu.AddMenuItem("View Help", () => { Log.Info("View Help"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("About MS-Paint", () => { Log.Info("About MS-Paint"); activeMenu.Delete(); });
+	}
+}

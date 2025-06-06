@@ -1,0 +1,22 @@
+MSPaint {
+	flex-direction: column;
+
+	.tools {
+		flex-wrap: wrap;
+		width: 57px;
+		flex-shrink: 0;
+		padding: 0px 3px;
+	}
+
+	.tool-button {
+		width: 25px;
+		height: 25px;
+		min-width: 25px;
+		min-height: 25px;
+	}
+
+	.image { 
+		flex-shrink: 0; 
+		pointer-events: all;
+	}
+}

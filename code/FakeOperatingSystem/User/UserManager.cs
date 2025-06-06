@@ -14,8 +14,14 @@ using XGUI;
 namespace FakeOperatingSystem;
 public class UserManager
 {
+	public static UserManager Instance { get; private set; }
 	public List<UserAccount> Users { get; private set; } = new();
 	public UserAccount CurrentUser { get; private set; }
+
+	public UserManager()
+	{
+		Instance = this;
+	}
 
 	// Define a registry path for storing user accounts within the SAM hive
 	// Path: HKEY_LOCAL_MACHINE\SAM\SAM\Users\<UserName>
@@ -238,6 +244,7 @@ public class UserManager
 			await SetupStartMenuItems( user, personalizedDialog );
 			await SetupQuickLaunch( user, personalizedDialog );
 			await SetupDesktopItems( user, personalizedDialog );
+			await SetupUserConfigInRegistry( user, personalizedDialog );
 		}
 		else // System-wide setup (no specific user, or user system disabled)
 		{
@@ -271,6 +278,7 @@ public class UserManager
 			await SetupStartMenuItems( globalUserAccountRepresentation, personalizedDialog );
 			await SetupQuickLaunch( globalUserAccountRepresentation, personalizedDialog );
 			await SetupDesktopItems( globalUserAccountRepresentation, personalizedDialog );
+			await SetupUserConfigInRegistry( globalUserAccountRepresentation, personalizedDialog );
 		}
 
 		personalizedDialog.UpdateStatus( "Finalizing settings..." );
@@ -387,6 +395,33 @@ public class UserManager
 		VirtualFileSystem.Instance.CreateDirectory( Path.Combine( desktopDir, "Online Services" ) );
 		CreateShortcut( Path.Combine( desktopDir, "Outlook Express.lnk" ), "C:/Program Files/Outlook Express/outlook.exe" ); await Task.Yield();
 		CreateShortcut( Path.Combine( desktopDir, "Doom 95.lnk" ), "C:/Program Files/Ultimate Doom for Windows 95/doom95.exe" ); await Task.Yield();
+	}
+
+	public async Task SetupUserConfigInRegistry( UserAccount user, PersonalisedSettingsDialog dialog )
+	{
+		// Creates all default settings for the user in the registry
+		if ( user == null || string.IsNullOrEmpty( user.UserName ) )
+		{
+			Log.Warning( "SetupUserConfigInRegistry: User is null or has no UserName. Skipping." );
+			return;
+		}
+		dialog.UpdateStatus( $"Configuring user settings for {user.UserName}..." );
+		await Task.Delay( 20 );
+
+		// -- Control Panel settings (HKEY_CURRENT_USER\Control Panel) --
+		// Setup default theme (HKEY_CURRENT_USER\Control Panel\Desktop, value CurrentThemeFile)
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "CurrentThemeFile", "/XGUI/DefaultStyles/Computer95.scss" );
+		// Setup default wallpaper (HKEY_CURRENT_USER\Control Panel\Desktop, value Wallpaper)
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "Wallpaper", "" );
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "WallpaperStyle", "0" ); // 0 = Centered, 1 = Tiled, 2 = Stretched
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "TileWallpaper", "0" ); // 0 = No tiling, 1 = Tiled wallpaper
+
+		// -- Shell Folders (HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders) --
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", "Desktop", Path.Combine( user.ProfilePath, "Desktop" ) );
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", "Personal", Path.Combine( user.ProfilePath, "My Documents" ) );
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", "Favorites", Path.Combine( user.ProfilePath, "Favorites" ) );
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", "Start Menu", Path.Combine( user.ProfilePath, "Start Menu" ) );
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", "AppData", Path.Combine( user.ProfilePath, "Application Data" ) );
 	}
 
 	private static void CreateShortcut( string shortcutPath, string targetPath, string iconName = "",

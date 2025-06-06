@@ -107,9 +107,11 @@
 	{
 		foreach (var process in ProcessManager.Instance.GetProcesses())
 		{
-			foreach (var window in process.OwnedWindows)
+			foreach (var panel in process.OwnedWindows)
 			{
-				if (window != null && window.IsValid && window.IsVisible)
+				if (panel is TaskBar)
+					continue; // Skip the taskbar
+				if (panel is Window window && window != null && window.IsValid && window.IsVisible)
 				{
 					yield return (process, window);
 				}

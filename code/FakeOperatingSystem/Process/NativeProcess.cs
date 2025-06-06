@@ -51,25 +51,31 @@ public class NativeProcess : BaseProcess
 		// Close all owned windows (if not already closed by the program)
 		foreach ( var window in OwnedWindows.ToArray() )
 		{
-			window?.Close();
+			if ( window is Window win )
+				win.Close();
+			else
+				window?.Delete();
 		}
 		OwnedWindows.Clear();
 	}
 
-	public void RegisterWindow( Window window )
+	public void RegisterWindow( XGUIPanel window )
 	{
 		if ( window != null && !OwnedWindows.Contains( window ) )
 		{
 			OwnedWindows.Add( window );
 			XGUISystem.Instance.Panel.AddChild( window );
-			window.OnCloseAction += () =>
+			if ( window is Window win )
 			{
-				OwnedWindows.Remove( window );
-				if ( OwnedWindows.Count <= 0 )
+				win.OnCloseAction += () =>
 				{
-					ProcessManager.Instance.TerminateProcess( this );
-				}
-			};
+					OwnedWindows.Remove( window );
+					if ( OwnedWindows.Count <= 0 )
+					{
+						ProcessManager.Instance.TerminateProcess( this );
+					}
+				};
+			}
 		}
 	}
 }
