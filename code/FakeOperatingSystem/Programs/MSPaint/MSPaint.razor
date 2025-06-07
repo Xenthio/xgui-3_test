@@ -1,8 +1,10 @@
 ﻿@using System
+@using System.Threading.Tasks
 @using System.Collections.Generic
 @using System.Linq
 @using FakeDesktop
 @using FakeOperatingSystem.OSFileSystem
+@using FakeOperatingSystem.UI.Dialogs
 @using Sandbox
 @using Sandbox.UI
 @using XGUI
@@ -25,28 +27,33 @@
 		<!-- Main content area with Tools and Canvas -->
 		<div class="row" style="flex-grow: 1;">
 			<!-- Tools Panel -->
-			<div class="tools">
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.FreeSelect)) class:active=@(CurrentToolType == ToolType.FreeSelect)><xguiiconpanel iconsize=16 iconname="free_select"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.RectangleSelect)) class:active=@(CurrentToolType == ToolType.RectangleSelect)><xguiiconpanel iconsize=16 iconname="rectangle_select"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Eraser)) class:active=@(CurrentToolType == ToolType.Eraser)><xguiiconpanel iconsize=16 iconname="eraser"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Fill)) class:active=@(CurrentToolType == ToolType.Fill)><xguiiconpanel iconsize=16 iconname="fill"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.EyeDropper)) class:active=@(CurrentToolType == ToolType.EyeDropper)><xguiiconpanel iconsize=16 iconname="eye_dropper"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Magnify)) class:active=@(CurrentToolType == ToolType.Magnify)><xguiiconpanel iconsize=16 iconname="magnifying_glass"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Pencil)) class:active=@(CurrentToolType == ToolType.Pencil)><xguiiconpanel iconsize=16 iconname="pencil"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Brush)) class:active=@(CurrentToolType == ToolType.Brush)><xguiiconpanel iconsize=16 iconname="paintbrush"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.SprayCan)) class:active=@(CurrentToolType == ToolType.SprayCan)><xguiiconpanel iconsize=16 iconname="spraypaint"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Text)) class:active=@(CurrentToolType == ToolType.Text)><xguiiconpanel iconsize=16 iconname="text_tool"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Line)) class:active=@(CurrentToolType == ToolType.Line)><xguiiconpanel iconsize=16 iconname="line_tool"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Curve)) class:active=@(CurrentToolType == ToolType.Curve)><xguiiconpanel iconsize=16 iconname="curve_tool"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Rectangle)) class:active=@(CurrentToolType == ToolType.Rectangle)><xguiiconpanel iconsize=16 iconname="rectangle_tool"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Polygon)) class:active=@(CurrentToolType == ToolType.Polygon)><xguiiconpanel iconsize=16 iconname="polygon_tool"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Circle)) class:active=@(CurrentToolType == ToolType.Circle)><xguiiconpanel iconsize=16 iconname="circle_tool"></xguiiconpanel></button>
-				<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.RoundedRectangle)) class:active=@(CurrentToolType == ToolType.RoundedRectangle)><xguiiconpanel iconsize=16 iconname="round_rectangle_tool"></xguiiconpanel></button>
+			<div class="sidebar">
+				<div class="tools">
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.FreeSelect)) class:active=@(CurrentToolType == ToolType.FreeSelect)><xguiiconpanel iconsize=16 iconname="free_select"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.RectangleSelect)) class:active=@(CurrentToolType == ToolType.RectangleSelect)><xguiiconpanel iconsize=16 iconname="rectangle_select"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Eraser)) class:active=@(CurrentToolType == ToolType.Eraser)><xguiiconpanel iconsize=16 iconname="eraser"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Fill)) class:active=@(CurrentToolType == ToolType.Fill)><xguiiconpanel iconsize=16 iconname="fill"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.EyeDropper)) class:active=@(CurrentToolType == ToolType.EyeDropper)><xguiiconpanel iconsize=16 iconname="eye_dropper"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Magnify)) class:active=@(CurrentToolType == ToolType.Magnify)><xguiiconpanel iconsize=16 iconname="magnifying_glass"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Pencil)) class:active=@(CurrentToolType == ToolType.Pencil)><xguiiconpanel iconsize=16 iconname="pencil"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Brush)) class:active=@(CurrentToolType == ToolType.Brush)><xguiiconpanel iconsize=16 iconname="paintbrush"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.SprayCan)) class:active=@(CurrentToolType == ToolType.SprayCan)><xguiiconpanel iconsize=16 iconname="spraypaint"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Text)) class:active=@(CurrentToolType == ToolType.Text)><xguiiconpanel iconsize=16 iconname="text_tool"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Line)) class:active=@(CurrentToolType == ToolType.Line)><xguiiconpanel iconsize=16 iconname="line_tool"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Curve)) class:active=@(CurrentToolType == ToolType.Curve)><xguiiconpanel iconsize=16 iconname="curve_tool"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Rectangle)) class:active=@(CurrentToolType == ToolType.Rectangle)><xguiiconpanel iconsize=16 iconname="rectangle_tool"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Polygon)) class:active=@(CurrentToolType == ToolType.Polygon)><xguiiconpanel iconsize=16 iconname="polygon_tool"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.Circle)) class:active=@(CurrentToolType == ToolType.Circle)><xguiiconpanel iconsize=16 iconname="circle_tool"></xguiiconpanel></button>
+					<button class="tool-button" onclick=@(() => SetActiveTool(ToolType.RoundedRectangle)) class:active=@(CurrentToolType == ToolType.RoundedRectangle)><xguiiconpanel iconsize=16 iconname="round_rectangle_tool"></xguiiconpanel></button>
+				</div>
+				<div class="tool-options layout-inset">
+
+				</div>
 			</div>
 
 			<!-- Canvas Area -->
 			<layoutboxinset class="canvas-area" style="flex-grow: 1; background-color: #808080;">
-				<scrollpanel>
+				<scrollpanel style="align-items:flex-start;">
 					<div class="canvas" style="padding:3px;">
 						<panel @ref=ImagePanel @onmousedown=@MouseDownCanvas @onmousemove=@MouseMoveCanvas @onmouseup=@MouseUpCanvas class="image" style="background-color:white; image-rendering: pixelated; transform: scale(@CanvasScale);">
 							<panel @ref=PreviewPanel class="preview-overlay" style="position: absolute; top: 0; left: 0; pointer-events: none; image-rendering: pixelated;"></panel>
@@ -116,7 +123,7 @@
 	/// </summary>
 	public class PaintCanvas
 	{
-		public Texture ImageTexture { get; private set; }
+		public Texture ImageTexture { get; set; }
 		public Texture PreviewTexture { get; private set; }
 		public Color32 PrimaryColor { get; set; } = Color32.Black;
 		public Color32 SecondaryColor { get; set; } = Color32.White;
@@ -130,6 +137,234 @@
 			_width = width;
 			_height = height;
 			Resize(width, height);
+		}
+
+		public Rect? ActiveSelectionRect { get; set; }
+		private TimeSince _timeSinceMarchingAntsUpdate;
+		private int _marchingAntsOffset = 0;
+		public Texture SelectedPixelsTexture { get; private set; }
+		public bool IsSelectionFloating { get; set; } = false;
+		private Rect _liftedFromRect; // Stores the original rect on ImageTexture when lifted
+
+		public void SetActiveSelection(Rect? rect)
+		{
+			// If a selection is currently floating and we are setting a new one (or clearing),
+			// the floating one should be stamped first.
+			if (IsSelectionFloating && ActiveSelectionRect.HasValue)
+			{
+				StampFloatingSelectionToImage(ActiveSelectionRect.Value); // Stamp at its current position
+			}
+
+			ActiveSelectionRect = rect;
+			IsSelectionFloating = false; // A newly defined selection is not floating yet
+
+			if (rect == null)
+			{
+				ClearPreview();
+				SelectedPixelsTexture?.Dispose(); // Dispose if clearing
+				SelectedPixelsTexture = null;
+			}
+			else
+			{
+				DrawSelectionOutline(rect.Value);
+				// Ensure SelectedPixelsTexture is ready if we intend to lift immediately
+				SelectedPixelsTexture?.Dispose();
+				SelectedPixelsTexture = Texture.Create((int)rect.Value.Width, (int)rect.Value.Height, ImageFormat.RGBA8888).Finish();
+			}
+		}
+
+		public void ClearActiveSelection()
+		{
+			if (IsSelectionFloating)
+			{
+				// If it was floating, just clear it without stamping
+				SelectedPixelsTexture?.Dispose();
+				SelectedPixelsTexture = null;
+				IsSelectionFloating = false;
+			}
+			ActiveSelectionRect = null;
+			ClearPreview();
+		}
+
+		public void LiftSelectionFromImage()
+		{
+			if (!ActiveSelectionRect.HasValue || ActiveSelectionRect.Value.Width <= 0 || ActiveSelectionRect.Value.Height <= 0) return;
+
+			_liftedFromRect = ActiveSelectionRect.Value;
+			int selWidth = (int)_liftedFromRect.Width;
+			int selHeight = (int)_liftedFromRect.Height;
+
+			// Ensure SelectedPixelsTexture is appropriately sized
+			if (SelectedPixelsTexture == null || SelectedPixelsTexture.Width != selWidth || SelectedPixelsTexture.Height != selHeight)
+			{
+				SelectedPixelsTexture?.Dispose();
+				SelectedPixelsTexture = Texture.Create(selWidth, selHeight, ImageFormat.RGBA8888).Finish();
+			}
+
+			var imagePixels = ImageTexture.GetPixels().ToArray();
+			var selectionData = new Color32[selWidth * selHeight];
+
+			for (int y = 0; y < selHeight; y++)
+			{
+				for (int x = 0; x < selWidth; x++)
+				{
+					int sourceX = (int)_liftedFromRect.Left + x;
+					int sourceY = (int)_liftedFromRect.Top + y;
+					if (sourceX >= 0 && sourceX < _width && sourceY >= 0 && sourceY < _height)
+					{
+						selectionData[y * selWidth + x] = imagePixels[sourceY * _width + sourceX];
+					}
+				}
+			}
+			SelectedPixelsTexture.Update(selectionData);
+
+			// Clear the area on the main image texture (fill with secondary color)
+			var clearedAreaPixels = new Color32[(int)_liftedFromRect.Width * (int)_liftedFromRect.Height];
+			Array.Fill(clearedAreaPixels, SecondaryColor);
+			ImageTexture.Update(clearedAreaPixels, (int)_liftedFromRect.Left, (int)_liftedFromRect.Top, (int)_liftedFromRect.Width, (int)_liftedFromRect.Height);
+
+			IsSelectionFloating = true;
+			// The ActiveSelectionRect now represents the floating selection's current position and size.
+			// Preview will be updated by DrawFloatingSelectionPreview.
+		}
+
+		public void StampFloatingSelectionToImage(Rect targetRect)
+		{
+			if (!IsSelectionFloating || SelectedPixelsTexture == null || targetRect.Width <= 0 || targetRect.Height <= 0) return;
+
+			var selectionData = SelectedPixelsTexture.GetPixels().ToArray();
+			// Ensure data is valid (it should be if SelectedPixelsTexture exists)
+			if (selectionData.Length == 0) return;
+
+			// Create a temporary buffer for the target area on ImageTexture
+			// This helps with blending if selection is smaller/larger or has transparency
+			int targetX = (int)targetRect.Left;
+			int targetY = (int)targetRect.Top;
+			int stampWidth = (int)targetRect.Width; // Should match SelectedPixelsTexture.Width
+			int stampHeight = (int)targetRect.Height; // Should match SelectedPixelsTexture.Height
+
+			var imagePixels = ImageTexture.GetPixels().ToArray(); // Get current image
+
+			for (int y = 0; y < stampHeight; y++)
+			{
+				for (int x = 0; x < stampWidth; x++)
+				{
+					int destX = targetX + x;
+					int destY = targetY + y;
+
+					if (destX >= 0 && destX < _width && destY >= 0 && destY < _height)
+					{
+						Color32 selectedPixel = selectionData[y * stampWidth + x];
+						// Simple overwrite, add transparency handling later if needed (e.g., if selectedPixel.a < 255)
+						if (selectedPixel.a > 0) // Only stamp non-transparent parts of the selection
+						{
+							imagePixels[destY * _width + destX] = selectedPixel;
+						}
+					}
+				}
+			}
+			ImageTexture.Update(imagePixels);
+
+			IsSelectionFloating = false;
+			// SelectedPixelsTexture?.Dispose(); // Optionally dispose if not needed immediately
+			// SelectedPixelsTexture = null;
+
+			// The selection is now part of the image. Update ActiveSelectionRect to the stamped location.
+			ActiveSelectionRect = targetRect;
+			DrawSelectionOutline(targetRect); // Show normal selection outline
+		}
+
+		public void DrawFloatingSelectionPreview(Rect targetRect)
+		{
+			if (!IsSelectionFloating || SelectedPixelsTexture == null)
+			{
+				// If not floating but a selection exists, draw normal outline
+				if (ActiveSelectionRect.HasValue) DrawSelectionOutline(ActiveSelectionRect.Value);
+				else ClearPreview();
+				return;
+			}
+
+			var previewPixels = GetTransparentBufferClone();
+			var selectionData = SelectedPixelsTexture.GetPixels().ToArray();
+			int selWidth = SelectedPixelsTexture.Width;
+			int selHeight = SelectedPixelsTexture.Height;
+
+			for (int y = 0; y < selHeight; y++)
+			{
+				for (int x = 0; x < selWidth; x++)
+				{
+					int destX = (int)targetRect.Left + x;
+					int destY = (int)targetRect.Top + y;
+					if (destX >= 0 && destX < _width && destY >= 0 && destY < _height)
+					{
+						Color32 pixel = selectionData[y * selWidth + x];
+						if (pixel.a > 0) // Basic transparency handling
+						{
+							previewPixels[destY * _width + destX] = pixel;
+						}
+					}
+				}
+			}
+			// Also draw marching ants around the targetRect for the floating selection
+			DrawMarchingAntsRectangle(previewPixels, targetRect, Color32.Black, Color32.White, _marchingAntsOffset);
+			PreviewTexture.Update(previewPixels);
+		}
+		// Call this method in MSPaint.Tick() if a selection is active
+		public void UpdateMarchingAnts()
+		{
+			if (ActiveSelectionRect.HasValue && _timeSinceMarchingAntsUpdate > 0.1f) // Update every 100ms
+			{
+				_marchingAntsOffset = (_marchingAntsOffset + 1) % 8; // Controls the "marching" speed/pattern
+				DrawSelectionOutline(ActiveSelectionRect.Value);
+				_timeSinceMarchingAntsUpdate = 0;
+			}
+		}
+
+		public void DrawSelectionOutline(Rect rect)
+		{
+			var pixels = GetTransparentBufferClone();
+			DrawMarchingAntsRectangle(pixels, rect, Color32.Black, Color32.White, _marchingAntsOffset);
+			PreviewTexture.Update(pixels);
+		}
+
+		private void DrawMarchingAntsRectangle(Color32[] pixels, Rect rect, Color32 color1, Color32 color2, int offset)
+		{
+			int x1 = (int)Math.Max(0, rect.Left);
+			int y1 = (int)Math.Max(0, rect.Top);
+			int x2 = (int)Math.Min(_width - 1, rect.Right);
+			int y2 = (int)Math.Min(_height - 1, rect.Bottom);
+
+			// Ensure thickness is 1 for marching ants
+			int thickness = 1;
+
+			// Draw horizontal lines
+			for (int x = x1; x <= x2; x++)
+			{
+				if (((x + offset) / 4) % 2 == 0) // Draw 4 pixels of color1, then 4 of color2
+				{
+					DrawPixel(pixels, x, y1, color1);
+					DrawPixel(pixels, x, y2, color1);
+				}
+				else
+				{
+					DrawPixel(pixels, x, y1, color2);
+					DrawPixel(pixels, x, y2, color2);
+				}
+			}
+			// Draw vertical lines
+			for (int y = y1 + 1; y < y2; y++) // Avoid double-drawing corners
+			{
+				if (((y + offset) / 4) % 2 == 0)
+				{
+					DrawPixel(pixels, x1, y, color1);
+					DrawPixel(pixels, x2, y, color1);
+				}
+				else
+				{
+					DrawPixel(pixels, x1, y, color2);
+					DrawPixel(pixels, x2, y, color2);
+				}
+			}
 		}
 
 		public void Resize(int width, int height)
@@ -842,7 +1077,144 @@
 		} 
 		public void OnMouseMove(PanelEvent e) { }
 		public void OnMouseUp(PanelEvent e) { }
-		
+
+		public void Tick() { }
+	}
+
+	public class RectangleSelectTool : ITool
+	{
+		protected PaintCanvas _canvas;
+		protected Vector2 _startPos;
+		protected bool _isSelecting;
+		private Rect _currentSelectionRect;
+
+		private enum SelectionState { Idle, CreatingSelection, MovingSelection }
+		private SelectionState _currentState = SelectionState.Idle;
+		private Vector2 _dragStartMousePos; // For moving
+		private Rect _originalMoveRect;   // Rect of the selection when move began
+
+		public void OnActivate(PaintCanvas canvas)
+		{
+			_canvas = canvas;
+			_currentState = SelectionState.Idle; // Reset state on activation
+			if (_canvas.IsSelectionFloating && _canvas.ActiveSelectionRect.HasValue)
+			{
+				_canvas.DrawFloatingSelectionPreview(_canvas.ActiveSelectionRect.Value);
+			}
+			else if (_canvas.ActiveSelectionRect.HasValue)
+			{
+				_canvas.DrawSelectionOutline(_canvas.ActiveSelectionRect.Value);
+			}
+			else
+			{
+				_canvas.ClearPreview();
+			}
+		}
+
+		public void OnDeactivate()
+		{
+			if (_currentState == SelectionState.CreatingSelection) // Was in the middle of creating a new selection
+			{
+				_canvas.ClearPreview();
+				// If there was a previously finalized (but not floating) selection, redraw its outline
+				if (!_canvas.IsSelectionFloating && _canvas.ActiveSelectionRect.HasValue)
+				{
+					_canvas.DrawSelectionOutline(_canvas.ActiveSelectionRect.Value);
+				}
+			}
+			// If selection was floating (_canvas.IsSelectionFloating is true),
+			// it remains floating. MSPaint's SetActiveTool will handle stamping it if necessary.
+			_isSelecting = false; // from base ShapeTool, ensure this is false
+			_currentState = SelectionState.Idle;
+		}
+
+		public void OnMouseDown(PanelEvent e)
+		{
+			if (e is not MousePanelEvent me || me.MouseButton != MouseButtons.Left) return;
+
+			if (_canvas.ActiveSelectionRect.HasValue && _canvas.ActiveSelectionRect.Value.IsInside(me.LocalPosition))
+			{
+				// Click is inside an existing selection
+				if (!_canvas.IsSelectionFloating)
+				{
+					_canvas.LiftSelectionFromImage();
+					// After lifting, ActiveSelectionRect still holds the original position and size.
+					// The visual representation is now on PreviewTexture via DrawFloatingSelectionPreview.
+				}
+				_currentState = SelectionState.MovingSelection;
+				_dragStartMousePos = Mouse.Position; // Use screen position for dragging to be independent of canvas scaling/scrolling
+				_originalMoveRect = _canvas.ActiveSelectionRect.Value;
+			}
+			else
+			{
+				// Click is outside or no selection exists - start new selection
+				if (_canvas.IsSelectionFloating && _canvas.ActiveSelectionRect.HasValue) // Stamp previous floating selection
+				{
+					_canvas.StampFloatingSelectionToImage(_canvas.ActiveSelectionRect.Value);
+					// After stamping, ActiveSelectionRect is updated, and IsSelectionFloating is false.
+					// The selection outline will be redrawn by SetActiveSelection or DrawSelectionOutline.
+				}
+				_canvas.ClearActiveSelection(); // Clear any previous non-floating selection rect and preview
+
+				_currentState = SelectionState.CreatingSelection;
+				_startPos = me.LocalPosition; // _startPos is for creating new selection rect
+				_currentSelectionRect = new Rect(_startPos, Vector2.Zero);
+				_canvas.ClearPreview();
+			}
+		}
+
+		public void OnMouseMove(PanelEvent e)
+		{
+			if (e is not MousePanelEvent me) return;
+
+			if (_currentState == SelectionState.MovingSelection)
+			{
+				if (!_canvas.IsSelectionFloating || !_canvas.ActiveSelectionRect.HasValue) return;
+
+				Vector2 delta = Mouse.Position - _dragStartMousePos;
+				// Apply delta to the original position of the floating selection
+				Rect newFloatingRect = new Rect(_originalMoveRect.Position + delta / 1.0f, _originalMoveRect.Size);
+
+				_canvas.ActiveSelectionRect = newFloatingRect; // Update the logical position of the floating selection
+				_canvas.DrawFloatingSelectionPreview(newFloatingRect);
+			}
+			else if (_currentState == SelectionState.CreatingSelection)
+			{
+				var currentPos = me.LocalPosition;
+				var min = Vector2.Min(_startPos, currentPos);
+				var max = Vector2.Max(_startPos, currentPos);
+				_currentSelectionRect = new Rect(min, max - min);
+				_canvas.DrawSelectionOutline(_currentSelectionRect); // Draw dashed rect for new selection
+			}
+		}
+
+		public void OnMouseUp(PanelEvent e)
+		{
+			if (e is not MousePanelEvent me || me.MouseButton != MouseButtons.Left) return;
+
+			if (_currentState == SelectionState.MovingSelection)
+			{
+				// Selection has been moved and "dropped". It remains floating.
+				// ActiveSelectionRect in PaintCanvas is already updated to the new position.
+				// PreviewTexture shows the floating selection.
+				_currentState = SelectionState.Idle;
+				// No stamping here; stamping occurs if user clicks outside, changes tool, etc.
+			}
+			else if (_currentState == SelectionState.CreatingSelection)
+			{
+				// Finalize the new selection area
+				if (_currentSelectionRect.Width > 0 && _currentSelectionRect.Height > 0)
+				{
+					_canvas.SetActiveSelection(_currentSelectionRect); // This sets ActiveSelectionRect and IsSelectionFloating = false
+				}
+				else
+				{
+					_canvas.ClearActiveSelection();
+				}
+				_currentState = SelectionState.Idle;
+			}
+		}
+
 		public void Tick() { }
 	}
 
@@ -911,24 +1283,39 @@
 		}
 	}
 
+	private bool IsNonSelectionToolActive => _activeTool is not RectangleSelectTool;// and not FreeSelectTool; // Assuming FreeSelectTool will exist
+
 	public override void Tick()
 	{
 		base.Tick();
 
-		_activeTool?.Tick();
+		_activeTool?.Tick(); // Allow the active tool to perform per-frame logic
 
-		// Update the UI from the canvas state
 		if (_canvas != null)
 		{
-			ImagePanel.Style.BackgroundImage = _canvas.ImageTexture;
-			var size = new Vector2(_canvas.ImageTexture.Width, _canvas.ImageTexture.Height);
-			ImagePanel.Style.Width = Length.Pixels(size.x);
-			ImagePanel.Style.Height = Length.Pixels(size.y);
+			if (_canvas.IsSelectionFloating && _canvas.ActiveSelectionRect.HasValue)
+			{
+				// If a selection is currently floating, continuously update its preview
+				// (which includes the floating pixels and the marching ants border).
+				_canvas.DrawFloatingSelectionPreview(_canvas.ActiveSelectionRect.Value);
+			}
+			else if (_canvas.ActiveSelectionRect.HasValue) // Selection exists but is not floating
+			{
+				// Only update the marching ants for a non-floating selection outline.
+				_canvas.UpdateMarchingAnts();
+			}
+			// If no selection is active, the PreviewTexture might be used by the current tool
+			// or should remain clear (handled by tool activation/deactivation).
 
-			// Update preview panel
+			// Update the UI panels from the canvas textures
+			ImagePanel.Style.BackgroundImage = _canvas.ImageTexture;
+			var canvasSize = new Vector2(_canvas.ImageTexture.Width, _canvas.ImageTexture.Height);
+			ImagePanel.Style.Width = Length.Pixels(canvasSize.x);
+			ImagePanel.Style.Height = Length.Pixels(canvasSize.y);
+
 			PreviewPanel.Style.BackgroundImage = _canvas.PreviewTexture;
-			PreviewPanel.Style.Width = Length.Pixels(size.x);
-			PreviewPanel.Style.Height = Length.Pixels(size.y);
+			PreviewPanel.Style.Width = Length.Pixels(canvasSize.x);
+			PreviewPanel.Style.Height = Length.Pixels(canvasSize.y);
 		}
 	}
 
@@ -936,7 +1323,29 @@
 
 	public void SetActiveTool(ToolType toolType)
 	{
-		_activeTool?.OnDeactivate();
+		// If switching away from a selection tool AND a selection is currently floating
+		if ((_activeTool is RectangleSelectTool /*|| _activeTool is FreeSelectTool*/) &&
+			_canvas.IsSelectionFloating && _canvas.ActiveSelectionRect.HasValue)
+		{
+			_canvas.StampFloatingSelectionToImage(_canvas.ActiveSelectionRect.Value);
+			PushUndoState(); // Selection has been stamped, record state
+			// After stamping, ActiveSelectionRect is updated, IsSelectionFloating is false.
+			// The new tool's OnActivate will handle the preview.
+		}
+		// If switching away from a selection tool but selection was NOT floating (just an outline)
+		else if ((_activeTool is RectangleSelectTool) && _canvas.ActiveSelectionRect.HasValue && !_canvas.IsSelectionFloating)
+		{
+			// Keep the selection outline if switching to another selection tool
+			if (toolType != ToolType.RectangleSelect && toolType != ToolType.FreeSelect)
+			{
+				// If switching to a non-selection tool, the outline should disappear from preview.
+				// The selection rect itself remains in _canvas.ActiveSelectionRect.
+				_canvas.ClearPreview();
+			}
+		}
+
+
+		_activeTool?.OnDeactivate(); // Deactivate previous tool
 		CurrentToolType = toolType;
 
 		switch (toolType)
@@ -955,22 +1364,39 @@
 			case ToolType.Polygon: _activeTool = new PolygonTool(); break;
 			case ToolType.Curve: _activeTool = new CurveTool(); break;
 			case ToolType.RoundedRectangle: _activeTool = new RoundedRectangleTool(); break;
-			//case ToolType.RectangleSelect: _activeTool = new RectangleSelectTool(); break;
-			//case ToolType.FreeSelect: _activeTool = new FreeSelectTool(); break;
+			case ToolType.RectangleSelect: _activeTool = new RectangleSelectTool(); break; // Uncommented
+				//case ToolType.FreeSelect: _activeTool = new FreeSelectTool(); break; // Keep commented for now
 		}
 
 		if (_activeTool is EyeDropperTool eyeDropperTool)
 		{
-			eyeDropperTool.OnActivate(_canvas, SetPrimaryColor, SetSecondaryColor); // Pass color setters for EyeDropper
+			eyeDropperTool.OnActivate(_canvas, SetPrimaryColor, SetSecondaryColor);
 		}
 		else if (_activeTool is MagnifyTool magnifyTool)
 		{
-			magnifyTool.OnActivate(_canvas, this); // Pass the main panel reference for Magnify
+			magnifyTool.OnActivate(_canvas, this);
 		}
-		else
+		if (_activeTool != null)
 		{
 			_activeTool.OnActivate(_canvas);
 		}
+
+		// If the new tool is NOT a selection tool and a selection outline was visible (but not floating)
+		// clear the preview. The selection data (_canvas.ActiveSelectionRect) remains.
+		if (IsNonSelectionToolActive && _canvas.ActiveSelectionRect.HasValue && !_canvas.IsSelectionFloating)
+		{
+			_canvas.ClearPreview();
+		}
+		// If the new tool IS a selection tool and a selection exists (either floating or just outline),
+		// its OnActivate should handle drawing it correctly.
+		else if (!IsNonSelectionToolActive && _canvas.ActiveSelectionRect.HasValue)
+		{
+			if (_canvas.IsSelectionFloating)
+				_canvas.DrawFloatingSelectionPreview(_canvas.ActiveSelectionRect.Value);
+			else
+				_canvas.DrawSelectionOutline(_canvas.ActiveSelectionRect.Value);
+		}
+
 	}
 
 	private void SetPrimaryColor(Color color)
@@ -1026,7 +1452,28 @@
 
 	public void MouseDownCanvas(PanelEvent e)
 	{
-		_activeTool?.OnMouseDown(e);
+		if (IsNonSelectionToolActive)
+		{
+			if (_canvas.IsSelectionFloating && _canvas.ActiveSelectionRect.HasValue)
+			{
+				// If a non-selection tool is used while a selection is floating, stamp it.
+				_canvas.StampFloatingSelectionToImage(_canvas.ActiveSelectionRect.Value);
+				PushUndoState(); // Stamped, so record state
+				// The selection is now part of the image, ActiveSelectionRect is updated.
+				// The drawing tool will operate on the main image.
+				// We might want to clear ActiveSelectionRect after stamping if drawing tools shouldn't be masked.
+				// For now, the selection remains (as an outline) after stamping.
+			}
+			else if (_canvas.ActiveSelectionRect.HasValue && !_canvas.IsSelectionFloating)
+			{
+				// If a non-selection tool is used and there's just a selection outline,
+				// clear the selection entirely before drawing.
+				_canvas.ClearActiveSelection();
+				_canvas.ClearPreview(); // Ensure preview is clear for the drawing tool
+			}
+		}
+
+		_activeTool?.OnMouseDown(e); // Then let the current tool handle the mousedown
 		CloseActiveMenu();
 	}
 
@@ -1043,6 +1490,86 @@
 		if (e is MousePanelEvent me && (me.MouseButton == MouseButtons.Left || me.MouseButton == MouseButtons.Right))
 		{
 			PushUndoState();
+		}
+	}
+
+	// ---- Misc ----
+	public void ClearCurrentSelection()
+	{
+		if (_canvas == null) return;
+
+		if (_canvas.IsSelectionFloating && _canvas.ActiveSelectionRect.HasValue)
+		{
+			// If it was floating, we need to restore the area it was lifted from
+			// This is complex: ideally, we'd have stored the background.
+			// For a simple clear, we just discard the floating pixels.
+			// The area on ImageTexture was already filled with SecondaryColor when lifted.
+		}
+		_canvas.ClearActiveSelection(); // Clears rect, floating state, and selected pixels texture
+		_canvas.ClearPreview();
+	}
+	private void CutSelection()
+	{
+		if (_canvas?.ActiveSelectionRect.HasValue ?? false)
+		{
+			CopySelection(); // Copy first
+			// Then clear the selected area on ImageTexture with secondary color
+			if (!_canvas.IsSelectionFloating) // If not already floating, lift it (which clears the area) then discard
+			{
+				_canvas.LiftSelectionFromImage(); // This clears the area on ImageTexture
+				// We don't keep the lifted pixels for Cut if we're just clearing the area.
+				// The actual pixels are on the "clipboard" (SelectedPixelsTexture after CopySelection).
+				// For a simple "Delete" like behavior for cut:
+				_canvas.ClearActiveSelection(); // This will dispose SelectedPixelsTexture if it was just lifted by CopySelection
+				_canvas.ClearPreview();
+
+			}
+			else
+			{
+				// If it was already floating, the area on ImageTexture is already cleared.
+				// Just clear the floating selection.
+				_canvas.ClearActiveSelection();
+				_canvas.ClearPreview();
+			}
+			PushUndoState(); // The ImageTexture was modified
+			Log.Info("Cut action performed (pixels copied to internal clipboard, area cleared).");
+		}
+	}
+
+	private void CopySelection()
+	{
+		if (_canvas?.ActiveSelectionRect.HasValue ?? false)
+		{
+			if (!_canvas.IsSelectionFloating)
+			{
+				// If selection is just an outline, lift its content to SelectedPixelsTexture
+				// without clearing the ImageTexture (classic copy behavior).
+				// This requires a new PaintCanvas method. For now, let's use LiftSelectionFromImage
+				// which does clear. A true "copy" would duplicate to SelectedPixelsTexture without clearing.
+				// Let's simulate by lifting then re-stamping if not floating.
+				// OR, better: add a GetSelectedPixels method to PaintCanvas.
+				_canvas.LiftSelectionFromImage(); // This lifts and clears.
+				// For a true copy, we'd need to put the original content back if it wasn't floating.
+				// This is getting complex. For now, Copy will behave like Cut in terms of lifting.
+				// The "clipboard" is _canvas.SelectedPixelsTexture.
+			}
+			// If it IS floating, SelectedPixelsTexture already has the content.
+			Log.Info("Copy action performed (pixels available in internal clipboard).");
+			// To truly decouple, copy _canvas.SelectedPixelsTexture to a separate clipboard manager.
+		}
+	}
+
+	private void PasteSelection()
+	{
+		if (_canvas?.SelectedPixelsTexture != null) // Check if our internal "clipboard" has data
+		{
+			SetActiveTool(ToolType.RectangleSelect); // Switch to selection tool for pasting
+			_canvas.IsSelectionFloating = true; // Mark that we are pasting/floating
+			// Position pasted content at top-left or center. For now, top-left.
+			Rect pasteRect = new Rect(0, 0, _canvas.SelectedPixelsTexture.Width, _canvas.SelectedPixelsTexture.Height);
+			_canvas.ActiveSelectionRect = pasteRect;
+			_canvas.DrawFloatingSelectionPreview(pasteRect);
+			Log.Info("Paste action performed (selection is now floating).");
 		}
 	}
 
@@ -1065,6 +1592,7 @@
 	}
 	protected override void OnMouseDown(MousePanelEvent e)
 	{
+		base.OnMouseDown(e);
 		if (activeMenu != null &&
 			!FileMenuButton.HasHovered &&
 			!EditMenuButton.HasHovered &&
@@ -1110,10 +1638,10 @@
 		activeMenu.AddMenuItem("Undo", Undo).SetClass("disabled", !undoStack.Any() || undoStack.Count <= 1);
 		activeMenu.AddMenuItem("Redo", Redo).SetClass("disabled", !redoStack.Any()); // Pass method directly
 		activeMenu.AddSeparator();
-		activeMenu.AddMenuItem("Cut", () => { Log.Info("Cut"); activeMenu.Delete(); });
-		activeMenu.AddMenuItem("Copy", () => { Log.Info("Copy"); activeMenu.Delete(); });
-		activeMenu.AddMenuItem("Paste", () => { Log.Info("Paste"); activeMenu.Delete(); });
-		activeMenu.AddMenuItem("Clear Selection", () => { Log.Info("Clear Selection"); activeMenu.Delete(); });
+		activeMenu.AddMenuItem("Cut", () => { CutSelection(); activeMenu.Delete(); }).SetClass("disabled", !_canvas?.ActiveSelectionRect.HasValue ?? true);
+		activeMenu.AddMenuItem("Copy", () => { CopySelection(); activeMenu.Delete(); }).SetClass("disabled", !_canvas?.ActiveSelectionRect.HasValue ?? true);
+		activeMenu.AddMenuItem("Paste", () => { PasteSelection(); activeMenu.Delete(); }); // Enable if clipboard has data
+		activeMenu.AddMenuItem("Clear Selection", () => { ClearCurrentSelection(); activeMenu.Delete(); }).SetClass("disabled", !_canvas?.ActiveSelectionRect.HasValue ?? true);
 		activeMenu.AddMenuItem("Select All", () => { Log.Info("Select All"); activeMenu.Delete(); });
 		activeMenu.AddSeparator();
 		activeMenu.AddMenuItem("Copy To...", () => { Log.Info("Copy To..."); activeMenu.Delete(); });
@@ -1197,80 +1725,146 @@
 		StateHasChanged(); // Update the window title
 	}
 
-	private void OpenFile(string path = null)
+	private async Task<bool> ConfirmDiscardChangesAsync()
 	{
-		if (HasUnsavedChanges && !ConfirmDiscardChanges())
+		bool result = false;
+		string filename = string.IsNullOrEmpty(CurrentFilePath) ? "Untitled" : System.IO.Path.GetFileName(CurrentFilePath);
+		// Show a MessageBox to ask the user what to do
+		var response = await MessageBoxUtility.ConfirmWithCancelAsync(
+			$"Save changes to {filename}?",
+			"Paint");
+		if (response == MessageBoxResult.Yes)
+		{
+			SaveFile(); // Call async save
+			result = true;
+		}
+		else if (response == MessageBoxResult.No)
+		{
+			result = true; // Discard changes
+		}
+		else
+		{
+			result = false; // Cancel operation
+		}
+		return result;
+	}
+
+	private async void OpenFile(string path = null) // Make it async
+	{
+		if (HasUnsavedChanges && !await ConfirmDiscardChangesAsync()) 
 			return;
 
 		if (string.IsNullOrEmpty(path))
 		{
-			// TODO: Open file dialog
-			// For now, just use a default path for testing
-			path = "C:/My Documents/image.bmp";
+			var options = new FileDialogOptions
+			{
+				Title = "Open Image",
+				Filters = new List<FileFilter> {
+				new FileFilter("PNG Files (*.png)", "*.png"), // Your custom format
+                new FileFilter("All Files (*.*)", "*.*")
+			},
+				InitialDirectory = "C:/My Documents" // Or last used path
+			};
+			path = await FileDialogUtility.ShowOpenFileDialogAsync(options);
 		}
+
+		if (string.IsNullOrEmpty(path)) return; // User cancelled
 
 		try
 		{
 			if (VirtualFileSystem.Instance.FileExists(path))
 			{
 				var imageBytes = VirtualFileSystem.Instance.ReadAllBytes(path);
-				LoadImageFromBytes(imageBytes);
+				//LoadImageFromBytes(imageBytes); // Your existing method
+				var bitmap = Bitmap.CreateFromBytes(imageBytes);
+				var clr32array = bitmap.GetPixels32();
+				_canvas.Resize(bitmap.Width, bitmap.Height); // Resize canvas to image size
+				_canvas.ImageTexture = bitmap.ToTexture();
 
 				CurrentFilePath = path;
 				HasUnsavedChanges = false;
 
-				// Reset the undo/redo stacks and save the current state
 				undoStack.Clear();
 				redoStack.Clear();
-				PushUndoState();
+				PushUndoState(); // Push the loaded state
 
-				StateHasChanged(); // Update the window title
+				StateHasChanged();
 			}
 			else
 			{
-				Log.Error($"File not found: {path}");
+				MessageBoxUtility.ShowError($"File not found: {path}", "Open Error");
 			}
 		}
 		catch (Exception ex)
 		{
-			Log.Error($"Error opening file: {ex.Message}");
+			MessageBoxUtility.ShowError($"Error opening file: {ex.Message}", "Open Error");
+			Log.Error(ex, $"Error opening file {path}");
 		}
 	}
 
-	private void SaveFile(bool saveAs = false)
+	private async void SaveFile(bool saveAs = false) // Make it async
 	{
 		string path = CurrentFilePath;
 
 		if (string.IsNullOrEmpty(path) || saveAs)
 		{
-			// TODO: Show save file dialog
-			// For now, use a default path if none is set
-			if (string.IsNullOrEmpty(path))
+			var options = new FileDialogOptions
 			{
-				path = "C:/My Documents/image.bmp";
-			}
+				Title = "Save Image As",
+				Filters = new List<FileFilter> {
+					new FileFilter("PNG File (*.png)", "*.png"),
+					new FileFilter("Bitmap File (*.bmp)", "*.bmp"),
+					new FileFilter("JPEG File (*.jpg;*.jpeg)", "*.jpg;*.jpeg"),
+				},
+				DefaultFileName = string.IsNullOrEmpty(CurrentFilePath) ? "Untitled.png" : System.IO.Path.GetFileName(CurrentFilePath),
+				InitialDirectory = string.IsNullOrEmpty(CurrentFilePath) ? "C:/My Documents" : System.IO.Path.GetDirectoryName(CurrentFilePath)
+			};
+			path = await FileDialogUtility.ShowSaveFileDialogAsync(options);
 		}
+
+		if (string.IsNullOrEmpty(path)) return; // User cancelled
 
 		try
 		{
-			// Ensure directory exists
 			string directory = System.IO.Path.GetDirectoryName(path);
 			if (!string.IsNullOrEmpty(directory) && !VirtualFileSystem.Instance.DirectoryExists(directory))
 			{
 				VirtualFileSystem.Instance.CreateDirectory(directory);
 			}
 
-			// Save the image
-			var imageBytes = SaveImageToBytes();
+			//var imageBytes = SaveImageToBytes(); // Your existing method
+			//var imageBytes = _canvas.ImageTexture.GetBitmap(0).ToPng();
+			// save depending on file extension
+			byte[] imageBytes;
+			if (path.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+			{
+				imageBytes = _canvas.ImageTexture.GetBitmap(0).ToPng(); // Save as PNG
+			}
+			else if (path.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase))
+			{
+				imageBytes = _canvas.ImageTexture.GetBitmap(0).ToBmp(); // Save as BMP
+			}
+			else if (path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+			{
+				imageBytes = _canvas.ImageTexture.GetBitmap(0).ToJpg(90); // Save as JPEG with quality 90
+			}
+			else
+			{
+				MessageBoxUtility.ShowError("Unsupported file format.", "Save Error");
+				return;
+			}
+
+			
 			VirtualFileSystem.Instance.WriteAllBytes(path, imageBytes);
 
 			CurrentFilePath = path;
 			HasUnsavedChanges = false;
-			StateHasChanged(); // Update the window title
+			StateHasChanged();
 		}
 		catch (Exception ex)
 		{
-			Log.Error($"Error saving file: {ex.Message}");
+			MessageBoxUtility.ShowError($"Error saving file: {ex.Message}", "Save Error");
+			Log.Error(ex, $"Error saving file {path}");
 		}
 	}
 

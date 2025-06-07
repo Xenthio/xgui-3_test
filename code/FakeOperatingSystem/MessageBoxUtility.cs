@@ -199,4 +199,10 @@ public static class MessageBoxUtility
 		// Bring to front and focus
 		msgBox.FocusWindow();
 	}
+
+	// ConfirmWithCancelAsync
+	public static async Task<MessageBoxResult> ConfirmWithCancelAsync( string message, string title = "Confirm" )
+	{
+		return await ShowBlocking( message, title, MessageBoxIcon.Question, MessageBoxButtons.YesNoCancel );
+	}
 }
