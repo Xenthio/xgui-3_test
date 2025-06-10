@@ -2,6 +2,7 @@
 @using System.Collections.Generic;
 @using System.IO;
 @using System.Linq;
+@using FakeOperatingSystem.Shell
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
@@ -22,14 +23,14 @@
 	<groupbox title="Wallpaper" style="margin: 4px; padding-left:8px; padding-right:8px;">
 		<label style="margin-bottom:5px; margin-top:2px;">Select an HTML Document or a picture:</label>
 		<div class="row">
-			<listview class="margin-bottom" style="height:96px; flex-grow:1; margin-right:11px;" @ref="BackgroundImagesListView" OnItemSelected="OnWallpaperSelected">
+			<listview class="margin-bottom" style="height:96px; flex-grow:1; margin-right:11px;" @ref="BackgroundImagesListView">
 
 			</listview>
 			<div class="column">
-				<button style="width:75px; height:23px;" class="margin-bottom">Browse...</button>
+				<button style="width:75px; height:23px;" class="margin-bottom" @onclick=OnBrowseButtonClick>Browse...</button>
 				<button style="width:75px; height:23px;" class="margin-bottom">Pattern...</button>
 				<label>Display:</label>
-				<combobox @ref="DisplayModeComboBox">
+				<combobox @ref=DisplayModeComboBox>
 					<option value="center">Center</option>
 					<option value="tile">Tile</option>
 					<option value="stretch">Stretch</option>
@@ -51,14 +52,12 @@
 	private const string TileWallpaperValueName = "TileWallpaper"; // 0 for no tile, 1 for tile
 
 	private string _selectedWallpaperPath = null;
-	public static string SelectedWallpaperPath;
+	public static DeskCplDialogBackgroundTab CurrentCplBGTab; 
 
 	public override void Tick()
 	{
 		base.Tick();
 
-		// dumb, need to do because of stupid bug in s&box.
-		SelectedWallpaperPath = _selectedWallpaperPath;
 	}
 
 
@@ -67,6 +66,10 @@
 		base.OnAfterTreeRender(firstTime);
 		if (firstTime)
 		{
+			// dumb, need to do because of stupid bug in s&box.
+			CurrentCplBGTab = this;
+
+			BackgroundImagesListView.OnItemSelected += OnWallpaperSelected;
 			PopulateWallpaperList();
 			LoadCurrentWallpaperSettings();
 		}
@@ -96,7 +99,7 @@
 			{
 				var fileName = Path.GetFileName(filePath);
 				// Store full path in Data, display filename
-				BackgroundImagesListView.AddItem(fileName, new List<string> { fileName });
+				BackgroundImagesListView.AddItem(filePath, new List<string> { fileName });
 			}
 		}
 		else
@@ -116,6 +119,8 @@
 	{
 		if (item == null) return;
 
+		Log.Info($"Selected wallpaper: {item.Data}");
+
 		if (item.Data is string displayName && displayName == "(None)")
 		{
 			_selectedWallpaperPath = null; // Or a special value like "none"
@@ -124,9 +129,9 @@
 		}
 		else if (item.SubItems.Count > 0 && !string.IsNullOrEmpty(item.SubItems[0]))
 		{
-			_selectedWallpaperPath = item.SubItems[0]; // Full path stored in SubItems[0]
-													   // Update preview (basic version, doesn't handle tile/stretch here)
-													   // For actual image display, you might need to load texture if it's not a direct CSS url
+			_selectedWallpaperPath = (string)item.Data; // Full path stored in Data
+			// Update preview (basic version, doesn't handle tile/stretch here)
+			// For actual image display, you might need to load texture if it's not a direct CSS url
 			if (VirtualFileSystem.Instance.FileExists(_selectedWallpaperPath) && IsSupportedImageFile(_selectedWallpaperPath))
 			{
 				// This is a simplified preview. For HTML, it won't render.
@@ -142,13 +147,54 @@
 		PreviewBox.Style.Dirty();
 	}
 
+	public void ApplySettings()
+	{
+		if (Registry.Instance == null) return;
+
+		// Save selected wallpaper path to registry
+		if (string.IsNullOrEmpty(_selectedWallpaperPath) || _selectedWallpaperPath.Equals("(None)", StringComparison.OrdinalIgnoreCase))
+		{
+			Registry.Instance.SetValue(WallpaperRegistryPath, WallpaperValueName, "");
+		}
+		else
+		{
+			Registry.Instance.SetValue(WallpaperRegistryPath, WallpaperValueName, _selectedWallpaperPath);
+		}
+		// Save display mode
+		string displayMode = (string)DisplayModeComboBox.Selected.Value ?? "center"; // Default to center if not set
+
+		Log.Info($"Applying wallpaper settings: Path='{_selectedWallpaperPath}', DisplayMode='{displayMode}'");
+
+		int wallpaperStyle = 0; // Default to Center
+		int tileWallpaper = 0; // Default to no tile
+		if (displayMode == "Stretch")
+		{
+			wallpaperStyle = 2; // Stretch
+			tileWallpaper = 0; // No tile
+		}
+		else if (displayMode == "Tile")
+		{
+			wallpaperStyle = 1; // Tile
+			tileWallpaper = 1; // Tile
+		}
+		else if (displayMode == "Center")
+		{
+			wallpaperStyle = 0; // Center
+			tileWallpaper = 0; // No tile
+		}
+		Registry.Instance.SetValue(WallpaperRegistryPath, WallpaperStyleValueName, wallpaperStyle);
+		Registry.Instance.SetValue(WallpaperRegistryPath, TileWallpaperValueName, tileWallpaper);
+
+		Desktop.CurrentDesktop.InitializeDesktop(); // Reinitialize desktop to apply changes
+	}
+
 	private void LoadCurrentWallpaperSettings()
 	{
 		if (Registry.Instance == null) return;
 
 		string currentWallpaper = Registry.Instance.GetValue<string>(WallpaperRegistryPath, WallpaperValueName, null);
-		string wallpaperStyle = Registry.Instance.GetValue<string>(WallpaperRegistryPath, WallpaperStyleValueName, "2"); // Default to Stretch
-		string tileWallpaper = Registry.Instance.GetValue<string>(WallpaperRegistryPath, TileWallpaperValueName, "0");
+		int wallpaperStyle = Registry.Instance.GetValue<int>(WallpaperRegistryPath, WallpaperStyleValueName, 0); // Default to Stretch
+		int tileWallpaper = Registry.Instance.GetValue<int>(WallpaperRegistryPath, TileWallpaperValueName, 0);
 
 		_selectedWallpaperPath = currentWallpaper;
 
@@ -188,11 +234,11 @@
 		// Set Display ComboBox
 		if (DisplayModeComboBox != null)
 		{
-			if (wallpaperStyle == "2") // Stretch
+			if (wallpaperStyle == 2) // Stretch
 			{
 				DisplayModeComboBox.Value = "stretch";
 			}
-			else if (tileWallpaper == "1") // Tile
+			else if (tileWallpaper == 1) // Tile
 			{
 				DisplayModeComboBox.Value = "tile";
 			}

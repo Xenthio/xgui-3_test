@@ -485,6 +485,10 @@ public class VirtualFileSystem : IVirtualFileSystem
 		}
 		foreach ( var dir in GetDirectories( source ) )
 		{
+			if ( GetFileName( dir ) == "." || GetFileName( dir ) == ".." )
+			{
+				continue; // Skip current and parent directory references
+			}
 			CopyDirectory( dir, Path.Combine( destination, GetFileName( dir ) ) );
 		}
 		return true;

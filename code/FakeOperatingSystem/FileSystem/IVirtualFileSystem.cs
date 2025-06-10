@@ -45,6 +45,8 @@ namespace FakeOperatingSystem.OSFileSystem
 		long FileSize( string path );
 		IEnumerable<string> FindFile( string sourceDir );
 		IEnumerable<string> FindDirectory( string sourceDir );
+		public bool MoveFile( string source, string destination );
+		public bool MoveDirectory( string source, string destination );
 
 
 		// Event for when the file system changes

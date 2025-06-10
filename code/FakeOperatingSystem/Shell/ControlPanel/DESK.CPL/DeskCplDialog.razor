@@ -103,9 +103,9 @@
 
 	private void ApplyDesktopBackgroundSettings()
 	{
-		if (!string.IsNullOrWhiteSpace(DeskCplDialogBackgroundTab.SelectedWallpaperPath))
+		if (DeskCplDialogBackgroundTab.CurrentCplBGTab != null)
 		{
-			Log.Info($"Todo: Applying wallpaper: {DeskCplDialogBackgroundTab.SelectedWallpaperPath}");
+			DeskCplDialogBackgroundTab.CurrentCplBGTab.ApplySettings();
 		}
 		else
 		{

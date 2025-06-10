@@ -5,7 +5,7 @@
   "Ident": "xgui-3_test",
   "Schema": 1,
   "IncludeSourceFiles": false,
-  "Resources": "ui/*\nXGUI/*\nXGUI/Fonts/*",
+  "Resources": "ui/*\nXGUI/*\nXGUI/Fonts/*\nFakeOS/*",
   "PackageReferences": [],
   "EditorReferences": null,
   "Mounts": null,

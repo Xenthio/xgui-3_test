@@ -413,8 +413,8 @@ public class UserManager
 		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "CurrentThemeFile", "/XGUI/DefaultStyles/Computer95.scss" );
 		// Setup default wallpaper (HKEY_CURRENT_USER\Control Panel\Desktop, value Wallpaper)
 		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "Wallpaper", "" );
-		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "WallpaperStyle", "0" ); // 0 = Centered, 1 = Tiled, 2 = Stretched
-		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "TileWallpaper", "0" ); // 0 = No tiling, 1 = Tiled wallpaper
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "WallpaperStyle", 0 ); // 0 = Centered, 1 = Tiled, 2 = Stretched
+		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Control Panel\Desktop", "TileWallpaper", 0 ); // 0 = No tiling, 1 = Tiled wallpaper
 
 		// -- Shell Folders (HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders) --
 		Registry.Instance.SetValue( $@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", "Desktop", Path.Combine( user.ProfilePath, "Desktop" ) );

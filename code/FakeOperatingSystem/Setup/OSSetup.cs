@@ -37,6 +37,10 @@ namespace FakeOperatingSystem.Setup
 			CreateRootFiles();
 			await Task.Delay( 20 );
 
+			_setupDialog.UpdateStatus( "Copying Windows files..." );
+			CopyTemplateWindowsFiles();
+			await Task.Delay( 20 );
+
 			_setupDialog.UpdateStatus( "Setting up Windows directory..." );
 			CreateWindowsDirectories();
 			CreateWindowsApplications();
@@ -105,9 +109,21 @@ namespace FakeOperatingSystem.Setup
 			_vfs.WriteAllText( "C:/boot.ini", "[boot loader]\nTimeout=30\nDefault=multi(0)disk(0)rdisk(0)partition(1)\\WINDOWS\n[operating systems]\nmulti(0)disk(0)rdisk(0)partition(1)\\WINDOWS=\"Microsoft Windows 98 Hybrid NT Edition\" /fastdetect" );
 		}
 
+		public void CopyTemplateWindowsFiles()
+		{
+			// Copy everything from Mounted Filesystem's /FakeOS/Setup/TemplateRoot (should be mounted on FS:A:)
+
+			if ( _vfs is VirtualFileSystem vfs )
+			{
+				vfs.CopyDirectory( @"FS:A:\FakeOS\Setup\TemplateRoot", @"C:\" );
+			}
+		}
+
 		private void CreateWindowsDirectories()
 		{
 			string windowsBase = "C:/Windows";
+			_vfs.CreateDirectory( $"{windowsBase}/Web" );
+			_vfs.CreateDirectory( $"{windowsBase}/Web/Wallpaper" );
 			_vfs.CreateDirectory( $"{windowsBase}/Downloaded Program Files" );
 			_vfs.WriteAllText( $"{windowsBase}/Downloaded Program Files/desktop.ini", "[.XGUIInfo]\nIcon=downloadedprogramfiles\n\n[.ShellClassInfo]\nIconResource=C:\\WINDOWS\\system32\\shell32.dll,5\nIconFile=C:\\WINDOWS\\system32\\shell32.dll\nIconIndex=5" );
 			_vfs.CreateDirectory( $"{windowsBase}/Fonts" );
