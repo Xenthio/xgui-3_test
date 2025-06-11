@@ -40,6 +40,8 @@ PS
 	DynamicCombo( D_REFRACTION_EFFECT, 0..1, Sys( PC ) );
 	DynamicCombo( D_FRESNEL_EFFECT, 0..1, Sys( PC ) );
 	DynamicCombo( D_REFLECTIVE_BORDER, 0..1, Sys( PC ) );
+	DynamicCombo( D_BLUR_EFFECT, 0..1, Sys( PC ) );
+	DynamicCombo( D_BLUR_QUALITY, 0..1, Sys( PC ) );
 
 	bool HasBorder <Default( 0 ); Attribute( "HasBorder" );>;
 	bool HasBorderImageFill <Default(  0 ); Attribute( "HasBorderImageFill" );>;
@@ -54,9 +56,11 @@ PS
 	float BorderReflectAmount < Default( 5.0 ); UiGroup( "Border" ); Attribute( "BorderReflectAmount" ); >;
 	float4 BorderReflectTint < UiType( Color ); Default4( 1.0, 1.0, 1.0, 1.0 ); UiGroup( "Border" ); Attribute( "BorderReflectTint" ); >;
 
-
 	float4 FresnelColor < UiType( Color ); Default4( 1.0, 1.0, 1.0, 0.5 ); UiGroup( "Fresnel" ); Attribute( "FresnelColor" ); >;
 	float FresnelPower < Default( 2.5 ); UiGroup( "Fresnel" ); Attribute( "FresnelPower" ); >;
+
+
+	float BlurAmount < Default( 4.0 ); UiGroup( "Glass" ); Attribute( "Blur" ); >;
 
 	float4 BgPos < Default4( 0.0, 0.0, 500.0, 100.0 ); Attribute( "BgPos" ); >;
 	float4 BgTint < Default4( 1.0, 1.0, 1.0, 1.0 ); Attribute( "BgTint" ); >;
@@ -81,6 +85,12 @@ PS
 		SamplerState g_sRepeatXSampler < Filter( Point ); AddressU( WRAP ); AddressV( CLAMP ); >;
 		SamplerState g_sRepeatYSampler < Filter( Point ); AddressU( CLAMP ); AddressV( WRAP ); >;
 		SamplerState g_sClampSampler < Filter( Point ); AddressU( CLAMP ); AddressV( CLAMP ); >;
+	#endif
+
+	#if D_TEXTURE_FILTERING == 2 || D_TEXTURE_FILTERING == 1 // Use trilinear for blur
+		SamplerState g_sTrilinearClampSampler < Filter( Trilinear ); AddressU( CLAMP ); AddressV( CLAMP ); >;
+	#else
+		SamplerState g_sTrilinearClampSampler < Filter( Anisotropic ); AddressU( CLAMP ); AddressV( CLAMP ); >;
 	#endif
 
 	BoolAttribute( bWantsFBCopyTexture, true );
@@ -151,6 +161,7 @@ PS
 		
 		if (D_REFLECTIVE_BORDER == 1)
 		{
+			// todo, blur maybe
 			float2 screenUV = i.vPositionPanelSpace.xy / g_vViewport.zw;
 			float2 texelSize = 1.0f / g_vViewport.zw;
 
@@ -253,52 +264,104 @@ PS
 		return r;
 	}
 
+	float4 DoRadialBlur( float2 startUV, float blurAmount ) 
+	{
+		const float Pi = 6.28318530718;
+		const float Directions = 16.0;
+		const float Quality = 4.0;
+		
+		float2 texelSize = 1.0f / g_vViewport.zw;
+		float2 blurSize = texelSize * blurAmount;
+
+		// startuv is refracted coord
+		float4 color = g_tFrameBufferCopyTexture.Sample( g_sTrilinearClampSampler, startUV );
+		
+		[unroll]
+		for( float d = 0.0; d < Pi; d += Pi / Directions)
+		{
+			[unroll]
+			for(float j = 1.0 / Quality; j <= 1.0; j += 1.0 / Quality)
+			{
+				color += g_tFrameBufferCopyTexture.Sample( g_sTrilinearClampSampler, startUV + float2( cos(d), sin(d) ) * blurSize * j );	
+			}
+		}
+		
+		color /= (Directions * Quality) + 1.0;
+		return color;
+	}
+
 	PS_OUTPUT MainPs( PS_INPUT i )
 	{
 		PS_OUTPUT o;
 		float4 bgTint = BgTint.rgba;
 		bgTint.rgb = SrgbGammaToLinear(bgTint.rgb);
-		float4 borderImageTint = BorderImageTint.rgba;
-		borderImageTint.rgb = SrgbGammaToLinear(borderImageTint.rgb);
+
 		float2 pos = ( BoxSize ) * (i.vTexCoord.xy * 2.0 - 1.0);  
 		float dist = GetDistanceFromEdge( pos, BoxSize, CornerRadius );
-		float4 vBox = i.vColor.rgba;
-		float4 vBoxBorder;
-		UI_CommonProcessing_Pre( i );
+		float2 screenUV = i.vPositionPanelSpace.xy / g_vViewport.zw;
 		
-		if ( D_REFRACTION_EFFECT == 1 )
+		// final colour here
+		float4 vBox; 
+
+		float2 uvOffset = 0.0;
+		float bevelFalloff = 0.0;
+		float fresnelTerm = 0.0;
+
+		if ( D_REFRACTION_EFFECT == 1 || D_FRESNEL_EFFECT == 1 )
 		{
-			float2 screenUV = i.vPositionPanelSpace.xy / g_vViewport.zw;
 			float2 refractNormal = DistanceNormal( pos, BoxSize, CornerRadius );
 			float distFromEdge = -dist - 0.5;
-			float bevelFalloff = 1.0 - saturate( distFromEdge / max(BevelWidth, 0.001f) );
-			
-			float fresnelTerm = 0.0;
+			bevelFalloff = 1.0 - saturate( distFromEdge / max(BevelWidth, 0.001f) );
+
 			if (D_FRESNEL_EFFECT == 1)
 			{
 				fresnelTerm = pow(bevelFalloff, FresnelPower);
 			}
 
-			bevelFalloff = pow( bevelFalloff, BevelCurve );
-			float2 texelSize = 1.0f / g_vViewport.zw;
-			float2 uvOffset = -refractNormal * bevelFalloff * RefractAmount * texelSize;
-			float4 refractedColor = g_tFrameBufferCopyTexture.Sample( g_sClampSampler, screenUV + uvOffset );
-			float4 tint = RefractTint;
-			tint.rgb = SrgbGammaToLinear(tint.rgb);
-			float4 refractResult = float4(refractedColor.rgb * tint.rgb, 1.0);
-
-			if (D_FRESNEL_EFFECT == 1)
+			if (D_REFRACTION_EFFECT == 1)
 			{
-				float3 fresnelLight = SrgbGammaToLinear(FresnelColor.rgb) * FresnelColor.a;
-				refractResult.rgb = saturate(refractResult.rgb + fresnelLight * fresnelTerm);
+				float curvedBevel = pow( bevelFalloff, BevelCurve );
+				float2 texelSize = 1.0f / g_vViewport.zw;
+				uvOffset = -refractNormal * curvedBevel * RefractAmount * texelSize;
 			}
-
-			vBox = lerp(refractResult, vBox, tint.a);
 		}
 
+		float2 finalSampleUV = screenUV + uvOffset;
+
+		if (D_BLUR_EFFECT == 1)
+		{
+			if (D_BLUR_QUALITY == 1) // HIGH QUALITY
+			{
+				vBox = DoRadialBlur(finalSampleUV, BlurAmount);
+			}
+			else // FAST (assuming mips exist tho)
+			{
+				float mipLevel = sqrt(max(BlurAmount, 0.0) / 2.0);
+				vBox = g_tFrameBufferCopyTexture.SampleLevel( g_sTrilinearClampSampler, finalSampleUV, mipLevel );
+			}
+		}
+		else // NO BLUR
+		{
+			vBox = g_tFrameBufferCopyTexture.Sample( g_sTrilinearClampSampler, finalSampleUV );
+		}
+
+		float4 tint = RefractTint;
+		tint.rgb = SrgbGammaToLinear(tint.rgb);
+		vBox.rgb *= tint.rgb;
+
+		if (D_FRESNEL_EFFECT == 1)
+		{
+			float3 fresnelLight = SrgbGammaToLinear(FresnelColor.rgb) * FresnelColor.a;
+			vBox.rgb = saturate(vBox.rgb + fresnelLight * fresnelTerm);
+		}
+		
+		vBox = lerp(vBox, i.vColor.rgba, i.vColor.a);
+		
+		float4 vBoxBorder;
+		UI_CommonProcessing_Pre( i );
 		if ( D_BORDER_IMAGE )
 		{
-			vBoxBorder = AddImageBorder( i.vTexCoord.xy ) * borderImageTint;
+			vBoxBorder = AddImageBorder( i.vTexCoord.xy ) * i.vColor.a;
 		}
 		else
 		{
