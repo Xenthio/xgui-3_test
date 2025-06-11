@@ -3,6 +3,7 @@
 @using System.IO;
 @using System.Linq;
 @using FakeOperatingSystem.Shell
+@using FakeOperatingSystem.UI.Dialogs
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
@@ -70,6 +71,7 @@
 			CurrentCplBGTab = this;
 
 			BackgroundImagesListView.OnItemSelected += OnWallpaperSelected;
+			DisplayModeComboBox.ValueChanged += (value) => UpdatePreviewDisplay();
 			PopulateWallpaperList();
 			LoadCurrentWallpaperSettings();
 		}
@@ -79,34 +81,43 @@
 	{
 		if (BackgroundImagesListView == null) return;
 
-		BackgroundImagesListView.ClearList(); // Clear existing items
-		BackgroundImagesListView.ViewMode = ListView.ListViewMode.List; // Set to list view mode
-
-		// Add "(None)" option
-		// Using a special path or null for "None"
+		BackgroundImagesListView.ClearList();
+		BackgroundImagesListView.ViewMode = ListView.ListViewMode.List;
 		BackgroundImagesListView.AddItem("(None)", new List<string> { "(None)" });
 
-		string wallpaperDirectory = @"C:\Windows\Web\Wallpaper";
 		var vfs = VirtualFileSystem.Instance;
+		var wallpaperPaths = new HashSet<string>(); // To avoid duplicates if files exist in multiple scanned locations with same path
 
-		if (vfs.DirectoryExists(wallpaperDirectory))
+		// Define directories to scan
+		var directoriesToScan = new List<string>
 		{
-			var imageFiles = vfs.GetFiles(wallpaperDirectory)
-				.Where(f => IsSupportedImageFile(f))
-				.OrderBy(f => Path.GetFileName(f));
+			@"C:\Windows\Web\Wallpaper",
+			@"C:\Windows" // Add the main Windows directory
+		};
 
-			foreach (var filePath in imageFiles)
+		foreach (var dirPath in directoriesToScan)
+		{
+			if (vfs.DirectoryExists(dirPath))
 			{
-				var fileName = Path.GetFileName(filePath);
-				// Store full path in Data, display filename
-				BackgroundImagesListView.AddItem(filePath, new List<string> { fileName });
+				var imageFiles = vfs.GetFiles(dirPath)
+					.Where(f => IsSupportedImageFile(f))
+					.OrderBy(f => Path.GetFileName(f));
+
+				foreach (var filePath in imageFiles)
+				{
+					// Only add if not already added (safeguard, though GetFiles from different dirs should be unique)
+					if (wallpaperPaths.Add(filePath))
+					{
+						var displayFileName = Path.GetFileNameWithoutExtension(filePath);
+						BackgroundImagesListView.AddItem(filePath, new List<string> { displayFileName });
+					}
+				}
+			}
+			else
+			{
+				Log.Warning($"Wallpaper directory not found: {dirPath}");
 			}
 		}
-		else
-		{
-			Log.Warning($"Wallpaper directory not found: {wallpaperDirectory}");
-		}
-		BackgroundImagesListView.UpdateItems();
 	}
 
 	private bool IsSupportedImageFile(string filePath)
@@ -119,32 +130,107 @@
 	{
 		if (item == null) return;
 
-		Log.Info($"Selected wallpaper: {item.Data}");
-
 		if (item.Data is string displayName && displayName == "(None)")
 		{
-			_selectedWallpaperPath = null; // Or a special value like "none"
-			PreviewBox.Style.BackgroundImage = null;
-			PreviewBox.Style.BackgroundColor = Color.Parse("#008080"); // Default teal
+			_selectedWallpaperPath = null; // Or a special value like "none" 
 		}
 		else if (item.SubItems.Count > 0 && !string.IsNullOrEmpty(item.SubItems[0]))
 		{
-			_selectedWallpaperPath = (string)item.Data; // Full path stored in Data
-			// Update preview (basic version, doesn't handle tile/stretch here)
-			// For actual image display, you might need to load texture if it's not a direct CSS url
-			if (VirtualFileSystem.Instance.FileExists(_selectedWallpaperPath) && IsSupportedImageFile(_selectedWallpaperPath))
+			_selectedWallpaperPath = (string)item.Data; // data holds the full path
+		}
+		UpdatePreviewDisplay();
+		PreviewBox.Style.Dirty();
+	}
+
+	private void UpdatePreviewDisplay()
+	{
+		if (PreviewBox == null) return;
+
+
+
+		// Clear previous styles
+		PreviewBox.Style.BackgroundImage = null;
+		PreviewBox.Style.BackgroundRepeat = null;
+		PreviewBox.Style.BackgroundSizeX = null;
+		PreviewBox.Style.BackgroundSizeY = null;
+		PreviewBox.Style.BackgroundPositionX = null;
+		PreviewBox.Style.BackgroundPositionY = null;
+
+		string pathToPreview = _selectedWallpaperPath;
+		string displayMode = (string)DisplayModeComboBox?.Selected?.Value ?? "center";
+
+		if (string.IsNullOrEmpty(pathToPreview)) // Handles (None)
+		{
+			PreviewBox.Style.BackgroundColor = Color.Parse("#008080"); // Default teal for "(None)"
+		}
+		else if (VirtualFileSystem.Instance.FileExists(pathToPreview) && IsSupportedImageFile(pathToPreview))
+		{
+			var fileRes = VirtualFileSystem.Instance.ResolveMountPoint(pathToPreview);
+			PreviewBox.Style.BackgroundImage = Texture.Load(fileRes.FileSystem, fileRes.RealPath, false);
+
+			var width = PreviewBox.Style.BackgroundImage.Width;
+			var height = PreviewBox.Style.BackgroundImage.Height;
+
+			switch (displayMode.ToLowerInvariant())
 			{
-				// This is a simplified preview. For HTML, it won't render.
-				// For images, it relies on the path being accessible as a URL or needing conversion to texture.
-				// For a fake OS, you might need a more robust preview mechanism.
-				var file = VirtualFileSystem.Instance.ResolveMountPoint(_selectedWallpaperPath);
-				PreviewBox.Style.BackgroundImage = Texture.Load(file.FileSystem, file.RealPath, false);
-				//PreviewBox.Style.BackgroundSize = "cover"; // Or "contain", "auto"
-				//PreviewBox.Style.BackgroundPosition = "center";
-				//PreviewBox.Style.BackgroundColor = null;
+				default: // Fallback to centre
+				case "center":
+					PreviewBox.Style.BackgroundSizeX = width / 5;
+					PreviewBox.Style.BackgroundSizeY = height / 5;
+					PreviewBox.Style.BackgroundRepeat = BackgroundRepeat.NoRepeat;
+					PreviewBox.Style.BackgroundPositionX = Length.Parse("center");
+					PreviewBox.Style.BackgroundPositionY = Length.Parse("center");
+					PreviewBox.Style.ImageRendering = ImageRendering.Point;
+					break;
+				case "tile":
+					PreviewBox.Style.BackgroundSizeX = width / 5;
+					PreviewBox.Style.BackgroundSizeY = height / 5;
+					PreviewBox.Style.BackgroundRepeat = BackgroundRepeat.Repeat;
+					PreviewBox.Style.Set("background-position: top left;");
+					break;
+				case "stretch":
+					PreviewBox.Style.Set("background-size: cover;"); // Cover the entire area
+					PreviewBox.Style.BackgroundRepeat = BackgroundRepeat.NoRepeat;
+					PreviewBox.Style.Set("background-position: center;");
+					break;
 			}
 		}
+		else
+		{
+			PreviewBox.Style.BackgroundColor = Color.Parse("#008080"); // Fallback if path invalid
+		}
 		PreviewBox.Style.Dirty();
+	}
+
+	private async void OnBrowseButtonClick()
+	{
+		var options = new FileDialogOptions
+		{
+			Title = "Select Wallpaper",
+			Filters = new List<FileFilter> {
+				new FileFilter("Image Files", "*.bmp;*.jpg;*.jpeg;*.png"),
+				new FileFilter("HTML Documents", "*.htm;*.html"),
+				new FileFilter("All Files", "*.*")
+			},
+			InitialDirectory = @"C:\Windows\Web\Wallpaper", // Or a more general/last used path
+			Mode = DialogMode.Open // Ensure it's an open dialog
+		};
+
+		string path = await FileDialogUtility.ShowOpenFileDialogAsync(options);
+
+		if (!string.IsNullOrEmpty(path))
+		{
+			if (IsSupportedImageFile(path))
+			{
+				_selectedWallpaperPath = path;
+				UpdatePreviewDisplay();
+				//BackgroundImagesListView.ClearSelection(); // Deselect item from the list if a browsed file is chosen
+			}
+			else
+			{
+				MessageBoxUtility.ShowError("The selected file is not a supported wallpaper type.", "Invalid File");
+			}
+		}
 	}
 
 	public void ApplySettings()
@@ -215,20 +301,6 @@
 			// Trigger preview update for the loaded selection
 			OnWallpaperSelected(itemToSelect);
 		}
-		else if (!string.IsNullOrEmpty(currentWallpaper))
-		{
-			// If the wallpaper is set but not in the default list (e.g., custom browsed file)
-			// We can't select it in the list, but we can still show its preview.
-			if (VirtualFileSystem.Instance.FileExists(currentWallpaper) && IsSupportedImageFile(currentWallpaper))
-			{
-				var file = VirtualFileSystem.Instance.ResolveMountPoint(currentWallpaper);
-				PreviewBox.Style.BackgroundImage = Texture.Load(file.FileSystem, file.RealPath, false);
-				//PreviewBox.Style.BackgroundSize = "cover";
-				//PreviewBox.Style.BackgroundPosition = "center";
-				//PreviewBox.Style.BackgroundColor = null;
-				PreviewBox.Style.Dirty();
-			}
-		}
 
 
 		// Set Display ComboBox
@@ -247,5 +319,6 @@
 				DisplayModeComboBox.Value = "center";
 			}
 		}
+		UpdatePreviewDisplay(); // Update preview based on loaded settings
 	}
 }
