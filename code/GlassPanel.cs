@@ -20,10 +20,10 @@ public class GlassPanel : Panel
 		attr.Set( "BoxPosition", new Vector2( rect.Left, rect.Top ) );
 		attr.Set( "BoxSize", new Vector2( rect.Width, rect.Height ) );
 		attr.Set( "BorderRadius", 32f );
-		attr.Set( "Refraction", 16f );
+		attr.Set( "Refraction", 24f );
 		attr.Set( "BevelWidth", 30f );
 		attr.Set( "BevelCurve", 1f );
-		attr.Set( "Blur", 2f );
+		attr.Set( "Blur", 2.8f );
 		attr.SetCombo( "D_REFRACTION_EFFECT", 1 );
 		attr.SetCombo( "D_REFLECTIVE_BORDER", 1 );
 		attr.SetCombo( "D_FRESNEL_EFFECT", 1 );
@@ -40,7 +40,13 @@ public class GlassPanel : Panel
 
 		attr.Set( "BorderReflectAmount", 8f );
 		attr.Set( "BorderReflectTint", new Color( 1.4f, 1.4f, 1.4f, 1.0f ) );
-		attr.Set( "FresnelColor", new Color( 0.8f, 0.9f, 1.0f, 0.05f ) );
+		attr.Set( "FresnelColor", new Color( 0.8f, 0.9f, 1.0f, 0.1f ) );
+
+		attr.Set( "RefractTint", new Color( 1.1f, 1.1f, 1.1f, 1.0f ) );
+
+
+		//attr.Set( "BorderReflectTint", new Color( 0.8f, 0.8f, 0.8f, 1.0f ) );
+		//attr.Set( "RefractTint", new Color( 0.6f, 0.6f, 0.6f, 1.0f ) );
 
 		Graphics.GrabFrameTexture( "FrameBufferCopyTexture", attr );
 
