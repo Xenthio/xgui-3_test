@@ -28,13 +28,13 @@ public class GlassPanel : Panel
 
 		attr.Set( "Blur", 2.8f );
 		attr.SetCombo( "D_REFRACTION_EFFECT", 1 );
-		attr.SetCombo( "D_REFLECTIVE_BORDER", 1 );
+		attr.SetCombo( "D_EDGE_REFLECTION", 1 );
 		attr.SetCombo( "D_FRESNEL_EFFECT", 1 );
 		attr.SetCombo( "D_BLUR_EFFECT", 1 );
 		attr.SetCombo( "D_BLUR_QUALITY", 1 );
 		attr.SetCombo( "D_DOUBLE_BEVEL", 1 );
 		attr.SetCombo( "D_BACKGROUND_IMAGE", 0 );
-		attr.Set( "HasBorder", 1 );
+		attr.Set( "HasBorder", 0 );
 		attr.Set( "BorderSize", new Vector4( 1 ) );
 
 		attr.Set( "BorderColorL", Color.White );
@@ -42,9 +42,17 @@ public class GlassPanel : Panel
 		attr.Set( "BorderColorR", Color.White );
 		attr.Set( "BorderColorB", Color.White );
 
-		attr.Set( "BorderReflectAmount", 8f );
-		attr.Set( "BorderReflectTint", new Color( 1.4f, 1.4f, 1.4f, 1.0f ) );
-		attr.Set( "FresnelColor", new Color( 0.8f, 0.9f, 1.0f, 0.1f ) );
+		attr.Set( "BorderReflectAmount", 32f );
+		attr.Set( "BorderReflectFresnelPower", 8f );
+		attr.Set( "BorderReflectTint", new Color( 1.1f, 1.1f, 1.1f, 1.0f ) );
+
+		attr.Set( "ExtremeEdgePower", 24f );
+		attr.Set( "ExtremeEdgeSampleDistance", 25f );
+		attr.Set( "ExtremeEdgeIntensityScale", 0.75f );
+
+		attr.Set( "ChromaticAberrationAmount", 1.0f );
+
+		attr.Set( "FresnelColor", new Color( 0.8f, 0.9f, 1.0f, 0.025f ) );
 
 		attr.Set( "RefractTint", new Color( 1.1f, 1.1f, 1.1f, 1.0f ) );
 

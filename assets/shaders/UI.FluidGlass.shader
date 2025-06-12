@@ -30,7 +30,6 @@ VS
 }
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 PS
 { 
 	#include "ui/pixel.hlsl"
@@ -40,7 +39,7 @@ PS
 	DynamicCombo( D_BACKGROUND_IMAGE, 0..1, Sys( PC ) );
 	DynamicCombo( D_REFRACTION_EFFECT, 0..1, Sys( PC ) );
 	DynamicCombo( D_FRESNEL_EFFECT, 0..1, Sys( PC ) );
-	DynamicCombo( D_REFLECTIVE_BORDER, 0..1, Sys( PC ) );
+	DynamicCombo( D_EDGE_REFLECTION, 0..1, Sys( PC ) ); // DynamicCombo( D_REFLECTIVE_BORDER, 0..1, Sys( PC ) );
 	DynamicCombo( D_BLUR_EFFECT, 0..1, Sys( PC ) );
 	DynamicCombo( D_BLUR_QUALITY, 0..1, Sys( PC ) );
 
@@ -55,11 +54,17 @@ PS
 	float4 BorderColorB < UiType( Color ); Default4( 0.0, 0.0, 0.0, 1.0 ); UiGroup( "Border,10/Colors,10/4" ); Attribute( "BorderColorB" ); >;
 
 	float BorderReflectAmount < Default( 5.0 ); UiGroup( "Border" ); Attribute( "BorderReflectAmount" ); >;
+	float BorderReflectFresnelPower < Default( 4.0 ); UiGroup( "Border" ); Attribute( "BorderReflectFresnelPower" ); >;
 	float4 BorderReflectTint < UiType( Color ); Default4( 1.0, 1.0, 1.0, 1.0 ); UiGroup( "Border" ); Attribute( "BorderReflectTint" ); >;
+
+	float ExtremeEdgePower < Default( 16.0 ); UiGroup( "Border" ); Attribute( "ExtremeEdgePower" ); >;
+	float ExtremeEdgeSampleDistance < Default( 25.0 ); UiGroup( "Border" ); Attribute( "ExtremeEdgeSampleDistance" ); >; // Increased default for a further reach
+	float ExtremeEdgeIntensityScale < Default( 0.75 ); UiGroup( "Border" ); Attribute( "ExtremeEdgeIntensityScale" ); >;
+
+	float ChromaticAberrationAmount < Default( 0.5 ); UiGroup( "Refraction" ); Attribute( "ChromaticAberrationAmount" ); >;
 
 	float4 FresnelColor < UiType( Color ); Default4( 1.0, 1.0, 1.0, 0.5 ); UiGroup( "Fresnel" ); Attribute( "FresnelColor" ); >;
 	float FresnelPower < Default( 2.5 ); UiGroup( "Fresnel" ); Attribute( "FresnelPower" ); >;
-
 
 	float BlurAmount < Default( 4.0 ); UiGroup( "Glass" ); Attribute( "Blur" ); >;
 
@@ -145,7 +150,6 @@ PS
 		return result;
 	}
 
-
 	float4 AddBorder( PS_INPUT i, float2 pos, float distanceFromCenter )
 	{
 		float2 vTransPos = i.vTexCoord.xy * BoxSize;
@@ -161,62 +165,30 @@ PS
 		float4 vBorderColor;
 		float fAntialiasAmount = max( 1.0f / SUBPIXEL_AA_MAGIC, 2.0f / SUBPIXEL_AA_MAGIC * abs( distanceFromCenter / ( min(BoxSize.x, BoxSize.y) ) ) );
 		
-		if (D_REFLECTIVE_BORDER == 1)
-		{
-			// todo, blur maybe
-			float2 screenUV = i.vPositionPanelSpace.xy / g_vViewport.zw;
-			float2 texelSize = 1.0f / g_vViewport.zw;
+		float4 vBorderL = BorderColorL;
+		float4 vBorderT = BorderColorT;
+		float4 vBorderR = BorderColorR;
+		float4 vBorderB = BorderColorB;
 
-			float2 invertedNormal = -vNormal;
-
-			float2 initialPush = invertedNormal * max(BevelWidth, 0.001f) * texelSize;
-			float2 reflectionDistortion = invertedNormal * BorderReflectAmount * texelSize;
-
-			float2 uvOffset = initialPush + reflectionDistortion;
-			
-			float4 reflectedColor = g_tFrameBufferCopyTexture.Sample( g_sClampSampler, screenUV + uvOffset );
-			
-			float4 reflectTint = BorderReflectTint;
-			reflectTint.rgb = SrgbGammaToLinear(reflectTint.rgb);
-			reflectedColor.rgb *= reflectTint.rgb;
-
-			vBorderColor = reflectedColor;
-		}
-		else // Fallback to original solid color border
-		{
-			float4 vBorderL = BorderColorL;
-			float4 vBorderT = BorderColorT;
-			float4 vBorderR = BorderColorR;
-			float4 vBorderB = BorderColorB;
-
-			vBorderL.a = max( vNormal.x, 0 ) * fDistance / ( BorderWidth.x );
-			vBorderT.a = max( vNormal.y, 0 ) * fDistance / ( BorderWidth.y );
-			vBorderR.a = max(-vNormal.x, 0 ) * fDistance / ( BorderWidth.z );
-			vBorderB.a = max(-vNormal.y, 0 ) * fDistance / ( BorderWidth.w );
-			
-			float4 c = -100;
-			float fBorderAlpha = 0;
-			
-			if( BorderWidth.x > 0.0f && vBorderL.a > c.a ) { c = vBorderL; fBorderAlpha = BorderColorL.a; }
-			if( BorderWidth.y > 0.0f && vBorderT.a > c.a ) { c = vBorderT; fBorderAlpha = BorderColorT.a; }
-			if( BorderWidth.z > 0.0f && vBorderR.a > c.a ) { c = vBorderR; fBorderAlpha = BorderColorR.a; }
-			if( BorderWidth.a > 0.0f && vBorderB.a > c.a ) { c = vBorderB; fBorderAlpha = BorderColorB.a; }
-
-			vBorderColor = c;
-			vBorderColor.a *= fBorderAlpha; // Use the original alpha from the color picker
-		}
+		vBorderL.a = max( vNormal.x, 0 ) * fDistance / ( BorderWidth.x );
+		vBorderT.a = max( vNormal.y, 0 ) * fDistance / ( BorderWidth.y );
+		vBorderR.a = max(-vNormal.x, 0 ) * fDistance / ( BorderWidth.z );
+		vBorderB.a = max(-vNormal.y, 0 ) * fDistance / ( BorderWidth.w );
 		
-		// This applies to BOTH border types, ensuring they are shaped correctly
+		float4 c = -100;
+		float fBorderAlpha = 0;
+		
+		if( BorderWidth.x > 0.0f && vBorderL.a > c.a ) { c = vBorderL; fBorderAlpha = BorderColorL.a; }
+		if( BorderWidth.y > 0.0f && vBorderT.a > c.a ) { c = vBorderT; fBorderAlpha = BorderColorT.a; }
+		if( BorderWidth.z > 0.0f && vBorderR.a > c.a ) { c = vBorderR; fBorderAlpha = BorderColorR.a; }
+		if( BorderWidth.a > 0.0f && vBorderB.a > c.a ) { c = vBorderB; fBorderAlpha = BorderColorB.a; }
+
+		vBorderColor = c;
+		vBorderColor.a *= fBorderAlpha; // Use the original alpha from the color picker
+		
 		float finalAlpha = saturate( smoothstep( 0, fAntialiasAmount, fDistance ) );
 		vBorderColor.a *= finalAlpha;
 		vBorderColor.rgb = SrgbGammaToLinear( vBorderColor.rgb );
-
- 		 if (D_FRESNEL_EFFECT == 1)
-        {
-            float3 fresnelLight = SrgbGammaToLinear(FresnelColor.rgb) * FresnelColor.a;
-            // The border is at the very edge, so it gets the full fresnel highlight.
-            vBorderColor.rgb = saturate(vBorderColor.rgb + fresnelLight);
-        }
 
 		return vBorderColor;
 	}
@@ -232,8 +204,8 @@ PS
 		float2 uv = 0.0;
 
 		if ( !HasBorderImageFill && 
-			vBoxTexCoord.x > BorderImageWidth.x && vBoxTexCoord.x < BoxSize.x - BorderImageWidth.z &&
-			vBoxTexCoord.y > BorderImageWidth.y && vBoxTexCoord.y < BoxSize.y - BorderImageWidth.w )
+			vBoxTexCoord.x > BorderImageWidth.x && vBoxTexCoord.x < BoxSize.x - BorderWidth.z &&
+			vBoxTexCoord.y > BorderImageWidth.y && vBoxTexCoord.y < BoxSize.y - BorderWidth.w )
 			return 0;
 
 		if( vBorderPixelSize.x < vBorderImageSize.x * 0.5)
@@ -257,9 +229,9 @@ PS
 		}
 		
 		if( vBoxTexCoord.x < BorderImageWidth.x ) uv.x = (vBoxTexCoord.x / BorderImageWidth.x) * vBorderPixelRatio.x; 
-		else if( vBoxTexCoord.x > BoxSize.x - BorderImageWidth.z ) uv.x = ( ( (vBoxTexCoord.x - ( BoxSize.x - BorderImageWidth.z) ) / BorderImageWidth.z) * vBorderPixelRatio.z ) + ( 1.0 - vBorderPixelRatio.z );
+		else if( vBoxTexCoord.x > BoxSize.x - BorderWidth.z ) uv.x = ( ( (vBoxTexCoord.x - ( BoxSize.x - BorderWidth.z) ) / BorderImageWidth.z) * vBorderPixelRatio.z ) + ( 1.0 - vBorderPixelRatio.z );
 		if( vBoxTexCoord.y < BorderImageWidth.y ) uv.y = (vBoxTexCoord.y / BorderImageWidth.y) * vBorderPixelRatio.y;
-		else if( vBoxTexCoord.y > BoxSize.y - BorderImageWidth.w ) uv.y = ( ( (vBoxTexCoord.y - ( BoxSize.y - BorderImageWidth.w) ) / BorderImageWidth.w) * vBorderPixelRatio.w ) + ( 1.0 - vBorderPixelRatio.w );
+		else if( vBoxTexCoord.y > BoxSize.y - BorderWidth.w ) uv.y = ( ( (vBoxTexCoord.y - ( BoxSize.y - BorderWidth.w) ) / BorderImageWidth.w) * vBorderPixelRatio.w ) + ( 1.0 - vBorderPixelRatio.w );
 
 		float4 r = g_tBorderImage.Sample( g_sClampSampler, uv );
 		r.xyz = SrgbGammaToLinear( r.xyz );
@@ -275,7 +247,6 @@ PS
 		float2 texelSize = 1.0f / g_vViewport.zw;
 		float2 blurSize = texelSize * blurAmount;
 
-		// startuv is refracted coord
 		float4 color = g_tFrameBufferCopyTexture.Sample( g_sTrilinearClampSampler, startUV );
 		
 		[unroll]
@@ -301,38 +272,34 @@ PS
 		float2 pos = ( BoxSize ) * (i.vTexCoord.xy * 2.0 - 1.0);  
 		float dist = GetDistanceFromEdge( pos, BoxSize, CornerRadius );
 		float2 screenUV = i.vPositionPanelSpace.xy / g_vViewport.zw;
+		float2 texelSize = 1.0f / g_vViewport.zw;
 		
-		// final colour here
 		float4 vBox; 
 
 		float2 uvOffset = 0.0;
 		float bevelFalloff = 0.0;
 		float fresnelTerm = 0.0;
+		float totalDisplacementFactor = 0.0;
+		float2 refractNormal = 0;
 
-		if ( D_REFRACTION_EFFECT == 1 || D_FRESNEL_EFFECT == 1 )
+		if ( D_REFRACTION_EFFECT == 1 || D_FRESNEL_EFFECT == 1 || D_EDGE_REFLECTION == 1 )
 		{
-			float2 refractNormal = DistanceNormal( pos, BoxSize, CornerRadius );
+			refractNormal = DistanceNormal( pos, BoxSize, CornerRadius );
 			float distFromEdge = -dist - 0.5;
 			bevelFalloff = 1.0 - saturate( distFromEdge / max(BevelWidth, 0.001f) );
 
 			if (D_FRESNEL_EFFECT == 1)
 			{
-				// simple rim light.
 				fresnelTerm = pow(bevelFalloff, FresnelPower);
 			}
 
 			if (D_REFRACTION_EFFECT == 1)
 			{
 				float curvedFalloff = pow(bevelFalloff, BevelCurve);
-
 				float innerBevel = smoothstep(0.0, BevelSplit, curvedFalloff);
 				float outerBevel = smoothstep(BevelSplit, 1.0, curvedFalloff);
-				
 				float innerBevelStrength = innerBevel * (1.0 - outerBevel);
-
-				float totalDisplacementFactor = outerBevel - innerBevelStrength;
-				
-				float2 texelSize = 1.0f / g_vViewport.zw;
+				totalDisplacementFactor = outerBevel - innerBevelStrength;
 				uvOffset = refractNormal * totalDisplacementFactor * RefractAmount * texelSize;
 			}
 		}
@@ -341,24 +308,65 @@ PS
 
 		if (D_BLUR_EFFECT == 1)
 		{
-			if (D_BLUR_QUALITY == 1) // HIGH QUALITY
-			{
-				vBox = DoRadialBlur(finalSampleUV, BlurAmount);
-			}
-			else // FAST (assuming mips exist tho)
-			{
-				float mipLevel = sqrt(max(BlurAmount, 0.0) / 2.0);
-				vBox = g_tFrameBufferCopyTexture.SampleLevel( g_sTrilinearClampSampler, finalSampleUV, mipLevel );
-			}
+			vBox = (D_BLUR_QUALITY == 1) ? DoRadialBlur(finalSampleUV, BlurAmount) : g_tFrameBufferCopyTexture.SampleLevel( g_sTrilinearClampSampler, finalSampleUV, sqrt(max(BlurAmount, 0.0) / 2.0) );
 		}
-		else // NO BLUR
+		else
 		{
 			vBox = g_tFrameBufferCopyTexture.Sample( g_sTrilinearClampSampler, finalSampleUV );
+		}
+
+		if (D_REFRACTION_EFFECT == 1 && ChromaticAberrationAmount > 0.0)
+		{
+			float local_curvedFalloff = pow(bevelFalloff, BevelCurve);
+			float local_innerBevel = smoothstep(0.0, BevelSplit, local_curvedFalloff);
+			float local_outerBevel = smoothstep(BevelSplit, 1.0, local_curvedFalloff);
+			float local_innerBevelStrength = local_innerBevel * (1.0 - local_outerBevel);
+			float local_totalDisplacementFactor = local_outerBevel - local_innerBevelStrength;
+
+			float refractionStrengthFactor = saturate(abs(local_totalDisplacementFactor));
+
+			if (refractionStrengthFactor > 0.001)
+			{
+				float3 ddx_color = ddx_fine(vBox.rgb); 
+				float3 ca_factors = float3(1.0, 0.0, -1.0) * ChromaticAberrationAmount;
+				
+				float3 ca_shift = ddx_color * ca_factors;
+				
+				vBox.rgb += ca_shift * refractionStrengthFactor;
+				
+				vBox.rgb = saturate(vBox.rgb);
+			}
 		}
 
 		float4 tint = RefractTint;
 		tint.rgb = SrgbGammaToLinear(tint.rgb);
 		vBox.rgb *= tint.rgb;
+
+		if (D_EDGE_REFLECTION == 1)
+		{
+			float reflectionIntensity = pow(bevelFalloff, BorderReflectFresnelPower);
+			float currentBevelDepthFactor = 1.0f - bevelFalloff; 
+			const float minReflectionOffsetScale = 0.1f; 
+			float reflectionDistanceScale = lerp(minReflectionOffsetScale, 1.0f, currentBevelDepthFactor);
+			float dynamicReflectionSampleDistance = BorderReflectAmount * reflectionDistanceScale;
+			float2 reflectionUV = screenUV - refractNormal * dynamicReflectionSampleDistance * texelSize;
+			float4 reflectionSample = g_tFrameBufferCopyTexture.Sample( g_sTrilinearClampSampler, reflectionUV );
+			float3 reflectionColor = SrgbGammaToLinear(BorderReflectTint.rgb) * reflectionSample.rgb;
+			vBox.rgb = saturate( vBox.rgb + reflectionColor * reflectionIntensity * BorderReflectTint.a );
+
+			float extremeEdgeFactor = pow(bevelFalloff, ExtremeEdgePower); 
+
+			if (extremeEdgeFactor > 0.005) 
+			{
+			    float2 extremeReflectionUV = screenUV - refractNormal * ExtremeEdgeSampleDistance * texelSize;
+
+			    float4 extremeReflectionSampleColor = g_tFrameBufferCopyTexture.Sample( g_sTrilinearClampSampler, extremeReflectionUV );
+			    
+				float3 extremeReflectionTintedColor = SrgbGammaToLinear(BorderReflectTint.rgb) * extremeReflectionSampleColor.rgb;
+
+			    vBox.rgb = saturate(vBox.rgb + extremeReflectionTintedColor * extremeEdgeFactor * BorderReflectTint.a * ExtremeEdgeIntensityScale);
+			}
+		}
 
 		if (D_FRESNEL_EFFECT == 1)
 		{
@@ -374,16 +382,13 @@ PS
 		{
 			vBoxBorder = AddImageBorder( i.vTexCoord.xy ) * i.vColor.a;
 		}
+		else if ( HasBorder )
+		{
+			vBoxBorder = AddBorder( i, pos, dist );
+		}
 		else
 		{
-			if ( HasBorder )
-			{
-				vBoxBorder = AddBorder( i, pos, dist );
-			}
-			else
-			{
-				vBoxBorder = 0;
-			}
+			vBoxBorder = 0;
 		}
 		
 		if ( D_BACKGROUND_IMAGE == 1 )
