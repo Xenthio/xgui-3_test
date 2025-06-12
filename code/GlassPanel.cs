@@ -22,11 +22,11 @@ public class GlassPanel : Panel
 		attr.Set( "BorderRadius", 32f );
 
 		attr.Set( "Refraction", 24f );
-		attr.Set( "BevelWidth", 40f );
+		attr.Set( "BevelWidth", 50f );
 		attr.Set( "BevelCurve", 1f );
 		attr.Set( "BevelSplit", 0.5f );
 
-		attr.Set( "Blur", 2.8f );
+		attr.Set( "Blur", 1.8f );
 		attr.SetCombo( "D_REFRACTION_EFFECT", 1 );
 		attr.SetCombo( "D_EDGE_REFLECTION", 1 );
 		attr.SetCombo( "D_FRESNEL_EFFECT", 1 );
@@ -44,13 +44,13 @@ public class GlassPanel : Panel
 
 		attr.Set( "BorderReflectAmount", 32f );
 		attr.Set( "BorderReflectFresnelPower", 8f );
-		attr.Set( "BorderReflectTint", new Color( 1.1f, 1.1f, 1.1f, 1.0f ) );
+		attr.Set( "BorderReflectTint", new Color( 1.0f, 1.0f, 1.0f, 1.0f ) );
 
 		attr.Set( "ExtremeEdgePower", 24f );
 		attr.Set( "ExtremeEdgeSampleDistance", 25f );
 		attr.Set( "ExtremeEdgeIntensityScale", 0.75f );
 
-		attr.Set( "ChromaticAberrationAmount", 1.0f );
+		attr.Set( "ChromaticAberrationAmount", 1.2f );
 
 		attr.Set( "FresnelColor", new Color( 0.8f, 0.9f, 1.0f, 0.025f ) );
 
