@@ -30,6 +30,7 @@ VS
 }
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 PS
 { 
 	#include "ui/pixel.hlsl"
@@ -73,6 +74,7 @@ PS
 	float RefractAmount < Default( 8.0 ); UiGroup( "Refraction" ); Attribute( "Refraction" ); >;
 	float BevelWidth < Default( 20.0 ); UiGroup( "Refraction" ); Attribute( "BevelWidth" ); >;
 	float BevelCurve < Default( 1.0 ); UiGroup( "Refraction" ); Attribute( "BevelCurve" ); >;
+	float BevelSplit < Default( 0.5 ); UiType( Slider ); UiGroup( "Refraction" ); Attribute( "BevelSplit" ); >;
 	float4 RefractTint < UiType( Color ); Default4( 1.0, 1.0, 1.0, 0.0 ); UiGroup( "Refraction" ); Attribute( "RefractTint" ); >;
 
 	#if D_TEXTURE_FILTERING == 0
@@ -315,14 +317,23 @@ PS
 
 			if (D_FRESNEL_EFFECT == 1)
 			{
+				// simple rim light.
 				fresnelTerm = pow(bevelFalloff, FresnelPower);
 			}
 
 			if (D_REFRACTION_EFFECT == 1)
 			{
-				float curvedBevel = pow( bevelFalloff, BevelCurve );
+				float curvedFalloff = pow(bevelFalloff, BevelCurve);
+
+				float innerBevel = smoothstep(0.0, BevelSplit, curvedFalloff);
+				float outerBevel = smoothstep(BevelSplit, 1.0, curvedFalloff);
+				
+				float innerBevelStrength = innerBevel * (1.0 - outerBevel);
+
+				float totalDisplacementFactor = outerBevel - innerBevelStrength;
+				
 				float2 texelSize = 1.0f / g_vViewport.zw;
-				uvOffset = -refractNormal * curvedBevel * RefractAmount * texelSize;
+				uvOffset = refractNormal * totalDisplacementFactor * RefractAmount * texelSize;
 			}
 		}
 

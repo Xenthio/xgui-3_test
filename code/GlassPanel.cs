@@ -20,15 +20,19 @@ public class GlassPanel : Panel
 		attr.Set( "BoxPosition", new Vector2( rect.Left, rect.Top ) );
 		attr.Set( "BoxSize", new Vector2( rect.Width, rect.Height ) );
 		attr.Set( "BorderRadius", 32f );
+
 		attr.Set( "Refraction", 24f );
-		attr.Set( "BevelWidth", 30f );
+		attr.Set( "BevelWidth", 40f );
 		attr.Set( "BevelCurve", 1f );
+		attr.Set( "BevelSplit", 0.5f );
+
 		attr.Set( "Blur", 2.8f );
 		attr.SetCombo( "D_REFRACTION_EFFECT", 1 );
 		attr.SetCombo( "D_REFLECTIVE_BORDER", 1 );
 		attr.SetCombo( "D_FRESNEL_EFFECT", 1 );
 		attr.SetCombo( "D_BLUR_EFFECT", 1 );
 		attr.SetCombo( "D_BLUR_QUALITY", 1 );
+		attr.SetCombo( "D_DOUBLE_BEVEL", 1 );
 		attr.SetCombo( "D_BACKGROUND_IMAGE", 0 );
 		attr.Set( "HasBorder", 1 );
 		attr.Set( "BorderSize", new Vector4( 1 ) );
