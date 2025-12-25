@@ -322,15 +322,18 @@
 		activeMenu.AddMenuItem("Cut", () => { if (TextArea != null) TextArea.GetClipboardValue(true); });
 		activeMenu.AddMenuItem("Copy", () => { if (TextArea != null) TextArea.GetClipboardValue(false); });
 		activeMenu.AddMenuItem("Paste", () => { if (TextArea != null /* && Clipboard.HasText */) TextArea.OnPaste("Todo: pasting"); });
+
+		// TODO: FIX ME!!!!!! Label was made proteted for some reason??
 		activeMenu.AddMenuItem("Delete", () => { 
-			if (TextArea != null && TextArea.Label.HasSelection()) 
-				TextArea.Label.ReplaceSelection(""); 
+			//if (TextArea != null && TextArea.Label.HasSelection()) 
+			//	TextArea.Label.ReplaceSelection(""); 
 		});
 		activeMenu.AddSeparator();
+		// TODO: FIX ME!!!!!! Label was made proteted for some reason??
 		activeMenu.AddMenuItem("Select All", () => { 
 			if (TextArea != null) {
-				TextArea.Label.SelectionStart = 0;
-				TextArea.Label.SelectionEnd = TextArea.TextLength;
+				//TextArea.Label.SelectionStart = 0;
+				//TextArea.Label.SelectionEnd = TextArea.TextLength;
 			}
 		});
 	}

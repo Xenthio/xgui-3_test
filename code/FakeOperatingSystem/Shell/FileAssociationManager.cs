@@ -60,6 +60,24 @@ public class FileAssociationManager
 		batAssociation.AddAction( "open", "Open", "C:/Windows/system32/cmd.exe", "/C %1" ); // Note: DefaultProgram in constructor handles the primary open
 		batAssociation.AddAction( "edit", "Edit", "C:/Windows/notepad.exe" );
 		RegisterAssociation( batAssociation );
+
+		// BMP files
+		var bmpAssociation = new FileAssociation( ".bmp", "Bitmap Image", "bmp", "C:/Windows/mspaint.exe" );
+		bmpAssociation.AddAction( "open", "Open", "C:/Windows/mspaint.exe" ); // Default open action
+		bmpAssociation.AddAction( "edit", "Edit", "C:/Windows/mspaint.exe" ); // Edit action
+		RegisterAssociation( bmpAssociation );
+
+		// PNG files
+		var pngAssociation = new FileAssociation( ".png", "PNG Image", "png", "C:/Windows/mspaint.exe" );
+		pngAssociation.AddAction( "open", "Open", "C:/Windows/mspaint.exe" ); // Default open action
+		pngAssociation.AddAction( "edit", "Edit", "C:/Windows/mspaint.exe" ); // Edit action
+		RegisterAssociation( pngAssociation );
+
+		// JPG files
+		var jpgAssociation = new FileAssociation( ".jpg", "JPEG Image", "jpg", "C:/Windows/mspaint.exe" );
+		jpgAssociation.AddAction( "open", "Open", "C:/Windows/mspaint.exe" ); // Default open action
+		jpgAssociation.AddAction( "edit", "Edit", "C:/Windows/mspaint.exe" ); // Edit action
+		RegisterAssociation( jpgAssociation );
 	}
 
 	public void RegisterAssociation( FileAssociation association )

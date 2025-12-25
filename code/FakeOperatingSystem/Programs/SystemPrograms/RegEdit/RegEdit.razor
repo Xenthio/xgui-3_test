@@ -7,6 +7,7 @@
 @using System.Linq;
 @using FakeDesktop;
 @using FakeOperatingSystem;
+@using global::FakeOperatingSystem
 
 @attribute [StyleSheet("RegEdit.razor.scss")]
 @inherits Window
@@ -150,18 +151,18 @@
 		if (node.Data is string marker &&
 			(marker == "COMPUTER_ROOT_MARKER" || marker == "HKLM_ROOT_MARKER" || marker == "HKU_ROOT_MARKER"))
 		{
-			var dummy = node.Children.FirstOrDefault(n => n.Data is string s && s == "DUMMY");
+			var dummy = node.ChildNodes.FirstOrDefault(n => n.Data is string s && s == "DUMMY");
 			if (dummy != null) node.RemoveChild(dummy); // Should not have dummy if children are pre-populated
 			return;
 		}
 
-		var dummyNode = node.Children.FirstOrDefault(n => n.Data is string s && s == "DUMMY");
+		var dummyNode = node.ChildNodes.FirstOrDefault(n => n.Data is string s && s == "DUMMY");
 		if (dummyNode != null)
 		{
 			node.RemoveChild(dummyNode);
 		}
 
-		if (node.Children.Any(n => !(n.Data is string s && s == "DUMMY"))) return; // Already populated
+		if (node.ChildNodes.Any(n => !(n.Data is string s && s == "DUMMY"))) return; // Already populated
 
 		RegistryKey currentKeyToExpand = null;
 
@@ -379,7 +380,7 @@
 			_treeViewContextMenu?.Delete(true); _treeViewContextMenu = null;
 		});
 		// Disable if it's a leaf or already expanded and has no dummy children
-		bool canExpand = node.Children.Any() && (!node.IsExpanded || node.Children.Any(n => n.Data is string s && s == "DUMMY"));
+		bool canExpand = node.ChildNodes.Any() && (!node.IsExpanded || node.ChildNodes.Any(n => n.Data is string s && s == "DUMMY"));
 		expandItem.SetClass("disabled", !canExpand);
 
 

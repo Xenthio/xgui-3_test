@@ -1,4 +1,5 @@
 ﻿using FakeOperatingSystem;
+using Sandbox.FakeSteam;
 
 public class SteamProgram : NativeProgram
 {

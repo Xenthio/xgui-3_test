@@ -1,4 +1,5 @@
 ﻿using FakeOperatingSystem;
+using Sandbox.FakeOperatingSystem.Programs.Misc.Doom95;
 
 public class Doom95Program : NativeProgram
 {

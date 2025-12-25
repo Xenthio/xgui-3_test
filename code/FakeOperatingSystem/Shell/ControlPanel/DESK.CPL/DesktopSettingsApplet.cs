@@ -1,4 +1,5 @@
 using FakeOperatingSystem.Shell;
+using FakeOperatingSystem.Shell.ControlPanel.DeskCpl;
 using XGUI;
 
 public class DesktopSettingsApplet : IControlPanelApplet

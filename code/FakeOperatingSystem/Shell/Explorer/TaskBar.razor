@@ -1,15 +1,15 @@
 @using System;
 @using System.Collections.Generic;
 @using System.Linq;
-@using FakeOperatingSystem.OSFileSystem
-@using FakeOperatingSystem.User
 @using Sandbox;
 @using Sandbox.UI;
 @using System.IO
 @using XGUI;
 @using FakeDesktop;
-@using FakeOperatingSystem;
-@using FakeOperatingSystem.Shell;
+@using global::FakeOperatingSystem;
+@using global::FakeOperatingSystem.OSFileSystem
+@using global::FakeOperatingSystem.Shell;
+@using global::FakeOperatingSystem.User
 @attribute [StyleSheet()]
 @inherits Window
 
@@ -173,10 +173,10 @@
 	{
 		var windows = new List<WindowInfo>();
 
-		foreach (var process in FakeOperatingSystem.ProcessManager.Instance.GetProcesses())
+		foreach (var process in global::FakeOperatingSystem.ProcessManager.Instance.GetProcesses())
 		{
 			// NativeProcess: has OwnedWindows
-			if (process is FakeOperatingSystem.NativeProcess nativeProc)
+			if (process is global::FakeOperatingSystem.NativeProcess nativeProc)
 			{
 				foreach (var panel in nativeProc.OwnedWindows)
 				{

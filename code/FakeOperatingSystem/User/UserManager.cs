@@ -1,6 +1,7 @@
 using FakeDesktop;
 using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.User;
+using Sandbox.FakeOperatingSystem.Logon;
 using System;
 using System.Collections.Generic;
 using System.IO;

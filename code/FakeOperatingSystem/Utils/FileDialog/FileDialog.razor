@@ -110,8 +110,9 @@
 			FileNameInput.Focus();
 			if (!string.IsNullOrEmpty(FileNameInput.Text))
 			{
-				FileNameInput.Label.SelectionStart = 0;
-				FileNameInput.Label.SelectionEnd = FileNameInput.TextLength;
+				// TODO: FIX ME!!!!!! Label was made proteted for some reason??
+				//FileNameInput.Label.SelectionStart = 0;
+				//FileNameInput.Label.SelectionEnd = FileNameInput.TextLength;
 			}
 		}
 		else if (PathInput != null)

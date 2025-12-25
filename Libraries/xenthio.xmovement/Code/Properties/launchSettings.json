@@ -1,9 +1,9 @@
 {
   "profiles": {
-    "xmovement": {
+    "Editor": {
       "commandName": "Executable",
-      "executablePath": "E:\\SteamLibrary\\steamapps\\common\\sbox\\sbox.exe",
-      "commandLineArgs": "\u002Bdeveloper 1 -w 1920 -h 1080 -noassert -tools"
+      "executablePath": "E:\\steamlibrary\\steamapps\\common\\sbox\\sbox-dev.exe",
+      "commandLineArgs": "-project \u0022E:\\S\u0026box Addons\\xgui-3_test\\Libraries\\xenthio.xmovement\\xmovement.sbproj\u0022"
     }
   }
 }

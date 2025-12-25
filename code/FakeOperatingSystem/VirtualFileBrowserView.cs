@@ -2,6 +2,8 @@
 using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.Shell;
 using Sandbox;
+using Sandbox.FakeOperatingSystem.Shell;
+using Sandbox.FakeOperatingSystem.Shell.Explorer;
 using Sandbox.UI;
 using System;
 using System.Collections.Generic;

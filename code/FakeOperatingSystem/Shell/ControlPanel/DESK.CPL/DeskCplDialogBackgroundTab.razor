@@ -2,14 +2,17 @@
 @using System.Collections.Generic;
 @using System.IO;
 @using System.Linq;
-@using FakeOperatingSystem.Shell
-@using FakeOperatingSystem.UI.Dialogs
+@using Sandbox.FakeOperatingSystem.Shell.Explorer
+@using global::FakeOperatingSystem
+@using global::FakeOperatingSystem.Shell
+@using global::FakeOperatingSystem.UI.Dialogs
 @using Sandbox;
 @using Sandbox.UI;
 @using XGUI;
 @using FakeOperatingSystem;
-@using FakeOperatingSystem.OSFileSystem;
+@using global::FakeOperatingSystem.OSFileSystem;
 @using FakeDesktop;
+@namespace FakeOperatingSystem.Shell.ControlPanel.DeskCpl
 @inherits Panel
 
 <root class="column" style="flex-grow:1; padding:5px;">

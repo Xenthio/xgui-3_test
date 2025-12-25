@@ -1,4 +1,5 @@
 ﻿using FakeOperatingSystem;
+using Sandbox.FakeOperatingSystem.Shell.Explorer;
 
 public class IExploreProgram : NativeProgram
 {

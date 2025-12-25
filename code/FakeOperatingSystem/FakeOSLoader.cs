@@ -1,6 +1,8 @@
 ﻿using FakeOperatingSystem.OSFileSystem;
 using FakeOperatingSystem.Shell;
+using FakeOperatingSystem.Shell.ControlPanel.DeskCpl;
 using Sandbox;
+using Sandbox.FakeOperatingSystem.Logon;
 using System.Linq;
 using System.Threading.Tasks;
 using XGUI;

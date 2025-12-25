@@ -1,4 +1,5 @@
 ﻿using FakeOperatingSystem;
+using Sandbox.FakeOperatingSystem.Shell.Explorer;
 using System.Linq; // Required for LINQ operations like OfType and Any
 using XGUI;    // Required for XGUISystem, XGUIPanel
 
