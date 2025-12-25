@@ -1,0 +1,105 @@
+﻿// Decompiled with JetBrains decompiler
+// Type: Sandbox.PanelSelector
+// Assembly: package.xenthio.xgui-3_test, Version=0.0.112.0, Culture=neutral, PublicKeyToken=null
+// MVID: 36434954-17A8-4618-802A-A415FC4D0117
+// Assembly location: E:\S&box Addons\xgui-3_test\Exports\26-12-2025_10-33-50\assets\.bin\package.xenthio.xgui-3_test.dll
+// XML documentation location: E:\S&box Addons\xgui-3_test\Exports\26-12-2025_10-33-50\assets\.bin\package.xenthio.xgui-3_test.xml
+// Compiler-generated code is shown
+
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
+using Sandbox.Internal;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using XGUI;
+
+namespace Sandbox;
+
+[Sandbox.UI.StyleSheet("/XGUI/DefaultStyles/OliveGreen.scss")]
+[SourceLocation("PanelSelector.razor", 6)]
+public class PanelSelector : Window
+{
+  [SourceLocation("PanelSelector.razor", 11)]
+  protected override string GetRenderTreeChecksum()
+  {
+    return "8f7f80d85eb359f19cfc0543c2718962b82b69dd";
+  }
+
+  [SourceLocation("PanelSelector.razor", 14)]
+  protected override void BuildRenderTree(RenderTreeBuilder __builder)
+  {
+    __builder.AddLocation("PanelSelector.razor", 9, 0);
+    __builder.OpenElement(0, "root", (object) null);
+    RazorExtensions.AddAttribute(__builder, 1, "title", "Panel List");
+    RazorExtensions.AddAttribute(__builder, 2, "style", "width:500px; height:500px;");
+    __builder.AddLocation("PanelSelector.razor", 10, 1);
+    __builder.OpenElement(3, "div", (object) null);
+    RazorExtensions.AddAttribute(__builder, 4, "class", "window-content");
+    __builder.AddLocation("PanelSelector.razor", 11, 2);
+    __builder.AddMarkupContent(5, "<label style=\"flex-shrink:0;\">Buttons to open all the panels available.</label>\r\n\t\t\r\n\t\t");
+    __builder.AddLocation("PanelSelector.razor", 13, 2);
+    __builder.OpenElement(6, "scrollpanel", (object) null);
+    foreach (TypeDescription typeDescription in (IEnumerable<TypeDescription>) GlobalGameNamespace.TypeLibrary.GetTypes<Window>().OrderBy<TypeDescription, string>(PanelSelector.\u003C\u003Ec.\u003C\u003E9__1_0 ?? (PanelSelector.\u003C\u003Ec.\u003C\u003E9__1_0 = new Func<TypeDescription, string>((object) PanelSelector.\u003C\u003Ec.\u003C\u003E9, __methodptr(\u003CBuildRenderTree\u003Eb__1_0)))))
+    {
+      PanelSelector.\u003C\u003Ec__DisplayClass1_0 cDisplayClass10 = new PanelSelector.\u003C\u003Ec__DisplayClass1_0();
+      cDisplayClass10.i = typeDescription;
+      __builder.AddLocation("PanelSelector.razor", 16 /*0x10*/, 4);
+      __builder.OpenElement(7, "button", (object) null);
+      RazorExtensions.AddAttribute(__builder, 8, "onclick", new Action((object) cDisplayClass10, __methodptr(\u003CBuildRenderTree\u003Eb__1)));
+      __builder.AddContent<string>(9, cDisplayClass10.i.Name);
+      __builder.CloseElement();
+    }
+    __builder.CloseElement();
+    __builder.CloseElement();
+    __builder.CloseElement();
+  }
+
+  public PanelSelector()
+  {
+    base.\u002Ector();
+  }
+
+  [CompilerGenerated]
+  [Serializable]
+  private new sealed class \u003C\u003Ec
+  {
+    public static readonly PanelSelector.\u003C\u003Ec \u003C\u003E9;
+    public static Func<TypeDescription, string> \u003C\u003E9__1_0;
+
+    static \u003C\u003Ec()
+    {
+      PanelSelector.\u003C\u003Ec.\u003C\u003E9 = new PanelSelector.\u003C\u003Ec();
+    }
+
+    public \u003C\u003Ec()
+    {
+      base.\u002Ector();
+    }
+
+    internal string \u003CBuildRenderTree\u003Eb__1_0(TypeDescription type)
+    {
+      return type.Name;
+    }
+  }
+
+  [CompilerGenerated]
+  private sealed class \u003C\u003Ec__DisplayClass1_0
+  {
+    public TypeDescription i;
+
+    public \u003C\u003Ec__DisplayClass1_0()
+    {
+      base.\u002Ector();
+    }
+
+    internal void \u003CBuildRenderTree\u003Eb__1()
+    {
+      ConsoleSystem.Run("openpanel", new object[1]
+      {
+        (object) this.i.Name
+      });
+    }
+  }
+}
