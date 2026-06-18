@@ -32,7 +32,9 @@ public class X86Core
 	}
 
 	// Stack layout tracking
-	private uint _stackBase = 0x00080000; // Initial ESP
+	public const uint StackBase  = 0x00080000;
+	public const uint StackLimit = 0x00070000;
+	public const uint StackTop   = 0x00090000;
 
 	// Check if address is on the stack - useful for debugging
 	public bool IsStackAddress( uint address )
@@ -43,7 +45,10 @@ public class X86Core
 	// Memory operations - no correction, just like a real CPU
 	public byte ReadByte( uint address )
 	{
-		// Direct memory access with no translation
+		// Guard against clearly invalid addresses that would cause OOM in page allocation
+		// (e.g. EIP corruption leading to 0xFFFFFFFE + 2 wrapping to ~0)
+		if ( address > 0xF0000000 && !_memoryPages.ContainsKey( address & ~(uint)(PageSize - 1) ) )
+			throw new InvalidOperationException( $"ReadByte: unmapped high address 0x{address:X8} — likely EIP/ESP corruption" );
 		uint page = address & ~(uint)(PageSize - 1);
 		int offset = (int)(address & (PageSize - 1));
 		if ( !_memoryPages.TryGetValue( page, out var data ) )
@@ -109,11 +114,13 @@ public class X86Core
 		WriteByte( address + 2, (byte)((value >> 16) & 0xFF), protect: protect );
 		WriteByte( address + 3, (byte)((value >> 24) & 0xFF), protect: protect );
 		uint ebp = Registers["ebp"];
-		/*		if ( address == ebp + 0xFFFFFFCC || address == ebp + 0xFFFFFFD0 ||
-					address == ebp + 0xFFFFFFD4 || address == ebp + 0xFFFFFFD8 )
-				{
-					Log.Info( $"WriteDword: [0x{address:X8}] = 0x{value:X8} (EBP=0x{ebp:X8})" );
-				}*/
+		if ( address == 0x028B51E8 )
+		{
+			uint eip = Registers["eip"];
+			uint esp = Registers["esp"];
+			uint retAddr = ReadDword( esp );
+			// Uncomment to debug: Log.Info( $"[51E8] WRITE: 0x{value:X8} at EIP=0x{eip:X8}" );
+		}
 	}
 
 	public void WriteWord( uint address, ushort value, bool protect = true )
@@ -195,6 +202,23 @@ public class X86Core
 		}
 	}
 
+	public string ReadString( uint address, int length )
+	{
+		if ( address == 0 || length <= 0 ) return "";
+		var sb = new System.Text.StringBuilder( length );
+		try
+		{
+			for ( int i = 0; i < length; i++ )
+			{
+				byte b = ReadByte( address + (uint)i );
+				if ( b == 0 ) break;
+				sb.Append( (char)b );
+			}
+		}
+		catch { }
+		return sb.ToString();
+	}
+
 	public string ReadWideString( uint address )
 	{
 		if ( address == 0 )
@@ -219,6 +243,37 @@ public class X86Core
 			Log.Error( $"ReadWideString failed at 0x{address:X8}: {ex.Message}" );
 			return "";
 		}
+	}
+
+	// Write a null-terminated ASCII string to memory
+	public void WriteString( uint address, string value )
+	{
+		if ( address == 0 || value == null ) return;
+		for ( int i = 0; i < value.Length; i++ )
+			WriteByte( address + (uint)i, (byte)value[i] );
+		WriteByte( address + (uint)value.Length, 0 );
+	}
+
+	// Write a null-terminated wide (UTF-16) string to memory
+	public void WriteWideString( uint address, string value )
+	{
+		if ( address == 0 || value == null ) return;
+		for ( int i = 0; i < value.Length; i++ )
+			WriteWord( address + (uint)(i * 2), (ushort)value[i] );
+		WriteWord( address + (uint)(value.Length * 2), 0 );
+	}
+
+	// Simple bump allocator for emulator-managed heap (shared with existing VirtualAlloc region)
+	private uint _heapBump = 0x06000000; // Start at 96 MB — above Kernel32 heap (0x04000000+) and NT4 ImageBase range
+	public uint AllocateMemory( uint size )
+	{
+		size = (size + 3) & ~3u; // 4-byte align
+		if ( size == 0 ) size = 4;
+		uint addr = _heapBump;
+		_heapBump += size;
+		// Zero-init
+		for ( uint i = 0; i < size; i++ ) WriteByte( addr + i, 0 );
+		return addr;
 	}
 
 	// Mark pages as code during PE loading

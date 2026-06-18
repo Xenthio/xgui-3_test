@@ -1,12 +1,19 @@
-﻿using System;
+using System;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.Handlers;
 
+/// <summary>
+/// Handles shift/rotate group opcodes: C0/C1 (imm8), D0/D1 (by 1), D2/D3 (by CL).
+/// C0/D0/D2 operate on r/m8; C1/D1/D3 on r/m32.
+/// Fixed: proper 8-bit vs 32-bit separation, count mask (& 0x1F for 32-bit, & 0x1F for 8-bit
+/// masked to [0,7] where needed), correct flags, no code duplication.
+/// </summary>
 public class ShiftRotateHandler : IInstructionHandler
 {
-	public bool CanHandle( byte opcode ) => opcode == 0xC0 || opcode == 0xC1 ||
-										  opcode == 0xD0 || opcode == 0xD1 ||
-										  opcode == 0xD2 || opcode == 0xD3;
+	public bool CanHandle( byte opcode ) =>
+		opcode == 0xC0 || opcode == 0xC1 ||
+		opcode == 0xD0 || opcode == 0xD1 ||
+		opcode == 0xD2 || opcode == 0xD3;
 
 	public void Execute( X86Core core )
 	{
@@ -14,257 +21,279 @@ public class ShiftRotateHandler : IInstructionHandler
 		byte opcode = core.ReadByte( eip );
 		byte modrm = core.ReadByte( eip + 1 );
 		byte mod = (byte)(modrm >> 6);
-		byte reg = (byte)((modrm >> 3) & 0x7); // Operation type
+		byte regOp = (byte)((modrm >> 3) & 0x7); // shift operation
 		byte rm = (byte)(modrm & 0x7);
 
-		// Get the value to shift and count
-		uint value = 0;
-		byte count = 0;
+		bool is8Bit = (opcode == 0xC0 || opcode == 0xD0 || opcode == 0xD2);
 
-		if ( mod == 3 ) // Register operand
+		// ── Decode shift count ────────────────────────────────────────────────
+		int count;
+		uint instrLen; // total bytes for this instruction
+
+		switch ( opcode )
 		{
-			string rmReg = GetRegisterName( rm );
-			value = core.Registers[rmReg];
+			case 0xC0:
+			case 0xC1:
+				// imm8 follows modrm (and SIB/disp if mem)
+				if ( mod == 3 )
+				{
+					count = core.ReadByte( eip + 2 ) & 0x1F;
+					instrLen = 3;
+				}
+				else
+				{
+					uint modrmLen = X86AddressingHelper.GetInstructionLength( modrm, core, eip ) - 1;
+					count = core.ReadByte( (uint)(eip + 1 + modrmLen) ) & 0x1F;
+					instrLen = 1 + modrmLen + 1; // opcode + modrm/SIB/disp + imm8
+				}
+				break;
+			case 0xD0:
+			case 0xD1:
+				count = 1;
+				instrLen = (mod == 3)
+					? 2u
+					: (uint)(X86AddressingHelper.GetInstructionLength( modrm, core, eip ));
+				break;
+			default: // D2/D3 — shift by CL
+				count = (int)(core.Registers["ecx"] & 0x1F);
+				instrLen = (mod == 3)
+					? 2u
+					: (uint)(X86AddressingHelper.GetInstructionLength( modrm, core, eip ));
+				break;
+		}
 
-			switch ( opcode )
-			{
-				case 0xC0: // Shift r/m8, imm8
-				case 0xC1: // Shift r/m32, imm8
-					count = core.ReadByte( eip + 2 );
-					core.Registers["eip"] += 3;
-					break;
+		// ── Fetch value ───────────────────────────────────────────────────────
+		uint addr = 0;
+		uint value32;
+		byte value8;
 
-				case 0xD0: // Shift r/m8, 1
-				case 0xD1: // Shift r/m32, 1
-					count = 1;
-					core.Registers["eip"] += 2;
-					break;
-
-				case 0xD2: // Shift r/m8, CL
-				case 0xD3: // Shift r/m32, CL
-					count = (byte)(core.Registers["ecx"] & 0xFF);
-					core.Registers["eip"] += 2;
-					break;
-			}
-
-			// Perform the operation based on 'reg'
-			uint result = 0;
-			switch ( reg )
-			{
-				case 0: // ROL - Rotate Left
-					if ( count > 0 )
-					{
-						count %= 32; // Normalize count for 32-bit operand
-						result = (value << count) | (value >> (32 - count));
-						core.CarryFlag = (result & 1) == 1;
-					}
-					else result = value;
-					break;
-
-				case 1: // ROR - Rotate Right
-					if ( count > 0 )
-					{
-						count %= 32;
-						result = (value >> count) | (value << (32 - count));
-						core.CarryFlag = ((result >> 31) & 1) == 1;
-					}
-					else result = value;
-					break;
-
-				case 2: // RCL - Rotate through Carry Left
-					if ( count > 0 )
-					{
-						for ( int i = 0; i < count; i++ )
-						{
-							uint carryIn = core.CarryFlag ? 1u : 0u;
-							uint newCarry = (value & 0x80000000) != 0 ? 1u : 0u;
-							value = (value << 1) | carryIn;
-							core.CarryFlag = newCarry != 0;
-						}
-						result = value;
-					}
-					else result = value;
-					break;
-
-				case 3: // RCR - Rotate through Carry Right
-					if ( count > 0 )
-					{
-						for ( int i = 0; i < count; i++ )
-						{
-							uint carryIn = core.CarryFlag ? 0x80000000u : 0u;
-							uint newCarry = (value & 1) != 0 ? 1u : 0u;
-							value = (value >> 1) | carryIn;
-							core.CarryFlag = newCarry != 0;
-						}
-						result = value;
-					}
-					else result = value;
-					break;
-
-				case 4: // SHL/SAL - Shift Left
-					result = value << count;
-					core.CarryFlag = count > 0 && ((value >> (32 - count)) & 1) == 1;
-					core.ZeroFlag = result == 0;
-					core.SignFlag = ((result >> 31) & 1) == 1;
-					break;
-
-				case 5: // SHR - Logical Shift Right
-					core.LogVerbose( $"SHR: {value:X8} >> {count}" );
-					result = value >> count;
-					core.CarryFlag = count > 0 && ((value >> (count - 1)) & 1) == 1;
-					core.ZeroFlag = result == 0;
-					core.SignFlag = ((result >> 31) & 1) == 1;
-					break;
-
-				case 7: // SAR - Arithmetic Shift Right
-						// Preserve sign bit during shift
-					if ( count > 0 )
-					{
-						// Sign bit
-						bool signBit = ((value >> 31) & 1) == 1;
-						result = value >> count;
-						if ( signBit )
-						{
-							// Set the upper bits that were shifted out
-							result |= ~((1u << (32 - count)) - 1);
-						}
-						core.CarryFlag = ((value >> (count - 1)) & 1) == 1;
-					}
-					else result = value;
-
-					core.ZeroFlag = result == 0;
-					core.SignFlag = ((result >> 31) & 1) == 1;
-					break;
-
-				default:
-					Log.Warning( $"Unimplemented shift operation: {reg}" );
-					result = value;
-					break;
-			}
-
-			core.Registers[rmReg] = result;
+		if ( mod == 3 )
+		{
+			string rname = X86AddressingHelper.GetRegisterName( rm );
+			value32 = core.Registers[rname];
+			value8 = (byte)(value32 & 0xFF);
 		}
 		else
 		{
-			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
-			value = core.ReadDword( addr );
-
-			switch ( opcode )
+			addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			if ( is8Bit )
 			{
-				case 0xC0: // Shift r/m8, imm8
-				case 0xC1: // Shift r/m32, imm8
-					count = core.ReadByte( eip + 2 );
-					core.Registers["eip"] += 3;
-					break;
-				case 0xD0: // Shift r/m8, 1
-				case 0xD1: // Shift r/m32, 1
-					count = 1;
-					core.Registers["eip"] += 2;
-					break;
-				case 0xD2: // Shift r/m8, CL
-				case 0xD3: // Shift r/m32, CL
-					count = (byte)(core.Registers["ecx"] & 0xFF);
-					core.Registers["eip"] += 2;
-					break;
+				value8 = core.ReadByte( addr );
+				value32 = value8;
 			}
-
-			uint result = 0;
-			switch ( reg )
+			else
 			{
-				case 0: // ROL
-					if ( count > 0 )
-					{
-						count %= 32;
-						result = (value << count) | (value >> (32 - count));
-						core.CarryFlag = (result & 1) == 1;
-					}
-					else result = value;
-					break;
-				case 1: // ROR
-					if ( count > 0 )
-					{
-						count %= 32;
-						result = (value >> count) | (value << (32 - count));
-						core.CarryFlag = ((result >> 31) & 1) == 1;
-					}
-					else result = value;
-					break;
-				case 2: // RCL - Rotate through Carry Left
-					if ( count > 0 )
-					{
-						for ( int i = 0; i < count; i++ )
-						{
-							uint carryIn = core.CarryFlag ? 1u : 0u;
-							uint newCarry = (value & 0x80000000) != 0 ? 1u : 0u;
-							value = (value << 1) | carryIn;
-							core.CarryFlag = newCarry != 0;
-						}
-						result = value;
-					}
-					else result = value;
-					break;
-				case 3: // RCR - Rotate through Carry Right
-					if ( count > 0 )
-					{
-						for ( int i = 0; i < count; i++ )
-						{
-							uint carryIn = core.CarryFlag ? 0x80000000u : 0u;
-							uint newCarry = (value & 1) != 0 ? 1u : 0u;
-							value = (value >> 1) | carryIn;
-							core.CarryFlag = newCarry != 0;
-						}
-						result = value;
-					}
-					else result = value;
-					break;
-				case 4: // SHL/SAL
-					result = value << count;
-					core.CarryFlag = count > 0 && ((value >> (32 - count)) & 1) == 1;
-					core.ZeroFlag = result == 0;
-					core.SignFlag = ((result >> 31) & 1) == 1;
-					break;
-				case 5: // SHR
-					result = value >> count;
-					core.CarryFlag = count > 0 && ((value >> (count - 1)) & 1) == 1;
-					core.ZeroFlag = result == 0;
-					core.SignFlag = ((result >> 31) & 1) == 1;
-					break;
-				case 7: // SAR
-					if ( count > 0 )
-					{
-						bool signBit = ((value >> 31) & 1) == 1;
-						result = value >> count;
-						if ( signBit )
-						{
-							result |= ~((1u << (32 - count)) - 1);
-						}
-						core.CarryFlag = ((value >> (count - 1)) & 1) == 1;
-					}
-					else result = value;
-					core.ZeroFlag = result == 0;
-					core.SignFlag = ((result >> 31) & 1) == 1;
-					break;
-				default:
-					Log.Warning( $"Unimplemented shift operation: {reg}" );
-					result = value;
-					break;
+				value32 = core.ReadDword( addr );
+				value8 = (byte)(value32 & 0xFF);
 			}
-
-			core.WriteDword( addr, result );
 		}
+
+		// ── Execute ───────────────────────────────────────────────────────────
+		uint result32;
+		byte result8;
+
+		if ( is8Bit )
+		{
+			result8 = Shift8( core, regOp, value8, count );
+			result32 = result8;
+		}
+		else
+		{
+			result32 = Shift32( core, regOp, value32, count );
+			result8 = 0; // unused
+		}
+
+		// ── Write back ────────────────────────────────────────────────────────
+		if ( mod == 3 )
+		{
+			string rname = X86AddressingHelper.GetRegisterName( rm );
+			if ( is8Bit )
+				core.Registers[rname] = (core.Registers[rname] & 0xFFFFFF00) | result8;
+			else
+				core.Registers[rname] = result32;
+		}
+		else
+		{
+			if ( is8Bit )
+				core.WriteByte( addr, result8 );
+			else
+				core.WriteDword( addr, result32 );
+		}
+
+		core.Registers["eip"] += instrLen;
 	}
 
-	private string GetRegisterName( int code ) => code switch
-	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new ArgumentException( $"Invalid register code: {code}" )
-	};
-}
+	// ── 32-bit shift/rotate ───────────────────────────────────────────────────
 
+	private static uint Shift32( X86Core core, byte op, uint value, int count )
+	{
+		uint result = value;
+		if ( count == 0 ) return value; // count=0: no flags changed per Intel spec
+
+		switch ( op )
+		{
+			case 0: // ROL
+			{
+				int c = count & 31;
+				result = (c == 0) ? value : (value << c) | (value >> (32 - c));
+				core.CarryFlag = (result & 1) != 0;
+				if ( count == 1 )
+					core.OverflowFlag = ((result >> 31) ^ (result & 1)) != 0;
+				break;
+			}
+			case 1: // ROR
+			{
+				int c = count & 31;
+				result = (c == 0) ? value : (value >> c) | (value << (32 - c));
+				core.CarryFlag = (result >> 31) != 0;
+				if ( count == 1 )
+					core.OverflowFlag = (((result >> 31) & 1) ^ ((result >> 30) & 1)) != 0;
+				break;
+			}
+			case 2: // RCL — rotate through carry
+			{
+				for ( int i = 0; i < count; i++ )
+				{
+					uint cin = core.CarryFlag ? 1u : 0u;
+					core.CarryFlag = (value & 0x80000000) != 0;
+					value = (value << 1) | cin;
+				}
+				result = value;
+				if ( count == 1 )
+					core.OverflowFlag = ((result >> 31 & 1) ^ (core.CarryFlag ? 1u : 0u)) != 0;
+				break;
+			}
+			case 3: // RCR — rotate through carry
+			{
+				for ( int i = 0; i < count; i++ )
+				{
+					uint cin = core.CarryFlag ? 0x80000000u : 0u;
+					core.CarryFlag = (value & 1) != 0;
+					value = (value >> 1) | cin;
+				}
+				result = value;
+				if ( count == 1 )
+					core.OverflowFlag = (((result >> 31) & 1) ^ ((result >> 30) & 1)) != 0;
+				break;
+			}
+			case 4: // SHL / SAL
+			case 6: // SAL alias
+			{
+				core.CarryFlag = count <= 32 && ((value >> (32 - count)) & 1) != 0;
+				result = (count >= 32) ? 0 : (value << count);
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80000000) != 0;
+				core.OverflowFlag = count == 1 && (core.SignFlag ^ core.CarryFlag);
+				break;
+			}
+			case 5: // SHR
+			{
+				core.CarryFlag = count <= 32 && ((value >> (count - 1)) & 1) != 0;
+				result = (count >= 32) ? 0 : (value >> count);
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80000000) != 0;
+				if ( count == 1 ) core.OverflowFlag = (value & 0x80000000) != 0; // MSB of original
+				break;
+			}
+			case 7: // SAR
+			{
+				int signed = (int)value;
+				core.CarryFlag = count <= 32 && (((uint)signed >> (count - 1)) & 1) != 0;
+				result = (uint)((count >= 32) ? (signed >> 31) : (signed >> count));
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80000000) != 0;
+				if ( count == 1 ) core.OverflowFlag = false; // SAR never sets OF
+				break;
+			}
+			default:
+				Log.Warning( $"ShiftRotate: unimplemented 32-bit op {op}" );
+				break;
+		}
+		return result;
+	}
+
+	// ── 8-bit shift/rotate ────────────────────────────────────────────────────
+
+	private static byte Shift8( X86Core core, byte op, byte value, int count )
+	{
+		byte result = value;
+		if ( count == 0 ) return value;
+
+		switch ( op )
+		{
+			case 0: // ROL
+			{
+				int c = count & 7;
+				result = (c == 0) ? value : (byte)((value << c) | (value >> (8 - c)));
+				core.CarryFlag = (result & 1) != 0;
+				if ( count == 1 ) core.OverflowFlag = ((result >> 7) ^ (result & 1)) != 0;
+				break;
+			}
+			case 1: // ROR
+			{
+				int c = count & 7;
+				result = (c == 0) ? value : (byte)((value >> c) | (value << (8 - c)));
+				core.CarryFlag = (result >> 7) != 0;
+				if ( count == 1 ) core.OverflowFlag = (((result >> 7) & 1) ^ ((result >> 6) & 1)) != 0;
+				break;
+			}
+			case 2: // RCL
+			{
+				for ( int i = 0; i < count; i++ )
+				{
+					byte cin = (byte)(core.CarryFlag ? 1 : 0);
+					core.CarryFlag = (value & 0x80) != 0;
+					value = (byte)((value << 1) | cin);
+				}
+				result = value;
+				break;
+			}
+			case 3: // RCR
+			{
+				for ( int i = 0; i < count; i++ )
+				{
+					byte cin = (byte)(core.CarryFlag ? 0x80 : 0);
+					core.CarryFlag = (value & 1) != 0;
+					value = (byte)((value >> 1) | cin);
+				}
+				result = value;
+				break;
+			}
+			case 4: // SHL
+			case 6: // SAL (identical to SHL)
+			{
+				core.CarryFlag = count <= 8 && ((value >> (8 - count)) & 1) != 0;
+				result = (byte)(count >= 8 ? 0 : (value << count));
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80) != 0;
+				core.OverflowFlag = count == 1 && (core.SignFlag ^ core.CarryFlag);
+				break;
+			}
+			case 5: // SHR
+			{
+				core.CarryFlag = count <= 8 && ((value >> (count - 1)) & 1) != 0;
+				result = (byte)(count >= 8 ? 0 : (value >> count));
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80) != 0;
+				if ( count == 1 ) core.OverflowFlag = (value & 0x80) != 0;
+				break;
+			}
+			case 7: // SAR
+			{
+				sbyte sv = (sbyte)value;
+				core.CarryFlag = count <= 8 && (((byte)(uint)sv >> (count - 1)) & 1) != 0;
+				result = (byte)(count >= 8 ? (sv >> 7) : (sv >> count));
+				core.ZeroFlag = result == 0;
+				core.SignFlag = (result & 0x80) != 0;
+				if ( count == 1 ) core.OverflowFlag = false;
+				break;
+			}
+			default:
+				Log.Warning( $"ShiftRotate: unimplemented 8-bit op {op}" );
+				break;
+		}
+		return result;
+	}
+
+
+}

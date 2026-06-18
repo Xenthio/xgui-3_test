@@ -1,5 +1,6 @@
 ﻿using FakeDesktop;
 using FakeOperatingSystem.Experiments.Ambitious.X86.CallConventions;
+using Sandbox;
 using System;
 using System.Collections.Generic;
 
@@ -19,35 +20,31 @@ public abstract class APIEmulator
 		Core = core;
 		Interpreter = interpreter;
 
-		try
+		// Pipe interpreter into conventions so async handlers can suspend instead of deadlock
+		_stdCallConvention.Interpreter = interpreter;
+
+		// First try the strongly-typed registered functions
+		if ( _stdCallConvention.TryCallFunction( name, core, out result, isJump ) )
 		{
-			// First try the strongly-typed registered functions
-			if ( _stdCallConvention.TryCallFunction( name, core, out result, isJump ) )
-			{
-				return true;
-			}
-
-			// Try cdecl functions next
-			if ( _cdeclConvention.TryCallFunction( name, core, out result, isJump ) )
-			{
-				return true;
-			}
-
-			// Fall back to the traditional approach
-			if ( _apiTable.TryGetValue( name, out var function ) )
-			{
-				result = function( core );
-				return true;
-			}
-
-			result = 0;
-			return false;
+			return true;
 		}
-		finally
+
+		// Try cdecl functions next
+		if ( _cdeclConvention.TryCallFunction( name, core, out result, isJump ) )
 		{
-			// Clear the core reference when done
-			Core = null;
+			return true;
 		}
+
+		// Fall back to the traditional approach
+		if ( _apiTable.TryGetValue( name, out var function ) )
+		{
+			result = function( core );
+			core.Registers["eax"] = result; // _apiTable lambdas: set EAX explicitly
+			return true;
+		}
+
+		result = 0;
+		return false;
 	}
 
 	#region Registration helpers
@@ -109,6 +106,10 @@ public abstract class APIEmulator
 	{
 		_stdCallConvention.RegisterFunction( name, callback );
 	}
+	protected void RegisterStdCallFunction<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TResult>( string name, Func<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, TResult> callback )
+	{
+		_stdCallConvention.RegisterFunction( name, callback );
+	}
 	#endregion
 
 	#region Cdecl functions
@@ -156,30 +157,41 @@ public abstract class APIEmulator
 		// Try to find which DLL the function should be in
 		string dllName = "UNKNOWN.DLL";
 		if ( interpreter.ImportSourceDlls.TryGetValue( functionName, out var sourceDll ) )
-		{
 			dllName = sourceDll;
-		}
 
-		var result = interpreter.HaltWithMessageBoxAsync(
-			$"{interpreter.ExecutableName} - Entry Point Not Found",
-			$"The procedure entry point {functionName} could not be located in the dynamic link library {dllName}.",
-			MessageBoxIcon.Error
-		);
-		if ( result != null )
+		Log.Warning( $"Missing export: {functionName} in {dllName}" );
+
+		// Use interpreter suspend so we don't deadlock the S&box main thread.
+		// ShowBlocking spins with await Task.Yield() — calling .Result on that from
+		// the main thread creates a classic sync-over-async deadlock.
+		// Instead: show the message box async, suspend the interpreter loop until
+		// the user responds, then handle Abort/Retry/Ignore without blocking.
+		var tcs = new System.Threading.Tasks.TaskCompletionSource<MessageBoxResult>();
+		interpreter.SuspendForTask( tcs.Task );
+
+		// Fire-and-forget the async message box; when it completes, handle result and resume.
+		// Task.Run is not whitelisted in S&box — use GameTask.RunInThreadAsync + MainThread switch.
+		_ = GameTask.RunInThreadAsync( async () =>
 		{
-			switch ( result.Result )
+			await GameTask.MainThread();
+			var result = await interpreter.HaltWithMessageBoxAsync(
+				$"{interpreter.ExecutableName} - Entry Point Not Found",
+				$"The procedure entry point {functionName} could not be located in the dynamic link library {dllName}.",
+				MessageBoxIcon.Error
+			);
+			switch ( result )
 			{
 				case MessageBoxResult.Abort:
-					throw new System.InvalidOperationException( $"!The procedure entry point {functionName} could not be located in the dynamic link library {dllName}." );
+					interpreter.Halt();
+					break;
 				case MessageBoxResult.Retry:
-					Log.Info( $"Retrying execution of {functionName} in {dllName}" );
-					// go back to the caller and try again
-					//interpreter.Core.Registers["eip"] -= 4; // Adjust EIP to retry the call
+					Log.Info( $"Retrying execution after missing export {functionName}" );
 					break;
 				case MessageBoxResult.Ignore:
-					Log.Warning( $"Ignoring missing export {functionName} in {dllName}" );
+					Log.Warning( $"Ignoring missing export {functionName}" );
 					break;
 			}
-		}
+			tcs.TrySetResult( result );
+		} );
 	}
 }

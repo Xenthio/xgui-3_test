@@ -133,17 +133,25 @@ public static class X86AddressingHelper
 		return size;
 	}
 
-	public static string GetRegisterName( int code ) => code switch
+	public static string GetRegisterName( int code )
 	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new ArgumentException( $"Invalid register code: {code}" )
-	};
+		if ( code < 0 || code > 7 )
+		{
+			Log.Warning( $"[WARN] GetRegisterName called with out-of-range code {code} (0x{code:X2}) — masking to {code & 7}. Check caller for missing (modrm & 0x7)." );
+			code &= 7;
+		}
+		return code switch
+		{
+			0 => "eax",
+			1 => "ecx",
+			2 => "edx",
+			3 => "ebx",
+			4 => "esp",
+			5 => "ebp",
+			6 => "esi",
+			7 => "edi",
+			_ => throw new ArgumentException( $"Impossible register code after masking: {code}" )
+		};
+	}
 }
 

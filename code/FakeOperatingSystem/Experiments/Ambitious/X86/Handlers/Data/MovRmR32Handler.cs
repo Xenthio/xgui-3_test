@@ -14,12 +14,12 @@ public class MovRmR32Handler : IInstructionHandler
 		byte reg = (byte)((modrm >> 3) & 0x7);
 		byte rm = (byte)(modrm & 0x7);
 
-		string sourceReg = GetRegisterName( reg );
+		string sourceReg = X86AddressingHelper.GetRegisterName( reg );
 		uint value = core.Registers[sourceReg];
 
 		if ( mod == 3 ) // Register to register
 		{
-			string destReg = GetRegisterName( rm );
+			string destReg = X86AddressingHelper.GetRegisterName( rm );
 			core.Registers[destReg] = value;
 			core.Registers["eip"] += 2;
 		}
@@ -32,16 +32,5 @@ public class MovRmR32Handler : IInstructionHandler
 		}
 	}
 
-	private string GetRegisterName( int code ) => code switch
-	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new ArgumentException( $"Invalid register code: {code}" )
-	};
+
 }

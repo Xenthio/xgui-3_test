@@ -6,14 +6,28 @@ namespace FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
 
 public class PELoader
 {
+	/// <summary>Read the PE Optional Header Subsystem field without loading the whole image.</summary>
+	/// <returns>Subsystem value: 2=GUI, 3=CUI/console. Returns 2 (GUI) on any failure.</returns>
+	public static ushort PeekSubsystem( byte[] fileBytes )
+	{
+		if ( fileBytes == null || fileBytes.Length < 0x40 ) return 2;
+		if ( fileBytes[0] != 'M' || fileBytes[1] != 'Z' ) return 2;
+		uint peOffset = BitConverter.ToUInt32( fileBytes, 0x3C );
+		if ( peOffset + 0x60 > fileBytes.Length ) return 2;
+		if ( fileBytes[peOffset] != 'P' || fileBytes[peOffset + 1] != 'E' ) return 2;
+		// Subsystem is at OptionalHeader+68 = PE+24 (COFF hdr) + 4 (Magic) + 64 = PE+92 = PE+0x5C
+		return BitConverter.ToUInt16( fileBytes, (int)peOffset + 0x5C );
+	}
+
 	public bool Load( byte[] fileBytes, X86Core core, out uint entryPoint,
 					 out Dictionary<string, uint> imports, out Dictionary<string, string> importSourceDlls,
-					 out uint heapStart ) // <-- add this out parameter
+					 out uint heapStart, out uint imageBase )
 	{
 		entryPoint = 0;
 		imports = new();
 		importSourceDlls = new();
 		heapStart = 0;
+		imageBase = 0;
 
 		// 1. Check MZ header
 		if ( fileBytes.Length < 0x40 || fileBytes[0] != 'M' || fileBytes[1] != 'Z' )
@@ -29,7 +43,7 @@ public class PELoader
 			return false;
 
 		// 4. Get image base and entry point RVA
-		uint imageBase = BitConverter.ToUInt32( fileBytes, (int)peOffset + 0x34 );
+		imageBase = BitConverter.ToUInt32( fileBytes, (int)peOffset + 0x34 ); // actual PE image base
 		uint entryRVA = BitConverter.ToUInt32( fileBytes, (int)peOffset + 0x28 );
 		entryPoint = imageBase + entryRVA;
 
@@ -248,6 +262,55 @@ public class PELoader
 
 		uint importDescOffset = RvaToFile( importDirRVA );
 		uint nextApiId = 0xFFFF0001;
+
+		// Some MSVCRT "imports" are actually global variables exported from the DLL,
+		// not functions. Their IAT slot must hold the address of a real memory cell,
+		// not a stub address, because the PE reads them with MOV EAX,[slot]; MOV x,[EAX].
+		// Allocate a small variable table and pre-populate known MSVCRT data exports.
+		uint msvcrtVarBase = 0x00400000;
+		var msvcrtDataExports = new Dictionary<string, uint>
+		{
+			// MSVCRT data exports — global variables exported by address, not callable functions.
+			// PE code reads them as: MOV EAX, [IAT_SLOT]; use [EAX] as var pointer.
+			// IAT slot must hold a real emulated memory address, NOT a function stub.
+			// Layout: one DWORD per var at msvcrtVarBase + offset
+
+			// FPU/math globals
+			["_adjust_fdiv"]        = msvcrtVarBase + 0x00,  // int: FDIV bug flag (0 = no bug)
+			["_pctype"]             = msvcrtVarBase + 0x04,  // const ushort** : ctype table ptr
+			["_pwctype"]            = msvcrtVarBase + 0x08,  // wide version of _pctype
+
+			// stdio mode globals (returned by __p__fmode / __p__commode as pointer-to-int)
+			// These are also exported as DATA in some MSVCRT versions
+			["_fmode"]              = msvcrtVarBase + 0x0C,  // int: default file translation mode
+			["_commode"]            = msvcrtVarBase + 0x10,  // int: default commit mode
+
+			// C locale / MB globals
+			["__mb_cur_max"]        = msvcrtVarBase + 0x14,  // int: max multibyte char size
+			["_osver"]              = msvcrtVarBase + 0x18,  // unsigned int: OS build number
+			["_winver"]             = msvcrtVarBase + 0x1C,  // unsigned int: Windows version
+			["_winmajor"]           = msvcrtVarBase + 0x20,  // unsigned int: Windows major version
+			["_winminor"]           = msvcrtVarBase + 0x24,  // unsigned int: Windows minor version
+
+			// C runtime error/signal state
+			["_aexit_rtn"]          = msvcrtVarBase + 0x28,  // ptr to atexit routine
+			["_acmdln"]             = msvcrtVarBase + 0x2C,  // char*: command line string
+			["_wcmdln"]             = msvcrtVarBase + 0x30,  // wchar_t*: wide command line
+			["_environ"]            = msvcrtVarBase + 0x34,  // char**: environment
+			["_wenviron"]           = msvcrtVarBase + 0x38,  // wchar_t**: wide environment
+		};
+
+		// Initialise all var cells to 0; set meaningful defaults for a few
+		foreach ( var kv in msvcrtDataExports )
+			core.WriteDword( kv.Value, 0, false );
+		// _osver = NT4 build 1381
+		core.WriteDword( msvcrtVarBase + 0x18, 1381, false );
+		// _winver = 0x0400 (Windows 4.00 = NT4)
+		core.WriteDword( msvcrtVarBase + 0x1C, 0x0400, false );
+		core.WriteDword( msvcrtVarBase + 0x20, 4, false );  // _winmajor
+		core.WriteDword( msvcrtVarBase + 0x24, 0, false );  // _winminor
+		// __mb_cur_max = 1 (single-byte locale)
+		core.WriteDword( msvcrtVarBase + 0x14, 1, false );
 		int descSize = 20;
 		for ( int desc = 0; ; desc++ )
 		{
@@ -279,13 +342,40 @@ public class PELoader
 					int nameOff = (int)RvaToFile( hintNameRVA ) + 2; // skip hint
 					string funcName = ReadStringFromFile( fileBytes, nameOff );
 
-					// Assign a unique address for this import
-					imports[funcName] = nextApiId;
-					importSourceDlls[funcName] = dllName.ToUpper(); // Store which DLL each function comes from
+					// Check if this is a data export (global variable) rather than a function
+					if ( msvcrtDataExports.TryGetValue( funcName, out uint varAddr ) )
+					{
+						// IAT slot = address of the variable in emulated memory, NOT a stub
+						imports[funcName] = varAddr;   // record the var address for reference
+						importSourceDlls[funcName] = dllName.ToUpper();
+						core.LogVerbose( $"DataExport {funcName} mapped to var at 0x{varAddr:X8}" );
+						core.WriteDword( imageBase + iatRVA + (uint)(t * 4), varAddr, false );
+						// Don't increment nextApiId — no stub assigned
+					}
+					else
+					{
+						// Assign a unique address for this import
+						imports[funcName] = nextApiId;
+						importSourceDlls[funcName] = dllName.ToUpper(); // Store which DLL each function comes from
 
-					core.LogVerbose( $"Importing {funcName} from {dllName} at {nextApiId:X8}" );
+						core.LogVerbose( $"Importing {funcName} from {dllName} at {nextApiId:X8}" );
+						// Patch IAT in emulated memory
+						core.WriteDword( imageBase + iatRVA + (uint)(t * 4), nextApiId, false );
 
-					// Patch IAT in emulated memory
+						nextApiId++;
+					}
+				}
+				else
+				{
+					// Ordinal import (high bit set)
+					uint ordinal = thunkData & 0x7FFFFFFF;
+					string funcName2 = $"{dllName.ToUpper()}__ord_{ordinal}";
+
+					imports[funcName2] = nextApiId;
+					importSourceDlls[funcName2] = dllName.ToUpper();
+
+					core.LogVerbose( $"Importing ordinal {ordinal} from {dllName} at {nextApiId:X8}" );
+
 					core.WriteDword( imageBase + iatRVA + (uint)(t * 4), nextApiId, false );
 
 					nextApiId++;

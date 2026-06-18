@@ -4,7 +4,7 @@ TaskBar {
 		padding-top: 1px;
 		border-left: 0px;
 		border-right: 0px;
-		border-bottom: 0px;
+		border-bottom: 0px; 
 
 		&::before {
 			position: absolute;
@@ -17,7 +17,7 @@ TaskBar {
 		width: 100%;
 		align-self: flex-end;
 
-		.window-content {
+		.window-content { 
 			flex-direction: row;
 
 			.start-button {

@@ -20,12 +20,12 @@ public class CmpHandler : IInstructionHandler
 
 		if ( opcode == 0x39 ) // CMP r/m32, r32
 		{
-			string regName = GetRegisterName( reg );
+			string regName = X86AddressingHelper.GetRegisterName( reg );
 			rightValue = core.Registers[regName];
 
 			if ( mod == 3 ) // Register
 			{
-				string rmName = GetRegisterName( rm );
+				string rmName = X86AddressingHelper.GetRegisterName( rm );
 				leftValue = core.Registers[rmName];
 			}
 			else // Memory
@@ -37,12 +37,12 @@ public class CmpHandler : IInstructionHandler
 		}
 		else // 0x3B: CMP r32, r/m32
 		{
-			string regName = GetRegisterName( reg );
+			string regName = X86AddressingHelper.GetRegisterName( reg );
 			leftValue = core.Registers[regName];
 
 			if ( mod == 3 ) // Register
 			{
-				string rmName = GetRegisterName( rm );
+				string rmName = X86AddressingHelper.GetRegisterName( rm );
 				rightValue = core.Registers[rmName];
 			}
 			else // Memory
@@ -65,16 +65,5 @@ public class CmpHandler : IInstructionHandler
 		core.Registers["eip"] += instructionLength;
 	}
 
-	private string GetRegisterName( int code ) => code switch
-	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new ArgumentException( $"Invalid register code: {code}" )
-	};
+
 }

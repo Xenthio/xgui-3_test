@@ -13,7 +13,7 @@ public class PushRegHandler : IInstructionHandler
         
         // Register is encoded in the low 3 bits of the opcode
         int regCode = opcode - 0x50;
-        string regName = GetRegisterName(regCode);
+        string regName = X86AddressingHelper.GetRegisterName(regCode);
         
         // Push register value onto stack
         core.Push(core.Registers[regName]);
@@ -22,16 +22,5 @@ public class PushRegHandler : IInstructionHandler
         core.Registers["eip"] += 1;
     }
     
-    private string GetRegisterName(int code) => code switch
-    {
-        0 => "eax",
-        1 => "ecx",
-        2 => "edx",
-        3 => "ebx",
-        4 => "esp",
-        5 => "ebp",
-        6 => "esi",
-        7 => "edi",
-        _ => throw new ArgumentException($"Invalid register code: {code}")
-    };
+
 }

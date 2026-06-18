@@ -1,5 +1,4 @@
-﻿using FakeOperatingSystem;
-using Sandbox;
+﻿using Sandbox;
 using System;
 using System.Threading.Tasks;
 using XGUI;
@@ -169,7 +168,15 @@ public static class MessageBoxUtility
 			case MessageBoxIcon.Warning:
 			case MessageBoxIcon.Information:
 			case MessageBoxIcon.Question:
-				Sound.PlayFile( ThemeResources.ChordSoundFile );
+				//Sound.PlayFile( ThemeResources.ChordSoundFile );
+				// run on mainthread
+				_ = GameTask.RunInThreadAsync( async () =>
+				{
+					await GameTask.MainThread();
+					var soundpath = XGUISoundSystem.GetSound( "CHORD" );
+					var soundfile = SoundFile.Load( soundpath );
+					Sound.PlayFile( soundfile );
+				} );
 				break;
 		}
 		/*		switch ( icon )

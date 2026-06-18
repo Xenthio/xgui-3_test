@@ -15,13 +15,17 @@ public class Opcode83Handler : IInstructionHandler
 		byte reg = (byte)((modrm >> 3) & 0x7); // Operation type
 		byte rm = (byte)(modrm & 0x7);
 
-		// This is like 0x81 but with sign-extended 8-bit immediate
-		sbyte imm8 = (sbyte)core.ReadByte( eip + 2 );
-		uint signExtImm = (uint)imm8; // Sign-extended to 32 bits
+		// This is like 0x81 but with sign-extended 8-bit immediate.
+		// For mod==3 (register), imm8 is at eip+2 (opcode+modrm = 2 bytes).
+		// For memory modes, imm8 comes AFTER modrm+SIB+disp bytes — read it after GetInstructionLength.
+		// We compute the correct offset below; use a placeholder here.
 
 		if ( mod == 3 ) // Register operand
 		{
-			string destReg = GetRegisterName( rm );
+			// Register mode: layout is opcode(1) + modrm(1) + imm8(1) — imm at eip+2
+			sbyte imm8 = (sbyte)core.ReadByte( eip + 2 );
+			uint signExtImm = (uint)imm8; // Sign-extended to 32 bits
+			string destReg = X86AddressingHelper.GetRegisterName( rm );
 			uint value = core.Registers[destReg];
 			uint result = 0;
 
@@ -38,6 +42,26 @@ public class Opcode83Handler : IInstructionHandler
 					SetFlagsLogic( core, result );
 					core.Registers[destReg] = result;
 					core.LogVerbose( $"Or {destReg}, {imm8:X8} = {result:X8}" );
+					break;
+				case 2: // ADC
+					{
+						uint carry = core.CarryFlag ? 1u : 0u;
+						ulong full = (ulong)value + signExtImm + carry;
+						result = (uint)full;
+						SetFlagsAdd( core, value, signExtImm, result );
+						core.CarryFlag = full > 0xFFFFFFFF;
+						core.Registers[destReg] = result;
+					}
+					break;
+				case 3: // SBB
+					{
+						uint borrow = core.CarryFlag ? 1u : 0u;
+						ulong full = (ulong)value - signExtImm - borrow;
+						result = (uint)full;
+						SetFlagsSub( core, value, signExtImm, result );
+						core.CarryFlag = full > 0xFFFFFFFF;
+						core.Registers[destReg] = result;
+					}
 					break;
 				case 4: // AND
 					result = value & signExtImm;
@@ -69,6 +93,13 @@ public class Opcode83Handler : IInstructionHandler
 		}
 		else // Memory operand
 		{
+			// Memory mode: imm8 comes AFTER opcode(1) + modrm(1) + SIB?(1) + disp?(1 or 4)
+			// GetInstructionLength(modrm, core, eip) returns the byte count for opcode+modrm+SIB+disp.
+			// The imm8 byte sits at eip + that length.
+			uint memLen = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			sbyte imm8 = (sbyte)core.ReadByte( eip + memLen );
+			uint signExtImm = (uint)imm8; // Sign-extended to 32 bits
+
 			uint addr = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
 			uint value = core.ReadDword( addr );
 			uint result = 0;
@@ -87,7 +118,27 @@ public class Opcode83Handler : IInstructionHandler
 					core.WriteDword( addr, result );
 					core.LogVerbose( $"Or [0x{addr:X8}], {imm8:X8} = {result:X8}" );
 					break;
-				case 4: // AND
+				case 2: // ADC
+					{
+						uint carry = core.CarryFlag ? 1u : 0u;
+						ulong full = (ulong)value + signExtImm + carry;
+						result = (uint)full;
+						SetFlagsAdd( core, value, signExtImm, result );
+						core.CarryFlag = full > 0xFFFFFFFF;
+						core.WriteDword( addr, result );
+					}
+					break;
+				case 3: // SBB
+					{
+						uint borrow = core.CarryFlag ? 1u : 0u;
+						ulong full = (ulong)value - signExtImm - borrow;
+						result = (uint)full;
+						SetFlagsSub( core, value, signExtImm, result );
+						core.CarryFlag = full > 0xFFFFFFFF;
+						core.WriteDword( addr, result );
+					}
+					break;
+					case 4: // AND
 					result = value & signExtImm;
 					SetFlagsLogic( core, result );
 					core.WriteDword( addr, result );
@@ -113,9 +164,8 @@ public class Opcode83Handler : IInstructionHandler
 				default:
 					throw new NotImplementedException( $"Opcode 0x83 with reg={reg} not implemented" );
 			}
-			// Advance EIP by the correct instruction length
-			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip ) + 1;
-			core.Registers["eip"] += len;
+			// Advance EIP: opcode(1) already in eip, plus modrm+SIB+disp (=memLen-1) + imm8(1) = memLen
+			core.Registers["eip"] += memLen + 1; // +1 for the imm8 byte
 		}
 	}
 
@@ -149,16 +199,5 @@ public class Opcode83Handler : IInstructionHandler
 		core.OverflowFlag = false;
 	}
 
-	private string GetRegisterName( int code ) => code switch
-	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new ArgumentException( $"Invalid register code: {code}" )
-	};
+
 }

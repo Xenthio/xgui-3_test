@@ -12,22 +12,11 @@ public class MovRegImm32Handler : IInstructionHandler
 		byte opcode = core.ReadByte( eip );
 		int reg = opcode - 0xB8;
 		uint imm = core.ReadDword( eip + 1 );
-		string regName = GetRegisterName( reg );
+		string regName = X86AddressingHelper.GetRegisterName( reg );
 		core.LogVerbose( $"MOV {regName}, 0x{imm:X8} at EIP=0x{eip:X8}" );
 		core.Registers[regName] = imm;
 		core.Registers["eip"] += 5;
 	}
 
-	private string GetRegisterName( int code ) => code switch
-	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new Exception( $"Invalid register code: {code}" )
-	};
+
 }

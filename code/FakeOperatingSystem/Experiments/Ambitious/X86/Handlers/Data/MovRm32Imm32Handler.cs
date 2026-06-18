@@ -2,6 +2,7 @@ using System;
 
 namespace FakeOperatingSystem.Experiments.Ambitious.X86.Handlers;
 
+/// 0xC7 /0 — MOV r/m32, imm32
 public class MovRm32Imm32Handler : IInstructionHandler
 {
 	public bool CanHandle( byte opcode ) => opcode == 0xC7;
@@ -11,82 +12,26 @@ public class MovRm32Imm32Handler : IInstructionHandler
 		uint eip = core.Registers["eip"];
 		byte modrm = core.ReadByte( eip + 1 );
 		byte mod = (byte)(modrm >> 6);
-		byte rm = (byte)(modrm & 0x7);
+		byte rm  = (byte)(modrm & 0x7);
 
-		// Read the immediate value
-		uint imm32;
-
-		if ( mod == 3 ) // Register destination
+		if ( mod == 3 )
 		{
-			string destReg = GetRegisterName( rm );
-			imm32 = core.ReadDword( eip + 2 );
+			// Register destination: opcode(1) + modrm(1) + imm32(4)
+			string destReg = X86AddressingHelper.GetRegisterName( rm );
+			uint imm32 = core.ReadDword( eip + 2 );
 			core.Registers[destReg] = imm32;
-			core.Registers["eip"] += 6; // opcode + modrm + imm32
+			core.Registers["eip"] += 6;
 		}
-		else // Memory destination
-		{
-			uint effectiveAddress = CalculateEffectiveAddress( core, modrm, eip );
-			uint offset = GetModRMSize( mod, rm );
-			imm32 = core.ReadDword( eip + 1 + offset );
-
-			// Write the immediate value to memory
-			core.WriteDword( effectiveAddress, imm32 );
-
-			// Advance EIP: opcode + modrm + possible SIB/disp + imm32
-			core.Registers["eip"] += 1 + offset + 4;
-		}
-	}
-
-	private uint CalculateEffectiveAddress( X86Core core, byte modrm, uint eip )
-	{
-		byte mod = (byte)(modrm >> 6);
-		byte rm = (byte)(modrm & 0x7);
-
-		if ( mod == 0 && rm == 5 ) // [disp32]
-			return core.ReadDword( eip + 2 );
-
-		uint ea = 0;
-
-		// Base register
-		if ( rm != 4 ) // Not SIB
-			ea = core.Registers[GetRegisterName( rm )];
 		else
-			throw new NotImplementedException( "MovRm32Imm32Handler: SIB addressing not implemented" );
-
-		// Displacement
-		if ( mod == 1 ) // 8-bit displacement
-			ea += (uint)(sbyte)core.ReadByte( eip + 2 );
-		else if ( mod == 2 ) // 32-bit displacement
-			ea += core.ReadDword( eip + 2 );
-
-		return ea;
+		{
+			// Memory destination — use the shared helper for EA + length
+			uint ea  = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+			uint len = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+			// imm32 immediately follows the modrm/sib/disp bytes
+			uint imm32 = core.ReadDword( eip + len );
+			core.WriteDword( ea, imm32 );
+			// total: 1 (opcode already counted in eip) + len + 4
+			core.Registers["eip"] += len + 4;
+		}
 	}
-
-	private uint GetModRMSize( byte mod, byte rm )
-	{
-		if ( mod == 0 && rm == 5 ) // [disp32]
-			return 5;
-		else if ( mod == 0 ) // [reg]
-			return 1;
-		else if ( mod == 1 ) // [reg+disp8]
-			return 2;
-		else if ( mod == 2 ) // [reg+disp32]
-			return 5;
-		else // mod == 3, register to register
-			return 1;
-	}
-
-	private string GetRegisterName( int code ) => code switch
-	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new ArgumentException( $"Invalid register code: {code}" )
-	};
 }
-

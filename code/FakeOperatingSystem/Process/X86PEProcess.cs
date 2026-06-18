@@ -38,6 +38,12 @@ public class X86PEProcess : BaseProcess
 			return;
 		}
 
+		// Wire standard streams from LaunchOptions into interpreter
+		if ( LaunchOptions?.StandardOutputOverride != null )
+			_interpreter.StandardOutput = LaunchOptions.StandardOutputOverride;
+		if ( LaunchOptions?.StandardInputOverride != null )
+			_interpreter.StandardInput = LaunchOptions.StandardInputOverride;
+
 		// Optionally, set up interpreter event hooks here (e.g., for message boxes)
 		_interpreter.OnHaltWithMessageBox += ( title, message, icon, buttons ) =>
 		{

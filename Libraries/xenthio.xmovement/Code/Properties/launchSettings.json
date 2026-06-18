@@ -2,7 +2,7 @@
   "profiles": {
     "Editor": {
       "commandName": "Executable",
-      "executablePath": "E:\\steamlibrary\\steamapps\\common\\sbox\\sbox-dev.exe",
+      "executablePath": "../../../../../../SteamLibrary/steamapps/common/sbox/sbox-dev.exe",
       "commandLineArgs": "-project \u0022E:\\S\u0026box Addons\\xgui-3_test\\Libraries\\xenthio.xmovement\\xmovement.sbproj\u0022"
     }
   }

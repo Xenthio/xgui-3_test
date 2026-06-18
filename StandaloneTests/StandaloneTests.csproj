@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <DefineConstants>STANDALONE_TEST</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
+  </ItemGroup>
+  <!-- local stubs auto-included by SDK glob -->
+  <!-- X86 core -->
+  <ItemGroup>
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/IInstructionHandler.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/X86Core.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/X86AddressingHelper.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/X86InstructionSet.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/X86Interpreter.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/APIEmulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/CallConventions/CallingConvention.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/CallConventions/StdCallConvention.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/CallConventions/CdeclConvention.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/PELoader.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Kernel32.dll/Kernel32Emulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Kernel32.dll/Kernel32Emulator.Stubs.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Kernel32.dll/Kernel32Emulator.Console.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.Menu.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.Stubs.cs" />
+    <!-- User32Emulator.GUI.cs excluded: requires deep Sandbox panel/style APIs not worth stubbing -->
+    <!--<Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.GUI.cs" />-->
+    <!-- Shell32 re-included with XGUISystem/AboutDialog/Game.ActiveScene stubs -->
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Shell32.dll/Shell32Emulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Shell32.dll/Shell32Emulator.Stubs.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/MSVCRT.dll/MSVCRTEmulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/GDI32.dll/GDI32Emulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/GDI32.dll/GDI32Emulator.Stubs.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/GDI32.dll/GDICanvas.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Advapi32.dll/Advapi32Emulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/WINMM.dll/WinMMEmulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/MFC42u.dll/MFC42uEmulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Comctl32.dll/Comctl32Emulator.cs" />
+  </ItemGroup>
+  <!-- All handlers -->
+  <ItemGroup>
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Handlers/**/*.cs" />
+  </ItemGroup>
+  <!-- Tests auto-included by SDK glob -->
+</Project>
+

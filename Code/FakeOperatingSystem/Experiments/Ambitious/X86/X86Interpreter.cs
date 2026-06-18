@@ -15,18 +15,32 @@ public partial class X86Interpreter
 	public readonly X86Core Core = new();
 	public readonly X86InstructionSet InstructionSet = new();
 	public readonly List<APIEmulator> APIEmulators = new();
+	public T GetEmulator<T>() where T : APIEmulator
+	{
+		foreach ( var e in APIEmulators ) if ( e is T t ) return t;
+		return null;
+	}
 	public Dictionary<string, uint> Imports = new();
 	private uint _entryPoint;
 	public string ExecutableName { get; private set; } = "VIRTUAL.EXE";
 	public Dictionary<string, string> ImportSourceDlls = new();
 
 	public uint HeapStart = 0x00400000; // Default heap start address
+	public uint ModuleBase = 0x00400000; // Actual PE image base
+
+	/// <summary>Standard output stream — wired from X86PEProcess.LaunchOptions when console app.</summary>
+	public System.IO.TextWriter StandardOutput { get; set; }
+	/// <summary>Standard input stream — wired from X86PEProcess.LaunchOptions when console app.</summary>
+	public System.IO.TextReader StandardInput { get; set; }
+	// APIs in this set use thiscall (callee-cleanup); JMP handler auto-detects arg count
+	public readonly System.Collections.Generic.HashSet<string> ThiscallExports = new();
 
 	public Dictionary<(uint hInstance, uint uID), string> StringResources = new();
 	public Dictionary<(uint hInstance, uint uID), byte[]> DialogResources { get; } = new();
 	public Dictionary<(uint hInstance, uint uID), byte[]> BitmapResources { get; } = new();
 	public Dictionary<(uint hInstance, uint uID), byte[]> IconResources { get; } = new(); // For RT_ICON
 	public Dictionary<(uint hInstance, uint uID), byte[]> GroupIconResources { get; } = new(); // For RT_GROUP_ICON
+	public Dictionary<(uint hInstance, uint uID), byte[]> MenuResources { get; } = new(); // For RT_MENU
 
 
 	public delegate void MessageBoxHandler( string title, string message, MessageBoxIcon icon = MessageBoxIcon.Error, MessageBoxButtons buttons = MessageBoxButtons.AbortRetryIgnore );
@@ -40,10 +54,16 @@ public partial class X86Interpreter
 		APIEmulators.Add( new Shell32Emulator() );
 		APIEmulators.Add( new Advapi32Emulator() );
 		APIEmulators.Add( new GDI32Emulator() );
+		APIEmulators.Add( new WinMMEmulator() );
+		APIEmulators.Add( new MFC42uEmulator() );
+		APIEmulators.Add( new Comctl32Emulator() );
 
 		// === Miscellaneous ===
 		InstructionSet.RegisterHandler( new Handlers.NopHandler() );
+		InstructionSet.RegisterHandler( new Handlers.PushaPopsHandler() );
 		InstructionSet.RegisterHandler( new Handlers.HltHandler() );
+		InstructionSet.RegisterHandler( new Handlers.SignExtendHandler() );
+		InstructionSet.RegisterHandler( new Handlers.OpcodeFEHandler() );
 		InstructionSet.RegisterHandler( new Handlers.Opcode00Handler() );
 
 		// === Arithmetic ===
@@ -52,8 +72,19 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.SubRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.SubR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AdcRm8R8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AluRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AdcR32Rm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AdcRm32R32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AdcEaxImmHandler() );
+		InstructionSet.RegisterHandler( new Handlers.AddEaxImmHandler() );
+		InstructionSet.RegisterHandler( new Handlers.XorAlImmHandler() );
+		InstructionSet.RegisterHandler( new Handlers.AluEaxImmHandler() );
+		InstructionSet.RegisterHandler( new Handlers.MovSregHandler() );
+		InstructionSet.RegisterHandler( new Handlers.SegRegPushPopHandler() );
+		InstructionSet.RegisterHandler( new Handlers.AluR8Rm8Handler() );
+		InstructionSet.RegisterHandler( new Handlers.SbbR32Rm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.SbbRm32R32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.FpuStubHandler() );
 		InstructionSet.RegisterHandler( new Handlers.XorRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.XorRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.XorHandler() );
@@ -74,13 +105,17 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.Opcode83Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeF6Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OpcodeF7Handler() );
+		InstructionSet.RegisterHandler( new Handlers.ImulImmHandler() ); // 0x69 / 0x6B IMUL r32, r/m32, imm
 
 		// === Data Movement ===
 		InstructionSet.RegisterHandler( new Handlers.MovRegImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovRmR32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovR32RmHandler() );
 		InstructionSet.RegisterHandler( new Handlers.MovRm32Imm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovRm8Imm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovEaxMemHandler() );
+		InstructionSet.RegisterHandler( new Handlers.MovAlMoffs32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.MovReg8Imm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovRm8R8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovR8Rm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.MovMoffs32EaxHandler() );
@@ -137,29 +172,31 @@ public partial class X86Interpreter
 		}
 
 		var loader = new PELoader();
-		bool loaded = loader.Load( fileBytes, Core, out _entryPoint, out Imports, out ImportSourceDlls, out HeapStart );
+		bool loaded = loader.Load( fileBytes, Core, out _entryPoint, out Imports, out ImportSourceDlls, out HeapStart, out uint moduleBase );
+		// Set EIP to the entry point immediately so callers can start executing
+		if ( loaded ) { Core.Registers["eip"] = _entryPoint; ModuleBase = moduleBase; }
 
 		if ( loader.ParseAllResources( fileBytes, out var resources ) )
 		{
 			// Assuming hInstance for the main executable is its base address (HeapStart is used as a proxy here, typically 0x00400000)
 			// In a multi-module scenario, hInstance would vary.
-			uint hInstance = HeapStart; // Or a more robust way to determine the module's base address/handle
+			uint hInstance = moduleBase; // Use actual PE image base for resource keys
 
 			foreach ( var res in resources )
 			{
 				if ( res.Type == 2 ) // RT_BITMAP
 				{
-					BitmapResources[(0x00400000, res.Name)] = res.Data;
+					BitmapResources[(hInstance, res.Name)] = res.Data;
 					Core.LogVerbose( $"Loaded bitmap resource: ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
 				}
 				else if ( res.Type == 3 ) // RT_ICON
 				{
-					IconResources[(0x00400000, res.Name)] = res.Data;
+					IconResources[(hInstance, res.Name)] = res.Data;
 					Core.LogVerbose( $"Loaded icon resource (RT_ICON): ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
 				}
 				else if ( res.Type == 5 ) // RT_DIALOG
 				{
-					DialogResources[(0x00400000, res.Name)] = res.Data;
+					DialogResources[(hInstance, res.Name)] = res.Data;
 					Core.LogVerbose( $"Loaded dialog resource: ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
 				}
 				else if ( res.Type == 6 ) // RT_STRING
@@ -180,15 +217,20 @@ public partial class X86Interpreter
 
 							byte[] strBytes = br.ReadBytes( strlen * 2 );
 							value = Encoding.Unicode.GetString( strBytes );
-							StringResources[(0x00400000, (res.Name - 1) * 16 + i)] = value;
+							StringResources[(hInstance, (res.Name - 1) * 16 + i)] = value;
 							Core.LogVerbose( $"Loaded string resource: ID=0x{((res.Name - 1) * 16 + i):X8}, Value=\"{value}\", hInstance=0x{hInstance:X8}" );
 						}
 					}
 				}
 				else if ( res.Type == 14 ) // RT_GROUP_ICON
 				{
-					GroupIconResources[(0x00400000, res.Name)] = res.Data;
+					GroupIconResources[(hInstance, res.Name)] = res.Data;
 					Core.LogVerbose( $"Loaded group icon resource (RT_GROUP_ICON): ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
+				}
+				else if ( res.Type == 4 ) // RT_MENU
+				{
+					MenuResources[(hInstance, res.Name)] = res.Data;
+					Core.LogVerbose( $"Loaded menu resource (RT_MENU): ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
 				}
 			}
 		}
@@ -203,8 +245,16 @@ public partial class X86Interpreter
 	int yieldEvery = 200;
 	public SyncTask ThisSyncTask { get; private set; }
 
+	// Suspend/resume: set _suspendUntil to a TCS task before stepping; the loop awaits it.
+	private Task _suspendUntil = null;
+	public void SuspendForTask( Task t ) => _suspendUntil = t;
+	public void Resume() => _suspendUntil = null;
+
 	public async void ExecuteAsync()
 	{
+		// Initialize TEB/PEB in memory before first instruction
+		Handlers.SegmentPrefixHandler.InitializeTEB( Core );
+
 		Core.Push( 0xFFFFFFFF ); // Address of our final return, this will be used if we hit a RET without anything else in the stack, which we can assume is our final RET
 		Core.Registers["eip"] = _entryPoint;
 		int i = 0;
@@ -222,6 +272,13 @@ public partial class X86Interpreter
 			{
 				Log.Info( "Execution halted by user request." );
 				break;
+			}
+
+			// Suspended (e.g. waiting for EndDialog) — keep yielding until resumed
+			if ( _suspendUntil != null && !_suspendUntil.IsCompleted )
+			{
+				await _suspendUntil;
+				_suspendUntil = null;
 			}
 
 			if ( EIPLogging )
@@ -275,6 +332,58 @@ public partial class X86Interpreter
 	public void Halt()
 	{
 		_haltASAP = true;
+	}
+
+	/// <summary>
+	/// Call an emulated x86 function at <paramref name="addr"/> with stdcall args.
+	/// Saves and restores EIP/ESP/EBP so it is safe to call from inside an API stub.
+	/// Returns EAX (the function's return value).
+	/// </summary>
+	public uint CallX86Function( uint addr, params uint[] args )
+	{
+		if ( addr == 0 ) { Log.Warning( "CallX86Function: addr is 0, ignoring" ); return 0; }
+
+		// Save caller context
+		uint savedEip = Core.Registers["eip"];
+		uint savedEsp = Core.Registers["esp"];
+		uint savedEbp = Core.Registers["ebp"];
+
+		// Push args right-to-left (stdcall)
+		for ( int k = args.Length - 1; k >= 0; k-- )
+			Core.Push( args[k] );
+
+		// Push a sentinel return address so we know when to stop
+		const uint sentinel = 0xFFFFFFFE;
+		Core.Push( sentinel );
+
+		Core.Registers["eip"] = addr;
+
+		// Run until we hit the sentinel or an error
+		for ( int i = 0; i < 10_000_000; i++ )
+		{
+			if ( Core.Registers["eip"] == sentinel )
+				break;
+			if ( Core.Registers["eip"] == 0xFFFFFFFF )
+				break;
+			try
+			{
+				InstructionSet.ExecuteNext( Core, this );
+			}
+			catch ( System.Exception ex )
+			{
+				Log.Error( $"CallX86Function: exception at EIP 0x{Core.Registers["eip"]:X8}: {ex.Message}" );
+				break;
+			}
+		}
+
+		uint result = Core.Registers["eax"];
+
+		// Restore caller context
+		Core.Registers["eip"] = savedEip;
+		Core.Registers["esp"] = savedEsp;
+		Core.Registers["ebp"] = savedEbp;
+
+		return result;
 	}
 
 	public Action OnFinish;

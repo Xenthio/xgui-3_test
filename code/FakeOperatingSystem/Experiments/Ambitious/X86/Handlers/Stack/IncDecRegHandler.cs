@@ -13,7 +13,7 @@ public class IncDecRegHandler : IInstructionHandler
         
         if (opcode >= 0x40 && opcode <= 0x47) // INC
         {
-            string reg = GetRegisterName(opcode - 0x40);
+            string reg = X86AddressingHelper.GetRegisterName(opcode - 0x40);
             uint result = core.Registers[reg] + 1;
             core.Registers[reg] = result;
             
@@ -24,7 +24,7 @@ public class IncDecRegHandler : IInstructionHandler
         }
         else // DEC
         {
-            string reg = GetRegisterName(opcode - 0x48);
+            string reg = X86AddressingHelper.GetRegisterName(opcode - 0x48);
             uint result = core.Registers[reg] - 1;
             core.Registers[reg] = result;
             
@@ -37,16 +37,5 @@ public class IncDecRegHandler : IInstructionHandler
         core.Registers["eip"] += 1;
     }
 
-    private string GetRegisterName(int code) => code switch
-    {
-        0 => "eax",
-        1 => "ecx",
-        2 => "edx",
-        3 => "ebx",
-        4 => "esp",
-        5 => "ebp",
-        6 => "esi",
-        7 => "edi",
-        _ => throw new ArgumentException($"Invalid register code: {code}")
-    };
+
 }

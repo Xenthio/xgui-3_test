@@ -4,7 +4,7 @@ namespace FakeOperatingSystem.Experiments.Ambitious.X86.Handlers;
 
 public class ConditionalJumpHandler : IInstructionHandler
 {
-    public bool CanHandle(byte opcode) => (opcode >= 0x70 && opcode <= 0x7F) || (opcode >= 0x0F80 && opcode <= 0x0F8F);
+    public bool CanHandle(byte opcode) => (opcode >= 0x70 && opcode <= 0x7F);
 
     public void Execute(X86Core core)
     {

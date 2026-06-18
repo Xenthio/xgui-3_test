@@ -2,9 +2,9 @@
   <Configurations>
     <Platform Name="Any CPU" />
   </Configurations>
-  <Project Path="Code/xgui-3_test.csproj" />
+  <Project Path="code/xgui-3_test.csproj" />
   <Folder Name="/Addons/">
-    <Project Path="E:/SteamLibrary/steamapps/common/sbox/addons/base/Code/Base Library.csproj" />
+    <Project Path="../../SteamLibrary/steamapps/common/sbox/addons/base/code/Base Library.csproj" />
   </Folder>
   <Folder Name="/Libraries/">
     <Project Path="Libraries/xenthio.xmovement/Code/xmovement.csproj" />
@@ -14,10 +14,11 @@
     <Project Path="Libraries/XGUI-3/UnitTests/xgui-3.unittest.csproj" />
   </Folder>
   <Folder Name="/Tools/">
-    <Project Path="E:/SteamLibrary/steamapps/common/sbox/addons/tools/Code/Base Editor Library.csproj" />
-    <Project Path="E:/SteamLibrary/steamapps/common/sbox/editor/ActionGraph/Code/actiongraph.csproj" />
-    <Project Path="E:/SteamLibrary/steamapps/common/sbox/editor/Hammer/Code/hammer.csproj" />
-    <Project Path="E:/SteamLibrary/steamapps/common/sbox/editor/MovieMaker/Code/moviemaker.csproj" />
-    <Project Path="E:/SteamLibrary/steamapps/common/sbox/editor/ShaderGraph/Code/shadergraph.csproj" />
+    <Project Path="../../SteamLibrary/steamapps/common/sbox/addons/tools/Code/Base Editor Library.csproj" />
+    <Project Path="../../SteamLibrary/steamapps/common/sbox/editor/ActionGraph/Code/actiongraph.csproj" />
+    <Project Path="../../SteamLibrary/steamapps/common/sbox/editor/DooEditor/Code/dooeditor.csproj" />
+    <Project Path="../../SteamLibrary/steamapps/common/sbox/editor/Hammer/Code/hammer.csproj" />
+    <Project Path="../../SteamLibrary/steamapps/common/sbox/editor/MovieMaker/Code/moviemaker.csproj" />
+    <Project Path="../../SteamLibrary/steamapps/common/sbox/editor/ShaderGraph/Code/shadergraph.csproj" />
   </Folder>
 </Solution>

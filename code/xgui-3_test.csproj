@@ -10,10 +10,10 @@
 		<WarningsAsErrors></WarningsAsErrors>
 		<TreatWarningsAsErrors>False</TreatWarningsAsErrors>
 		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-		<DefineConstants>SANDBOX;ADDON;DEBUG</DefineConstants>
+		<DefineConstants>SANDBOX</DefineConstants>
 		<AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-		<OutputPath>..\..\..\steamlibrary\steamapps\common\sbox/.vs/output/</OutputPath>
-		<DocumentationFile>..\..\..\steamlibrary\steamapps\common\sbox/.vs/output/xgui-3_test.xml</DocumentationFile>
+		<OutputPath>../../../SteamLibrary/steamapps/common/sbox/.vs/output/</OutputPath>
+		<DocumentationFile>../../../SteamLibrary/steamapps/common/sbox/.vs/output/xgui-3_test.xml</DocumentationFile>
 		<RootNamespace>Sandbox</RootNamespace>
 		<Nullable>disable</Nullable>
 		<DefaultItemExcludes>$(DefaultItemExcludes);**/editor/**;**/unittest/**</DefaultItemExcludes>
@@ -26,20 +26,20 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Analyzer Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.CodeUpgrader.dll"/> 
-		<Analyzer Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.Generator.dll"/> 
-		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.System.dll"/> 
-		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.Engine.dll"/> 
-		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.Filesystem.dll"/> 
-		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.Reflection.dll"/> 
-		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Sandbox.Mounting.dll"/> 
-		<Reference Include="..\..\..\steamlibrary\steamapps\common\sbox\bin\managed\Microsoft.AspNetCore.Components.dll"/> 
+		<Analyzer Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.CodeUpgrader.dll"/> 
+		<Analyzer Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Generator.dll"/> 
+		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.System.dll"/> 
+		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Engine.dll"/> 
+		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Filesystem.dll"/> 
+		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Reflection.dll"/> 
+		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Mounting.dll"/> 
+		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Microsoft.AspNetCore.Components.dll"/> 
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="E:\SteamLibrary\steamapps\common\sbox\addons\base\Code\Base Library.csproj" />
-		<ProjectReference Include="E:\S&amp;box Addons\xgui-3_test\Libraries\XGUI-3\Code\xgui-3.csproj" />
-		<ProjectReference Include="E:\S&amp;box Addons\xgui-3_test\Libraries\xenthio.xmovement\Code\xmovement.csproj" />
+		<ProjectReference Include="../../../SteamLibrary/steamapps/common/sbox/addons/base/code/Base Library.csproj" />
+		<ProjectReference Include="../Libraries/XGUI-3/Code/xgui-3.csproj" />
+		<ProjectReference Include="../Libraries/xenthio.xmovement/Code/xmovement.csproj" />
 	</ItemGroup>
 
 </Project>

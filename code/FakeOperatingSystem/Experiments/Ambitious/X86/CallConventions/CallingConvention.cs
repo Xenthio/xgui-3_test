@@ -22,15 +22,24 @@ public abstract class CallingConvention
 
 	protected object ConvertParameter( X86Core core, uint value, Type paramType )
 	{
-		if ( paramType == typeof( uint ) || paramType == typeof( int ) )
+		if ( paramType == typeof( uint ) )
 			return value;
+		else if ( paramType == typeof( int ) )
+			return (int)value;
+		else if ( paramType == typeof( ushort ) )
+			return (ushort)(value & 0xFFFF);
+		else if ( paramType == typeof( short ) )
+			return (short)(value & 0xFFFF);
+		else if ( paramType == typeof( byte ) )
+			return (byte)(value & 0xFF);
+		else if ( paramType == typeof( sbyte ) )
+			return (sbyte)(value & 0xFF);
 		else if ( paramType == typeof( string ) )
 			return value != 0 ? core.ReadString( value ) : "(null)";
 		else if ( paramType == typeof( bool ) )
 			return value != 0;
 
-		// Add more type conversions as needed
-
+		// Fallback: return raw uint (handles unknown types)
 		return value;
 	}
 }

@@ -1,4 +1,6 @@
 // code/FakeOperatingSystem/Process/ProcessManager.cs
+using FakeOperatingSystem.Experiments.Ambitious.X86.Win32;
+using FakeOperatingSystem.OSFileSystem;
 using System.Collections.Generic;
 
 namespace FakeOperatingSystem;
@@ -42,19 +44,41 @@ public class ProcessManager
 
 	/// <summary>
 	/// Opens an executable, deciding if it's a NativeProcess or X86PEProcess.
+	/// Console-subsystem PEs without a stdio override are automatically hosted inside conhost.
 	/// </summary>
 	public BaseProcess OpenExecutable( string exePath, Win32LaunchOptions options, bool shellLaunch = false )
 	{
 		// Try to load as a NativeProgram (fake exe)
 		var nativeProgram = NativeProgram.ReadFromExe( exePath );
 
-
-		// If it's a console app, and we dont have anywhere to send IO, we need to create a console host
-		if ( nativeProgram != null &&
-			nativeProgram.ConsoleApp &&
-			options.StandardOutputOverride == null &&
-			options.StandardInputOverride == null )
+		// --- Decide if this is a console-mode app that needs conhost ---
+		bool needsConhost = false;
+		if ( options.StandardOutputOverride == null && options.StandardInputOverride == null )
 		{
+			if ( nativeProgram != null && nativeProgram.ConsoleApp )
+			{
+				needsConhost = true;
+			}
+			else if ( nativeProgram == null )
+			{
+				// Real PE: peek the subsystem field to see if it's CUI (3)
+				try
+				{
+					if ( VirtualFileSystem.Instance.FileExists( exePath ) )
+					{
+						byte[] peBytes = VirtualFileSystem.Instance.ReadAllBytes( exePath );
+						ushort subsystem = PELoader.PeekSubsystem( peBytes );
+						if ( subsystem == 3 ) // IMAGE_SUBSYSTEM_WINDOWS_CUI
+							needsConhost = true;
+					}
+				}
+				catch { /* ignore, treat as GUI */ }
+			}
+		}
+
+		if ( needsConhost )
+		{
+			// Route through conhost: conhost will re-open this exe with its streams wired
 			var conProcess = OpenExecutable( "C:/Windows/System32/conhost.exe", new Win32LaunchOptions
 			{
 				Arguments = $"\"{exePath}\" {options.Arguments}",

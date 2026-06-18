@@ -28,7 +28,7 @@ public class OpcodeFFHandler : IInstructionHandler
 		{
 			if ( mod == 3 ) // Register operand
 			{
-				string destReg = GetRegisterName( rm );
+				string destReg = X86AddressingHelper.GetRegisterName( rm );
 				uint value = core.Registers[destReg];
 
 				// Perform increment
@@ -65,7 +65,7 @@ public class OpcodeFFHandler : IInstructionHandler
 		{
 			if ( mod == 3 ) // Register operand
 			{
-				string destReg = GetRegisterName( rm );
+				string destReg = X86AddressingHelper.GetRegisterName( rm );
 				uint value = core.Registers[destReg];
 
 				// Perform decrement
@@ -105,7 +105,7 @@ public class OpcodeFFHandler : IInstructionHandler
 			// Calculate target address based on ModRM
 			if ( mod == 3 ) // Register operand
 			{
-				string regName = GetRegisterName( rm );
+				string regName = X86AddressingHelper.GetRegisterName( rm );
 				target = core.Registers[regName];
 
 				if ( target == 0 )
@@ -180,7 +180,12 @@ public class OpcodeFFHandler : IInstructionHandler
 					APIEmulator.ReportMissingExport( _interpreter, api.Key );
 					core.Registers["eax"] = 0; // Default return value
 
-					// Use our saved return address
+					// Pop the return address that CALL pushed — stdcall callee cleans stack,
+					// so we must at minimum pop the ret addr, else the next RET in caller
+					// pops a stale value. We can't know param count so just pop ret addr.
+					core.Registers["esp"] += 4;
+
+					// Resume at the instruction after the CALL
 					core.Registers["eip"] = returnAddress;
 				}
 
@@ -200,7 +205,7 @@ public class OpcodeFFHandler : IInstructionHandler
 			uint target;
 			if ( mod == 3 ) // Register operand
 			{
-				string regName = GetRegisterName( rm );
+				string regName = X86AddressingHelper.GetRegisterName( rm );
 				target = core.Registers[regName];
 			}
 			else // Memory operand
@@ -220,6 +225,7 @@ public class OpcodeFFHandler : IInstructionHandler
 			if ( api.Key != null )
 			{
 				core.LogVerbose( $"OpcodeFFHandler: Detected JMP to API {api.Key}" );
+				uint eipBeforeApiJmp = core.Registers["eip"];
 				bool handled = false;
 				foreach ( var emu in _interpreter.APIEmulators )
 				{
@@ -234,10 +240,43 @@ public class OpcodeFFHandler : IInstructionHandler
 					APIEmulator.ReportMissingExport( _interpreter, api.Key );
 					core.Registers["eax"] = 0;
 				}
-				// After API call, EIP should be set to the return address (simulate RET)
-				// You may want to pop the return address from the stack if needed, or just halt.
-				// For JMP, there is no return, so you may want to set EIP to 0xFFFFFFFF to halt.
-				//core.Registers["eip"] = 0xFFFFFFFF;
+				// If EIP was not changed by the stub (e.g., _apiTable stub), pop the
+				// return address from the stack (it was pushed by the CALL before JMP thunk).
+				// Also ensure EAX is set from TryCall result for _apiTable raw lambdas that
+				// return a value but don't set EAX via calling convention machinery.
+				if ( core.Registers["eip"] == eipBeforeApiJmp )
+				{
+					uint retAddr = core.ReadDword( core.Registers["esp"] );
+					core.Registers["esp"] += 4;
+					core.Registers["eip"] = retAddr;
+					// Detect thiscall/thunk pattern: if the callee is a thiscall export (e.g., MFC),
+					// the wrapper expects the callee to clean its args.
+					// Check if this API is a known thiscall export OR if its source DLL is MFC42u.
+					bool isThiscall = false;
+					if ( _interpreter.ImportSourceDlls.TryGetValue( api.Key, out var srcDll ) )
+						isThiscall = srcDll == "MFC42U.DLL" || _interpreter.ThiscallExports.Contains( api.Key );
+					if ( isThiscall )
+					{
+						try
+						{
+							byte b0 = core.ReadByte( retAddr );
+							byte b1 = core.ReadByte( retAddr + 1 );
+							byte b2 = core.ReadByte( retAddr + 2 );
+							byte b3 = core.ReadByte( retAddr + 3 );
+							if ( b0 == 0x5D && b1 == 0xC2 ) // POP EBP; RET N -> wrapper arg count
+							{
+								uint retN = (uint)b2 | ((uint)b3 << 8);
+								core.Registers["esp"] += retN;
+							}
+							else if ( b0 == 0xC2 ) // RET N
+							{
+								uint retN = (uint)b1 | ((uint)b2 << 8);
+								core.Registers["esp"] += retN;
+							}
+						}
+						catch { /* ignore read errors */ }
+					}
+				}
 				return;
 			}
 			else
@@ -252,7 +291,7 @@ public class OpcodeFFHandler : IInstructionHandler
 
 			if ( mod == 3 ) // Register operand
 			{
-				string regName = GetRegisterName( rm );
+				string regName = X86AddressingHelper.GetRegisterName( rm );
 				value = core.Registers[regName];
 				core.Registers["eip"] += 2;
 			}
@@ -267,47 +306,53 @@ public class OpcodeFFHandler : IInstructionHandler
 			// Push the value onto the stack
 			core.Push( value );
 		}
-		/*		else if ( reg == 7 ) // Technically undefined in standard x86
-				{
-					if ( mod == 3 && rm == 7 && modrm == 0xFF ) // FF FF pattern
-					{
-						// This specific pattern (0xFF 0xFF) appears to be used in Windows executables
-						// and is executed without error on real CPUs. Treat as NOP.
-						Log.Warning( $"Handling undefined instruction 0xFF 0xFF (FF /7 EDI) as NOP at {eip:X8}" );
-						core.Registers["eip"] += 2;
-					}
-					else
-					{
-						// Other FF /7 variants - also treat as NOP but log differently
-						Log.Warning( $"Encountered unusual instruction: 0xFF /7 (modrm=0x{modrm:X2}). Treating as NOP." );
-
-						if ( mod == 3 ) // Register operand
-						{
-							core.Registers["eip"] += 2;
-						}
-						else // Memory operand
-						{
-							uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
-							core.Registers["eip"] += length;
-						}
-					}
-				}*/
+		else if ( reg == 3 ) // CALLF r/m16:32 (far call) — treat as near call in protected flat mode
+		{
+			// Far calls in flat 32-bit mode are unusual; treat the target as a near address
+			if ( mod == 3 )
+			{
+				string regName = X86AddressingHelper.GetRegisterName( rm );
+				uint target = core.Registers[regName];
+				core.Registers["eip"] += 2;
+				core.Push( core.Registers["eip"] );
+				core.Registers["eip"] = target;
+			}
+			else
+			{
+				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+				// Far pointer: 6 bytes (32-bit offset + 16-bit selector). Read only the offset.
+				uint target = core.ReadDword( effectiveAddress );
+				uint length = X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+				core.Registers["eip"] += length;
+				core.Push( core.Registers["eip"] );
+				core.Registers["eip"] = target;
+			}
+		}
+		else if ( reg == 5 ) // JMPF r/m16:32 (far jump) — treat as near jump
+		{
+			if ( mod == 3 )
+			{
+				string regName = X86AddressingHelper.GetRegisterName( rm );
+				core.Registers["eip"] = core.Registers[regName];
+			}
+			else
+			{
+				uint effectiveAddress = X86AddressingHelper.CalculateEffectiveAddress( core, modrm, eip );
+				uint target = core.ReadDword( effectiveAddress );
+				core.Registers["eip"] = target;
+			}
+		}
+		else if ( reg == 7 ) // Technically undefined — treat as NOP
+		{
+			Log.Warning( $"0xFF /7 (modrm=0x{modrm:X2}) at 0x{eip:X8} — treating as NOP" );
+			if ( mod == 3 ) core.Registers["eip"] += 2;
+			else core.Registers["eip"] += X86AddressingHelper.GetInstructionLength( modrm, core, eip );
+		}
 		else
 		{
 			throw new InvalidOperationException( $"Unimplemented 0xFF /{reg} (modrm=0x{modrm:X2}, mod={mod}, rm={rm})" );
 		}
 	}
 
-	private string GetRegisterName( int code ) => code switch
-	{
-		0 => "eax",
-		1 => "ecx",
-		2 => "edx",
-		3 => "ebx",
-		4 => "esp",
-		5 => "ebp",
-		6 => "esi",
-		7 => "edi",
-		_ => throw new Exception( $"Invalid register code: {code}" )
-	};
+
 }

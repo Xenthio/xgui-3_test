@@ -22,18 +22,9 @@ public class CdeclConvention : CallingConvention
 		// Set return value in EAX
 		core.Registers["eax"] = result;
 
-		// In cdecl, the caller cleans up the stack, so we DON'T adjust ESP
-		if ( isJump )
-		{
-			// If it's a jump, we need to adjust ESP to remove the parameters
-			core.Pop();
-			//core.Registers["esp"] += (uint)(parameterTypes.Length * 4 + 4); // params + return address
-		}
-		else
-		{
-			// If it's a call, we don't adjust ESP here
-			// The caller will handle it after the call
-		}
+		// In cdecl, simulate the RET: pop return address off stack (callee cleanup of ret addr only)
+		// Caller is responsible for cleaning up args via add esp, N
+		core.Registers["esp"] += 4;
 
 		// We just set EIP to the return address
 		core.Registers["eip"] = returnAddress;

@@ -1,0 +1,22 @@
+{
+  "files.associations": {
+    "*.shader": "slang",
+    "*.hlsl": "slang"
+  },
+  "slang.additionalSearchPaths": [
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\core\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\base\\Assets\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\menu\\Assets\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\tools\\Assets\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\editor\\ShaderGraph\\Assets\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\editor\\ActionGraph\\Assets\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\editor\\MovieMaker\\Assets\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\editor\\Hammer\\Assets\\shaders",
+    "E:\\SteamLibrary\\steamapps\\common\\sbox\\editor\\DooEditor\\Assets\\shaders",
+    "E:\\S\u0026box Addons\\xgui-3_test\\Assets\\shaders",
+    "E:\\S\u0026box Addons\\xgui-3_test\\Libraries\\xenthio.xmovement\\Assets\\shaders",
+    "E:\\S\u0026box Addons\\xgui-3_test\\Libraries\\XGUI-3\\Assets\\shaders"
+  ],
+  "slang.predefinedMacros": [],
+  "slang.workspaceFlavor": "vfx"
+}
