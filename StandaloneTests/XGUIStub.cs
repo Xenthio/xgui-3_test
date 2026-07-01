@@ -106,6 +106,13 @@ namespace XGUI
     {
         public string Icon { get; set; }
         public bool Resizable { get; set; }
+        public string Title { get; set; } = "";
+        public System.Numerics.Vector2 InitalInnerSize { get; set; }
+        public System.Numerics.Vector2 Position { get; set; }
+        public System.Action OnCloseAction { get; set; }
+        public bool HasFocus => false;
+        public Sandbox.UI.Panel CreateWindowContentPanel() => new Sandbox.UI.Panel();
+        public void ResetInnerSizeInit() { }
     }
 
     public class CheckBox : XGUIPanel

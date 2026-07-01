@@ -107,6 +107,67 @@ public class X86CoreTests
         Assert.AreEqual(3u, core.Registers["eax"]);
     }
 
+    // ── AND r/m32, r32 (opcode 0x21) — regression for a previously MISSING handler ──
+
+    [TestMethod]
+    public void AndRm32R32_RegisterToRegister_Correct()
+    {
+        var core = MakeCore();
+        var handler = new AndRm32R32Handler();
+
+        core.Registers["eax"] = 0xF0F0F0F0;
+        core.Registers["ebx"] = 0x0FF00FF0;
+        core.Registers["eip"] = 0x4000;
+        core.WriteByte(0x4000, 0x21); // AND r/m32, r32
+        core.WriteByte(0x4001, 0xD8); // ModRM: EAX &= EBX (mod=11, reg=EBX, rm=EAX)
+
+        handler.Execute(core);
+
+        Assert.AreEqual(0x00F000F0u, core.Registers["eax"]);
+        Assert.IsFalse(core.CarryFlag, "AND must clear CF");
+        Assert.IsFalse(core.OverflowFlag, "AND must clear OF");
+        Assert.IsFalse(core.ZeroFlag, "result is non-zero");
+        Assert.AreEqual(0x4002u, core.Registers["eip"], "EIP must advance past the 2-byte instruction");
+    }
+
+    [TestMethod]
+    public void AndRm32R32_ZeroResult_SetsZeroFlag()
+    {
+        var core = MakeCore();
+        var handler = new AndRm32R32Handler();
+
+        core.Registers["eax"] = 0xAAAAAAAA;
+        core.Registers["ecx"] = 0x55555555; // disjoint bits -> 0
+        core.Registers["eip"] = 0x4000;
+        core.WriteByte(0x4000, 0x21);
+        core.WriteByte(0x4001, 0xC8); // ModRM: EAX &= ECX (reg=ECX, rm=EAX)
+
+        handler.Execute(core);
+
+        Assert.AreEqual(0u, core.Registers["eax"]);
+        Assert.IsTrue(core.ZeroFlag, "disjoint AND must set ZF");
+    }
+
+    [TestMethod]
+    public void AndRm32R32_MemoryDestination_WritesBack()
+    {
+        var core = MakeCore();
+        var handler = new AndRm32R32Handler();
+
+        // AND [EBX], EAX  where EBX points at scratch memory
+        uint addr = 0x6000;
+        core.WriteDword(addr, 0xFFFF00FF);
+        core.Registers["ebx"] = addr;
+        core.Registers["eax"] = 0x0F0F0F0F;
+        core.Registers["eip"] = 0x4000;
+        core.WriteByte(0x4000, 0x21); // AND r/m32, r32
+        core.WriteByte(0x4001, 0x03); // ModRM mod=00 reg=EAX rm=011(EBX) -> [EBX]
+
+        handler.Execute(core);
+
+        Assert.AreEqual(0x0F0F000Fu, core.ReadDword(addr));
+    }
+
     // ── MOV reg, imm32 ───────────────────────────────────────────────────────
 
     [TestMethod]

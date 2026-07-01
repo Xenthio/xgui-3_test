@@ -87,12 +87,13 @@ public class PELoader
 				{
 					// Section contains both code AND is writeable
 					Log.Info( $"Section {sectionName} at 0x{imageBase + virtualAddress:X8} is both code and writeable" );
-					// Don't mark as code-only if it's meant to be written to
+					core.MarkMemoryAsWritable( imageBase + virtualAddress, virtualSize );
 				}
 				else
 				{
-					// Code-only section, mark as read-execute only
-					core.MarkMemoryAsCode( imageBase + virtualAddress, virtualSize );
+					// Code-only section: leave writable for now to tolerate apps that self-modify or hot-patch.
+					// Real OS would require VirtualProtect; our emulator is lenient.
+					core.MarkMemoryAsWritable( imageBase + virtualAddress, virtualSize );
 				}
 			}
 		}
@@ -106,7 +107,8 @@ public class PELoader
 	public class PEResourceEntry
 	{
 		public uint Type;
-		public uint Name;
+		public uint Name;         // Ordinal ID (0 if named)
+		public string StringName; // Non-null when the resource has a string name
 		public uint Language;
 		public byte[] Data;
 	}
@@ -181,7 +183,7 @@ public class PELoader
 		}
 
 		// 4. Parse resource directory tree (recursive)
-		void ParseDir( uint dirOffset, uint type, uint name, uint lang )
+		void ParseDir( uint dirOffset, uint type, uint name, uint lang, string nameStr = null )
 		{
 			if ( dirOffset + 16 > fileBytes.Length ) return;
 			int entryCount = BitConverter.ToUInt16( fileBytes, (int)dirOffset + 12 ) + BitConverter.ToUInt16( fileBytes, (int)dirOffset + 14 );
@@ -198,15 +200,29 @@ public class PELoader
 				bool isSubdir = (dataOrSubdir & 0x80000000) != 0;
 				uint offset = dataOrSubdir & 0x7FFFFFFF;
 
+				// Resolve name string when the entry has a string name (level 2: name/id)
+				string resolvedNameStr = nameStr;
+				if ( isNamed && name == 0 ) // level 2 named entry
+				{
+					// id is offset from start of rsrc section to Unicode string (uint16 len + chars)
+					uint strOff = rsrcRaw + id;
+					if ( strOff + 2 <= fileBytes.Length )
+					{
+						ushort strLen = BitConverter.ToUInt16( fileBytes, (int)strOff );
+						if ( strOff + 2 + strLen * 2 <= fileBytes.Length )
+							resolvedNameStr = Encoding.Unicode.GetString( fileBytes, (int)strOff + 2, strLen * 2 );
+					}
+				}
+
 				if ( isSubdir )
 				{
 					uint subdirOffset = rsrcRaw + offset;
 					if ( type == 0 ) // First level: type
-						ParseDir( subdirOffset, id, name, lang );
+						ParseDir( subdirOffset, id, name, lang, null );
 					else if ( name == 0 ) // Second level: name/id
-						ParseDir( subdirOffset, type, id, lang );
+						ParseDir( subdirOffset, type, isNamed ? 0u : id, lang, resolvedNameStr );
 					else // Third level: language
-						ParseDir( subdirOffset, type, name, id );
+						ParseDir( subdirOffset, type, name, id, resolvedNameStr );
 				}
 				else
 				{
@@ -218,7 +234,7 @@ public class PELoader
 					if ( dataFileOffset + dataSize > fileBytes.Length ) continue;
 					var data = new byte[dataSize];
 					Array.Copy( fileBytes, dataFileOffset, data, 0, dataSize );
-					resourceList.Add( new PEResourceEntry { Type = type, Name = name, Language = lang, Data = data } );
+					resourceList.Add( new PEResourceEntry { Type = type, Name = isNamed ? 0u : name, StringName = resolvedNameStr, Language = lang, Data = data } );
 				}
 			}
 		}

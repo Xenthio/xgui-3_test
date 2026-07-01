@@ -31,6 +31,8 @@
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.cs" />
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.Menu.cs" />
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.Stubs.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.Clipboard.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.GUIShim.cs" />
     <!-- User32Emulator.GUI.cs excluded: requires deep Sandbox panel/style APIs not worth stubbing -->
     <!--<Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/User32.dll/User32Emulator.GUI.cs" />-->
     <!-- Shell32 re-included with XGUISystem/AboutDialog/Game.ActiveScene stubs -->
@@ -42,8 +44,13 @@
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/GDI32.dll/GDICanvas.cs" />
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Advapi32.dll/Advapi32Emulator.cs" />
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/WINMM.dll/WinMMEmulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/CARDS.dll/CardsEmulator.cs" />
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/MFC42u.dll/MFC42uEmulator.cs" />
     <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Comctl32.dll/Comctl32Emulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/Ole32.dll/Ole32Emulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/GetUName.dll/GetUNameEmulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/NTDLL.dll/NtdllEmulator.cs" />
+    <Compile Include="../code/FakeOperatingSystem/Experiments/Ambitious/X86/Win32/CRTDLL.dll/CrtdllEmulator.cs" />
   </ItemGroup>
   <!-- All handlers -->
   <ItemGroup>

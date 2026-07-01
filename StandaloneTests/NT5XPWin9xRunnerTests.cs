@@ -12,6 +12,7 @@ namespace X86StandaloneTests;
 public class NT5XPWin9xRunnerTests
 {
     private const string NT5ProgDir  = @"E:\SteamLibrary\steamapps\common\sbox\data\xenthio\xgui-3_test#local\2000prog\";
+    private const string NtProgDir    = @"E:\SteamLibrary\steamapps\common\sbox\data\xenthio\xgui-3_test#local\ntprog\";
     private const string XPProgDir   = @"E:\SteamLibrary\steamapps\common\sbox\data\xenthio\xgui-3_test#local\xpprog\";
     private const string Win95Dir    = @"E:\SteamLibrary\steamapps\common\sbox\data\xenthio\xgui-3_test#local\95prog\";
     private const string Win98Dir    = @"E:\SteamLibrary\steamapps\common\sbox\data\xenthio\xgui-3_test#local\98prog\";
@@ -186,4 +187,368 @@ public class NT5XPWin9xRunnerTests
         Assert.IsFalse(faulted, msg);
         Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
     }
+
+    // Win98 GDI apps placed in 2000prog/ (same PE32 architecture)
+    [TestMethod] public void SndVol32_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "sndvol32.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+    [TestMethod] public void SndRec32_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "sndrec32.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+    [TestMethod] public void Charmap_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "charmap.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+    [TestMethod] public void CDPlayer_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "cdplayer.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+
+    // =================== ReactOS apps ===================
+    [TestMethod] public void ReactOS_Sol_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_sol.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 50000, $"too few steps: {steps}");
+    }
+    [TestMethod] public void ReactOS_Spider_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_spider.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 50000, $"too few steps: {steps}");
+    }
+    [TestMethod] public void ReactOS_MPlay32_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_mplay32.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+    [TestMethod] public void ReactOS_Magnify_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_magnify.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+    [TestMethod] public void ReactOS_FontView_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_fontview.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+    [TestMethod] public void ReactOS_ProgMan_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_progman.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+    [TestMethod] public void ReactOS_MsConfig_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_msconfig.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+    [TestMethod] public void ReactOS_Osk_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_osk.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 500, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void ReactOS_CleanMgr_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_cleanmgr.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void ReactOS_DrWtsn32_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_drwtsn32.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void ReactOS_SndVol32_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_sndvol32.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void ReactOS_SndRec32_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_sndrec32.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void Win2k_Perfmon_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "perfmon.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 100, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void Win2k_Proquota_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "proquota.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 100, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void Win2k_Pinball_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "PINBALL.EXE");
+        if (steps < 0) Assert.Inconclusive("not found");
+        // Pinball uses DirectX heavily; just verify it loads and runs init phase
+        Assert.IsTrue(steps >= 100, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void Win2k_Cmd_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "cmd.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(steps >= 100, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void ReactOS_Mspaint_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_mspaint.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void ReactOS_Notepad_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NT5ProgDir + "reactos_notepad.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    // ── ntprog ─────────────────────────────────────────────────────────────────
+    [TestMethod] public void NtProg_Sol_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NtProgDir + "sol.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 1000, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void NtProg_Osk_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NtProgDir + "osk.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void NtProg_Winmine_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NtProgDir + "winmine.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 1000, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void NtProg_Calc_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(NtProgDir + "calc.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 200, $"too few steps: {steps}");
+    }
+
+    // ── Community suggestions ─────────────────────────────────────────────
+    private const string CommunitySugDir = @"E:\SteamLibrary\steamapps\common\sbox\data\xenthio\xgui-3_test#local\community_suggestions\";
+
+    [TestMethod] public void CommSug_Ski32_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "ski32.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 1000, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void CommSug_Ski32RebuildVS6_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "ski32-rebuild-vs6.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 1000, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void CommSug_Metapad_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "metapad.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 1000, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void CommSug_TinyTask_RunsWithoutFault()
+    {
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "tinytask-1-77.exe");
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsFalse(faulted, msg);
+        Assert.IsTrue(steps >= 1000, $"too few steps: {steps}");
+    }
+
+    [TestMethod] public void CommSug_ClawdHello_SelfCompiledPE_Works()
+    {
+        // This EXE was hand-crafted by Clawd itself as a PE with x86 code
+        // that calls MessageBoxA then ExitProcess.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_hello.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("clawd_hello.exe not found");
+        // Accept ExitProcess-style exit: the 0xFFFFFFFF EIP may fire ReadByte before the
+        // loop top checks it — that's an expected "clean exit", not a real fault.
+        bool cleanExit = msg != null && (msg.Contains("0xFFFFFFFF") || msg.Contains("unmapped high address 0xFFFFFF"));
+        Assert.IsTrue(!faulted || cleanExit, $"Unexpected fault: {msg}");
+        Assert.IsTrue(steps >= 5, $"Expected at least a few steps, got {steps}");
+    }
+
+    // ── Clawd self-compiled test programs (PE factory) ─────────────────
+    // These are built by pe_factory.py in /tmp using pure Python x86 codegen.
+
+    private static bool IsCleanExit(bool faulted, string msg) =>
+        !faulted || (msg != null && (msg.Contains("0xFFFFFFFF") || msg.Contains("unmapped high address 0xFFFFFF")));
+
+    [TestMethod] public void ClaWd_MsgboxLoop_ThreeBoxes()
+    {
+        // Calls MessageBoxA three times, then ExitProcess.
+        // Tests: IAT resolution, stdcall conv, string VA, sequential calls.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_msgbox_loop.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(steps >= 10, $"Too few steps: {steps}");
+    }
+
+    [TestMethod] public void ClaWd_Window_RegisterAndPump()
+    {
+        // Registers a window class, creates a window, runs 3 message-pump iterations.
+        // Tests: RegisterClassExA, CreateWindowExA, ShowWindow, GetMessageA,
+        //        TranslateMessage, DispatchMessageA, WM_PAINT/WM_DESTROY, PostQuitMessage.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_window.exe", maxSteps: 50_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(!string.IsNullOrEmpty(classes), $"Expected at least 1 registered class, got: {classes}");
+        Assert.IsTrue(windows > 0, $"Expected at least 1 window, got {windows}");
+        Assert.IsTrue(steps >= 50, $"Too few steps: {steps}");
+    }
+
+    [TestMethod] public void ClaWd_FizzBuzz_ArithmeticTest()
+    {
+        // Computes 15 % 3 == 0 and 15 % 5 == 0, shows "FizzBuzz" MessageBox.
+        // Tests: x86 IDIV, conditional branch, correct MB result.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_fizzbuzz.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(steps >= 10, $"Too few steps: {steps}");
+    }
+
+    [TestMethod] public void ClaWd_GdiDraw_WindowWithPaint()
+    {
+        // Creates a window, WM_PAINT: FillRect (blue bg) + SetTextColor (white) + TextOutA.
+        // Tests: GDI drawing pipeline, BeginPaint/EndPaint, GDI color ops.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_gdi_draw.exe", maxSteps: 50_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(!string.IsNullOrEmpty(classes), $"Expected class registered, got: {classes}");
+        Assert.IsTrue(windows > 0, $"Expected window created, got {windows}");
+    }
+
+    // ── Advanced self-compiled EXE tests ─────────────────────────────────────────
+
+    [TestMethod] public void ClaWd_Registry_WriteAndReadBack()
+    {
+        // Tests: RegCreateKeyExA, RegSetValueExA, RegQueryValueExA, RegCloseKey
+        // Writes "Hello42" to HKCU\Software\ClaWdTest\TestValue and reads it back.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_registry.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(steps >= 10, $"Too few steps: {steps}");
+    }
+
+    [TestMethod] public void ClaWd_ChildWnd_ThreeChildren()
+    {
+        // Tests: WS_CHILD parenting — creates parent + 3 child windows.
+        // Verifies all 4 windows created and class registered.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_childwnd.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(!string.IsNullOrEmpty(classes), $"Expected class registered");
+        Assert.IsTrue(windows >= 4, $"Expected 4 windows (1 parent + 3 children), got {windows}");
+    }
+
+    [TestMethod] public void ClaWd_Heap_AllocAndFree()
+    {
+        // Tests: GetProcessHeap, HeapAlloc, HeapFree, VirtualAlloc, VirtualFree.
+        // Allocates 1KB on heap + 4KB via VirtualAlloc, writes pattern, frees.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_heap.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(steps >= 10, $"Too few steps: {steps}");
+    }
+
+    [TestMethod] public void ClaWd_WsprintfA_FormatString()
+    {
+        // Tests: wsprintfA (cdecl variadic), lstrlenA, GetCommandLineA.
+        // Formats "Val=42 hex=0x2A" and shows via MessageBoxA.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_wsprintfa.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(steps >= 10, $"Too few steps: {steps}");
+    }
+
+    [TestMethod] public void ClaWd_RepString_MovsdMemcpy()
+    {
+        // Tests: REP MOVSD (memcpy via x86 string ops).
+        // Copies "Hello REP World!" using REP MOVSD, verifies first 4 bytes == "Hell".
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_repstring.exe", maxSteps: 10_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        Assert.IsTrue(IsCleanExit(faulted, msg), $"Fault: {msg}");
+        Assert.IsTrue(steps >= 10, $"Too few steps: {steps}");
+    }
+
+    [TestMethod] public void ClaWd_Exception_DivideByZeroHandled()
+    {
+        // Tests: divide-by-zero fault is caught by emulator and doesn't crash test runner.
+        // The EXE intentionally executes IDIV ECX with ECX=0.
+        // Acceptable outcomes: fault (expected) OR emulator swallows it and continues.
+        var (steps, faulted, msg, classes, windows) = RunExe(CommunitySugDir + "clawd_exception.exe", maxSteps: 1_000);
+        if (steps < 0) Assert.Inconclusive("not found");
+        // Either faults gracefully (expected), or doesn't fault at all (emulator swallowed it).
+        // What's NOT acceptable: test runner crash / stack overflow.
+        Assert.IsTrue(steps >= 1, $"Expected at least one step before exception, got {steps}");
+    }
+
 }

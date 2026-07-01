@@ -148,6 +148,27 @@ public abstract class APIEmulator
 	{
 		_apiTable[name] = core => _cdeclConvention.HandleVariadicCall( core, callback );
 	}
+
+	/// <summary>
+	/// Register a stdcall function that receives its args as a uint[] array read from the stack.
+	/// Cleans up nArgs dwords from stack on return (stdcall convention).
+	/// </summary>
+	protected void RegisterStdCallVariadicFunction( string name, int nArgs, Func<uint[], uint> callback )
+	{
+		_apiTable[name] = core =>
+		{
+			uint returnAddress = core.ReadDword( core.Registers["esp"] );
+			var args = new uint[nArgs];
+			for ( int i = 0; i < nArgs; i++ )
+				args[i] = core.ReadDword( core.Registers["esp"] + 4u + (uint)(i * 4) );
+			uint result = callback( args );
+			core.Registers["eax"] = result;
+			// stdcall: callee cleans args + return address
+			core.Registers["esp"] += (uint)(nArgs * 4 + 4);
+			core.Registers["eip"] = returnAddress;
+			return result;
+		};
+	}
 	#endregion
 
 	#endregion

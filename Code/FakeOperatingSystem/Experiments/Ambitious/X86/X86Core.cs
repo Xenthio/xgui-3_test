@@ -286,6 +286,26 @@ public class X86Core
 		}
 	}
 
+	/// <summary>Mark memory range as writable (VirtualProtect with PAGE_READWRITE/PAGE_EXECUTE_READWRITE).</summary>
+	public void MarkMemoryAsWritable( uint address, uint size )
+	{
+		for ( uint i = 0; i < size; i += PageSize )
+		{
+			uint page = (address + i) & ~(uint)(PageSize - 1);
+			_pageProtection[page] = MemoryProtection.ReadWrite;
+		}
+	}
+
+	/// <summary>Mark memory range as read-only (VirtualProtect with PAGE_READONLY).</summary>
+	public void MarkMemoryAsReadOnly( uint address, uint size )
+	{
+		for ( uint i = 0; i < size; i += PageSize )
+		{
+			uint page = (address + i) & ~(uint)(PageSize - 1);
+			_pageProtection[page] = MemoryProtection.ReadOnly;
+		}
+	}
+
 	[ConVar( "xguitest_x86_log_verbose" )]
 	public static bool VerboseLogging { get; set; } = false;
 	public void LogVerbose( string message )

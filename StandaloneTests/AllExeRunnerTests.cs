@@ -105,7 +105,8 @@ public class AllExeRunnerTests
         var (steps, faulted, msg, _) = RunExe(NtProgDir + "explorer.exe");
         if (steps < 0) Assert.Inconclusive("not found");
         Assert.IsFalse(faulted, msg);
-        Assert.IsTrue(steps >= 300 /* shell init, needs more stubs */, $"too few steps: {steps}");
+        // With proper stubs explorer exits cleanly (no longer suspended on missing-export dialogs)
+        Assert.IsTrue(steps >= 100, $"too few steps: {steps}");
     }
     [TestMethod] public void Cmd_RunsWithoutFault()
     {

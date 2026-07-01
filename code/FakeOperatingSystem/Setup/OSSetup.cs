@@ -276,6 +276,44 @@ namespace FakeOperatingSystem.Setup
 			registryInstance.SetValue( Path.Combine( applicationsRoot, calcExe, "shell", "open", "command" ), "", $"\"{calcPath}\"" );
 
 			Log.Info( "Registered applications in the registry." );
+
+			// Ensure default HKCU keys required by common apps
+			EnsureDefaultRegistryKeys( registryInstance );
+		}
+
+		/// <summary>
+		/// Seed / ensure default HKEY_CURRENT_USER subkeys required by common Win32 apps.
+		/// Safe to call on every boot — only writes keys that Win32 apps need but may be missing
+		/// from old system roots that predate a given key being added.
+		/// </summary>
+		public static void EnsureDefaultRegistryKeys( Registry registryInstance )
+		{
+			if ( registryInstance == null ) return;
+			// WinMine high scores / game state — seeding prevents blank-window on second run
+			// (OSK keys intentionally NOT seeded here: Madenta's osk.exe uses N%d/M%d numbered
+			//  values we can't provide. Better to let RegOpenKey return NOT_FOUND → default init.)
+			// WinMine high scores / game state — seeding prevents blank-window on second run
+			string winmineKey = @"HKEY_CURRENT_USER\Software\Microsoft\WinMine";
+			EnsureValue( registryInstance, winmineKey, "Beginner", 0 );
+			EnsureValue( registryInstance, winmineKey, "Intermediate", 0 );
+			EnsureValue( registryInstance, winmineKey, "Expert", 0 );
+			EnsureValue( registryInstance, winmineKey, "Height", 9 );
+			EnsureValue( registryInstance, winmineKey, "Width", 9 );
+			EnsureValue( registryInstance, winmineKey, "Mines", 10 );
+			EnsureValue( registryInstance, winmineKey, "Mark", 0 );
+			EnsureValue( registryInstance, winmineKey, "Color", 1 );
+			EnsureValue( registryInstance, winmineKey, "Sound", 0 );
+			EnsureValue( registryInstance, winmineKey, "Xpos", 100 );
+			EnsureValue( registryInstance, winmineKey, "Ypos", 100 );
+			Log.Info( "[OsSetup] Ensured default HKCU registry keys." );
+		}
+
+		/// <summary>Sets a registry value only if it doesn't already exist.</summary>
+		private static void EnsureValue( Registry reg, string keyPath, string valueName, object defaultValue )
+		{
+			var existing = reg.GetValues( keyPath );
+			if ( existing != null && existing.ContainsKey( valueName ) ) return;
+			reg.SetValue( keyPath, valueName, defaultValue );
 		}
 	}
 }

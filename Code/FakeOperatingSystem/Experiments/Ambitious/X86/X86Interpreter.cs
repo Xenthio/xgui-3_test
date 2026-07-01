@@ -36,10 +36,13 @@ public partial class X86Interpreter
 	public readonly System.Collections.Generic.HashSet<string> ThiscallExports = new();
 
 	public Dictionary<(uint hInstance, uint uID), string> StringResources = new();
+	/// <summary>Tracks the language ID that was used to populate each StringResources entry, for multilingual precedence.</summary>
+	public Dictionary<(uint hInstance, uint uID), uint> StringResourceLangs = new();
 	public Dictionary<(uint hInstance, uint uID), byte[]> DialogResources { get; } = new();
 	public Dictionary<(uint hInstance, uint uID), byte[]> BitmapResources { get; } = new();
 	public Dictionary<(uint hInstance, uint uID), byte[]> IconResources { get; } = new(); // For RT_ICON
 	public Dictionary<(uint hInstance, uint uID), byte[]> GroupIconResources { get; } = new(); // For RT_GROUP_ICON
+	public Dictionary<(uint hInstance, string name), byte[]> GroupIconResourcesByName { get; } = new(); // Named icon resources
 	public Dictionary<(uint hInstance, uint uID), byte[]> MenuResources { get; } = new(); // For RT_MENU
 
 
@@ -55,8 +58,13 @@ public partial class X86Interpreter
 		APIEmulators.Add( new Advapi32Emulator() );
 		APIEmulators.Add( new GDI32Emulator() );
 		APIEmulators.Add( new WinMMEmulator() );
+		APIEmulators.Add( new CardsEmulator() );
 		APIEmulators.Add( new MFC42uEmulator() );
 		APIEmulators.Add( new Comctl32Emulator() );
+		APIEmulators.Add( new Ole32Emulator() );
+		APIEmulators.Add( new GetUNameEmulator() );
+		APIEmulators.Add( new NtdllEmulator() );
+		APIEmulators.Add( new CrtdllEmulator() );
 
 		// === Miscellaneous ===
 		InstructionSet.RegisterHandler( new Handlers.NopHandler() );
@@ -92,6 +100,7 @@ public partial class X86Interpreter
 		InstructionSet.RegisterHandler( new Handlers.OrEaxImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.OrRm32R32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AndR32Rm32Handler() );
+		InstructionSet.RegisterHandler( new Handlers.AndRm32R32Handler() ); // 0x21 AND r/m32, r32 (was missing)
 		InstructionSet.RegisterHandler( new Handlers.AndAlImm8Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AndEaxImm32Handler() );
 		InstructionSet.RegisterHandler( new Handlers.AndRm8R8Handler() );
@@ -201,6 +210,11 @@ public partial class X86Interpreter
 				}
 				else if ( res.Type == 6 ) // RT_STRING
 				{
+					// Only load this language if it's preferred over what we already have.
+					// Priority: en-US (0x0409) > language-neutral (0x0000) > any.
+					// This prevents multilingual ReactOS builds from loading Chinese strings last.
+					bool isEnUS = res.Language == 0x0409;
+					bool isNeutral = res.Language == 0x0000;
 					using var ms = new System.IO.MemoryStream( res.Data );
 					using var br = new System.IO.BinaryReader( ms );
 					for ( uint i = 0; i < 16; i++ ) // String tables are bundled in blocks of 16
@@ -217,15 +231,26 @@ public partial class X86Interpreter
 
 							byte[] strBytes = br.ReadBytes( strlen * 2 );
 							value = Encoding.Unicode.GetString( strBytes );
-							StringResources[(hInstance, (res.Name - 1) * 16 + i)] = value;
-							Core.LogVerbose( $"Loaded string resource: ID=0x{((res.Name - 1) * 16 + i):X8}, Value=\"{value}\", hInstance=0x{hInstance:X8}" );
+							uint strKey = (res.Name - 1) * 16 + i;
+							// Only write if en-US, or if neutral and not already have en-US, or if no entry yet
+							bool alreadyHave = StringResources.ContainsKey( (hInstance, strKey) );
+							// Track whether we already loaded en-US for this key
+							bool alreadyEnUS = StringResourceLangs.TryGetValue( (hInstance, strKey), out uint existingLang ) && existingLang == 0x0409;
+							if ( isEnUS || !alreadyHave || (isNeutral && !alreadyEnUS) )
+							{
+								StringResources[(hInstance, strKey)] = value;
+								StringResourceLangs[(hInstance, strKey)] = res.Language;
+								Core.LogVerbose( $"Loaded string resource: ID=0x{strKey:X8}, Lang=0x{res.Language:X4}, Value=\"{value}\", hInstance=0x{hInstance:X8}" );
+							}
 						}
 					}
 				}
 				else if ( res.Type == 14 ) // RT_GROUP_ICON
 				{
 					GroupIconResources[(hInstance, res.Name)] = res.Data;
-					Core.LogVerbose( $"Loaded group icon resource (RT_GROUP_ICON): ID=0x{res.Name:X8}, Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
+					if ( res.StringName != null )
+						GroupIconResourcesByName[(hInstance, res.StringName)] = res.Data;
+					Core.LogVerbose( $"Loaded group icon resource (RT_GROUP_ICON): ID=0x{res.Name:X8}, Name='{res.StringName}', Size={res.Data.Length} bytes, hInstance=0x{hInstance:X8}" );
 				}
 				else if ( res.Type == 4 ) // RT_MENU
 				{
