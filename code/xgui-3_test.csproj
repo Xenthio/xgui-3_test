@@ -17,6 +17,7 @@
 		<RootNamespace>Sandbox</RootNamespace>
 		<Nullable>disable</Nullable>
 		<DefaultItemExcludes>$(DefaultItemExcludes);**/editor/**;**/unittest/**</DefaultItemExcludes>
+		<SandboxHostMigration>true</SandboxHostMigration>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -28,6 +29,7 @@
 	<ItemGroup>
 		<Analyzer Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.CodeUpgrader.dll"/> 
 		<Analyzer Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Generator.dll"/> 
+		<CompilerVisibleProperty Include="SandboxHostMigration" />
 		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.System.dll"/> 
 		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Engine.dll"/> 
 		<Reference Include="../../../SteamLibrary/steamapps/common/sbox/bin/managed/Sandbox.Filesystem.dll"/> 
@@ -37,7 +39,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="../../../SteamLibrary/steamapps/common/sbox/addons/base/code/Base Library.csproj" />
 		<ProjectReference Include="../Libraries/XGUI-3/Code/xgui-3.csproj" />
 		<ProjectReference Include="../Libraries/xenthio.xmovement/Code/xmovement.csproj" />
 	</ItemGroup>

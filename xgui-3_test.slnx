@@ -3,9 +3,6 @@
     <Platform Name="Any CPU" />
   </Configurations>
   <Project Path="code/xgui-3_test.csproj" />
-  <Folder Name="/Addons/">
-    <Project Path="../../SteamLibrary/steamapps/common/sbox/addons/base/code/Base Library.csproj" />
-  </Folder>
   <Folder Name="/Libraries/">
     <Project Path="Libraries/xenthio.xmovement/Code/xmovement.csproj" />
     <Project Path="Libraries/xenthio.xmovement/UnitTests/xmovement.unittest.csproj" />

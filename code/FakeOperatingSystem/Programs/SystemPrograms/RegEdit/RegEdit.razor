@@ -37,7 +37,7 @@
 		<!-- Main content area with TreeView and ListView -->
 		<div class="main-content-area" style="flex-grow: 1; display: flex; flex-direction: row; overflow: hidden;">
 			<div class="tree-panel" style="width: 250px; min-width: 150px; flex-shrink: 0; overflow-y: scroll; border-right: 1px solid #7F7F7F;">
-				<treeview @ref="KeyTreeView" style="width: 100%; height: 100%;" />
+				<legacytreeview @ref="KeyTreeView" style="width: 100%; height: 100%;" />
 			</div>
 			<div class="value-panel" style="flex-grow: 1; overflow-y: scroll;">
 				<listview @ref="ValueListView" style="width: 100%; height: 100%;" />
@@ -57,7 +57,7 @@
 
 @code {
 	private ListView ValueListView;
-	private TreeView KeyTreeView;
+	private LegacyTreeView KeyTreeView;
 
 	Button FileMenuButton; // Should be RegistryMenuButton now
 	Button EditMenuButton;
@@ -117,7 +117,7 @@
 		KeyTreeView.OnNodeExpanded += OnRegistryKeyExpanded;
 	}
 
-	private void OnRegistryKeySelected(TreeView.TreeViewNode node)
+	private void OnRegistryKeySelected(LegacyTreeView.TreeViewNode node)
 	{
 		if (node == null)
 		{
@@ -143,7 +143,7 @@
 		PopulateListView(_currentSelectedKeyPath);
 	}
 
-	private void OnRegistryKeyExpanded(TreeView.TreeViewNode node)
+	private void OnRegistryKeyExpanded(LegacyTreeView.TreeViewNode node)
 	{
 		if (node == null) return;
 
@@ -188,7 +188,7 @@
 		}
 	}
 
-	private string GetFullNodePath(TreeView.TreeViewNode node)
+	private string GetFullNodePath(LegacyTreeView.TreeViewNode node)
 	{
 		if (node == null) return "";
 		var pathParts = new List<string>();
@@ -364,7 +364,7 @@
 		};
 		XGUISystem.Instance.Panel.AddChild(editDialog);
 	}
-	private void ShowKeyTreeViewContextMenu(TreeView.TreeViewNode node, MousePanelEvent e)
+	private void ShowKeyTreeViewContextMenu(LegacyTreeView.TreeViewNode node, MousePanelEvent e)
 	{
 		_treeViewContextMenu?.Delete(true); // Close any existing tree view context menu
 		_treeViewContextMenu = new ContextMenu(this, XGUIPopup.PositionMode.UnderMouse);

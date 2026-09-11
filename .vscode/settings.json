@@ -5,7 +5,6 @@
   },
   "slang.additionalSearchPaths": [
     "E:\\SteamLibrary\\steamapps\\common\\sbox\\core\\shaders",
-    "E:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\base\\Assets\\shaders",
     "E:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\menu\\Assets\\shaders",
     "E:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\tools\\Assets\\shaders",
     "E:\\SteamLibrary\\steamapps\\common\\sbox\\editor\\ShaderGraph\\Assets\\shaders",
